@@ -1,0 +1,240 @@
+from telethon import events, functions, types
+from utils.utils import CipherElite
+from utils.decorators import rishabh
+from plugins.bot import add_handler
+import asyncio
+import json
+import os
+import time
+import random
+from datetime import datetime
+import logging
+
+class AssistantConfig:
+    ALIVE_NAME = os.environ.get("ALIVE_NAME", "Master")
+    ASSISTANT_NAME = os.environ.get("ASSISTANT_NAME", "CipherAI")
+    PMPERMIT_PIC = os.environ.get("PMPERMIT_PIC", None)
+    MAX_WARNINGS = int(os.environ.get("MAX_WARNINGS", 5))
+    DATA_DIR = "data"
+    DB_FILE = os.path.join(DATA_DIR, "assistant_db.json")
+    
+    MESSAGES = {
+        'introduction': [
+            f"👋 Hello! I'm {ASSISTANT_NAME}, {ALIVE_NAME}'s personal assistant.\n\n"
+            f"Please briefly explain why you want to contact {ALIVE_NAME}.\n"
+            "Wait for approval before sending multiple messages.\n"
+            "Type 'ok' or 'okay' to acknowledge."
+        ],
+        'acknowledgment': [
+            "Thank you for understanding! 🙂\n"
+            f"I'll notify {ALIVE_NAME} about your message.\n"
+            "Please wait patiently for approval."
+        ],
+        'warning': [
+            "⚠️ **Warning {warn_count}/{max_warns}**\n\n"
+            "Please avoid sending multiple messages.\n"
+            f"Wait for {ALIVE_NAME}'s approval.\n"
+            "Further messages will increase your warning count."
+        ],
+        'approved': [
+            f"✅ Welcome! You're now approved to message {ALIVE_NAME}.\n"
+            "Feel free to continue your conversation."
+        ],
+        'disapproved': [
+            "❌ Your approval has been revoked.\n"
+            "You'll need to wait for approval again before sending messages."
+        ],
+        'blocked': [
+            "🚫 You have been blocked due to multiple unauthorized messages."
+        ]
+    }
+
+class PersonalAssistant:
+    def __init__(self):
+        self.users = {}
+        self.warnings = {}
+        self.approved_users = set()
+        self.user_states = {}  # Track conversation states
+        self.initialize_system()
+
+    def initialize_system(self):
+        os.makedirs(AssistantConfig.DATA_DIR, exist_ok=True)
+        self.load_data()
+
+    def load_data(self):
+        try:
+            if os.path.exists(AssistantConfig.DB_FILE):
+                with open(AssistantConfig.DB_FILE, 'r') as f:
+                    data = json.load(f)
+                    self.users = data.get('users', {})
+                    self.approved_users = set(data.get('approved_users', []))
+                    self.warnings = data.get('warnings', {})
+                    self.user_states = data.get('user_states', {})
+        except Exception as e:
+            logging.error(f"Error loading data: {str(e)}")
+
+    def save_data(self):
+        try:
+            with open(AssistantConfig.DB_FILE, 'w') as f:
+                json.dump({
+                    'users': self.users,
+                    'approved_users': list(self.approved_users),
+                    'warnings': self.warnings,
+                    'user_states': self.user_states
+                }, f, indent=2)
+        except Exception as e:
+            logging.error(f"Error saving data: {str(e)}")
+
+    async def send_message(self, event, message_type, **kwargs):
+        """Send a message with proper formatting"""
+        messages = AssistantConfig.MESSAGES.get(message_type, [])
+        if not messages:
+            return
+        
+        message = random.choice(messages)
+        if isinstance(message, str):
+            message = message.format(**kwargs)
+        
+        async with event.client.action(event.chat_id, 'typing'):
+            await asyncio.sleep(1.5)
+            if AssistantConfig.PMPERMIT_PIC and message_type == 'introduction':
+                await event.client.send_file(
+                    event.chat_id,
+                    AssistantConfig.PMPERMIT_PIC,
+                    caption=message
+                )
+            else:
+                await event.reply(message)
+
+    async def handle_message(self, event):
+        """Handle incoming messages with state management"""
+        if not event.is_private:
+            return
+
+        sender = await event.get_sender()
+        if sender.bot or str(sender.id) in self.approved_users:
+            return
+
+        user_id = str(sender.id)
+        message_text = event.message.text.lower()
+
+        # New user
+        if user_id not in self.users:
+            self.users[user_id] = {
+                'name': sender.first_name,
+                'username': sender.username,
+                'first_seen': datetime.now().isoformat()
+            }
+            self.user_states[user_id] = 'introduced'
+            self.warnings[user_id] = 0
+            await self.send_message(event, 'introduction')
+            self.save_data()
+            return
+
+        # Handle acknowledgment
+        if self.user_states.get(user_id) == 'introduced' and message_text in ['ok', 'okay', 'yes', 'sure']:
+            self.user_states[user_id] = 'acknowledged'
+            await self.send_message(event, 'acknowledgment')
+            self.save_data()
+            return
+
+        # Handle warnings
+        if user_id not in self.warnings:
+            self.warnings[user_id] = 0
+
+        self.warnings[user_id] += 1
+        
+        if self.warnings[user_id] >= AssistantConfig.MAX_WARNINGS:
+            await self.send_message(event, 'blocked')
+            await event.client(functions.contacts.BlockRequest(sender.id))
+            return
+
+        # Send warning message
+        await self.send_message(
+            event, 
+            'warning',
+            warn_count=self.warnings[user_id],
+            max_warns=AssistantConfig.MAX_WARNINGS
+        )
+        self.save_data()
+
+def init(client):
+    """Initialize the personal assistant"""
+    global CipherElite
+    CipherElite = client
+    assistant = PersonalAssistant()
+
+    # Add commands to help menu
+    commands = [
+        ".a - Approve a user for PM",
+        ".da - Disapprove a user from PM",
+        ".block - Block a user",
+        ".listapproved - List approved users"
+    ]
+    description = "Personal Assistant PM Manager"
+    add_handler("pmpermit", commands, description)
+
+    @CipherElite.on(events.NewMessage(incoming=True))
+    async def handle_incoming_message(event):
+        await assistant.handle_message(event)
+
+    @CipherElite.on(events.NewMessage(pattern=r"\.(a|approve)($| )"))
+    @rishabh()
+    async def approve_user(event):
+        try:
+            if event.is_private:
+                user_id = str(event.chat_id)
+            else:
+                reply = await event.get_reply_message()
+                if not reply:
+                    await event.reply("Reply to a user to approve them.")
+                    return
+                user_id = str(reply.sender_id)
+            
+            assistant.approved_users.add(user_id)
+            if user_id in assistant.warnings:
+                del assistant.warnings[user_id]
+            assistant.save_data()
+            await assistant.send_message(event, 'approved')
+        except Exception as e:
+            await event.reply(f"Error: {str(e)}")
+
+    @CipherElite.on(events.NewMessage(pattern=r"\.(da|disapprove)($| )"))
+    @rishabh()
+    async def disapprove_user(event):
+        try:
+            if event.is_private:
+                user_id = str(event.chat_id)
+            else:
+                reply = await event.get_reply_message()
+                if not reply:
+                    await event.reply("Reply to a user to disapprove them.")
+                    return
+                user_id = str(reply.sender_id)
+            
+            assistant.approved_users.discard(user_id)
+            assistant.warnings[user_id] = 0
+            assistant.save_data()
+            await assistant.send_message(event, 'disapproved')
+        except Exception as e:
+            await event.reply(f"Error: {str(e)}")
+
+    @CipherElite.on(events.NewMessage(pattern=r"\.listapproved$"))
+    @rishabh()
+    async def list_approved(event):
+        try:
+            if not assistant.approved_users:
+                await event.reply("No users are currently approved.")
+                return
+            
+            message = "**Approved Users:**\n\n"
+            for user_id in assistant.approved_users:
+                user_info = assistant.users.get(str(user_id), {})
+                name = user_info.get('name', 'Unknown')
+                message += f"• {name} (`{user_id}`)\n"
+            
+            await event.reply(message)
+        except Exception as e:
+            await event.reply(f"Error: {str(e)}")
+
+    return assistant
