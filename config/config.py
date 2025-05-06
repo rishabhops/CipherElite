@@ -1,13 +1,25 @@
-from vars import*
-
+from vars import *
 
 class Config:
-    API_ID = API_ID  # Replace with your API ID
-    API_HASH = f"{API_HASH}"  # Replace with your API Hash
-    STRING_SESSION = f"{ELITE_SESSION}"
-    BOT_PREFIX = f"{ELITE_BOT_PREFIX}"
+    # Core Settings
+    API_ID = API_ID
+    API_HASH = API_HASH
+    STRING_SESSION = ELITE_SESSION
+    
+    # Bot Configuration
+    BOT_PREFIX = ELITE_BOT_PREFIX
     BOT_NAME = "Cipher Elite"
-    SUDO_USERS = SUDO_USERS  # Add your user ID here
-    LOG_CHAT_ID = LOG_CHAT_ID  # Add your log channel/group ID
-    BOT_TOKEN = f"{BOT_TOKEN}"
-    TG_BOT_USERNAME = f"{ELITE_BOT_USERNAME}"
+    BOT_TOKEN = BOT_TOKEN
+    TG_BOT_USERNAME = ELITE_BOT_USERNAME
+    
+    # Access Control
+    SUDO_USERS = SUDO_USERS
+    LOG_CHAT_ID = LOG_CHAT_ID
+    # alive picture Control
+    DEFAULT_PING_PIC = PING_PIC
+    DEFAULT_ALIVE_PIC = ALIVE_PIC
+    DEFAULT_PMPERMIT_PIC = 
+    # Version Info
+    VERSION = "1.0.0"
+    BRANCH = "elite"
+    UPSTREAM_REPO = "https://github.com/rishabhops/CipherElite_userbot"
