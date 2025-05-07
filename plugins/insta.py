@@ -7,26 +7,31 @@ from plugins.bot import add_handler
 
 def init(client):
     """
-    Called by your loader to register the command help text.
+    Register the .insta command in your /help text.
     """
     commands = [
-        ".insta <url>  — Download a public Instagram post (image or video)"
+        ".insta <url>  — Download a public Instagram post (image, video or reel)"
     ]
-    description = "Fetch public Instagram posts without login"
+    description = "Fetch public Instagram media without login"
     add_handler("instagram", commands, description)
 
 async def register_commands():
-    """
-    Registers the .insta command handler.
-    """
     @CipherElite.on(events.NewMessage(pattern=r"\.insta\s+(https?://[^\s]+)"))
     @rishabh()
     async def instagram_dl(event):
-        post_url = event.pattern_match.group(1)
+        original_url = event.pattern_match.group(1).strip()
+
+        # 1) Normalize /share URLs → / (Instagram does a redirect)
+        url = original_url.replace("instagram.com/share/", "instagram.com/")
+
+        # 2) Ensure trailing slash
+        if not url.endswith("/"):
+            url = url + "/"
+
         msg = await event.reply("📥 Fetching media URL…")
 
         try:
-            media_url = await _fetch_media_url(post_url)
+            media_url = await _fetch_media_url(url)
             await event.client.send_file(
                 event.chat_id,
                 media_url,
@@ -38,21 +43,21 @@ async def register_commands():
 
 async def _fetch_media_url(url: str) -> str:
     """
-    Fetches the Instagram post page and scrapes the Open-Graph tags:
-      - og:video if it’s a video post, else
-      - og:image for a photo.
-    Raises ValueError if no media URL is found.
+    GETs the Instagram page, follows redirects, and scrapes:
+     • <meta property="og:video" content="…"> if it’s a video/reel
+     • otherwise <meta property="og:image" content="…">
+    Raises ValueError on HTTP errors or missing tags.
     """
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
     }
     async with aiohttp.ClientSession(headers=headers) as sess:
-        async with sess.get(url) as resp:
+        async with sess.get(url, allow_redirects=True) as resp:
             text = await resp.text()
             if resp.status != 200:
                 raise ValueError(f"HTTP {resp.status} fetching {url}")
 
-    # Try video
+    # Try video first (reels or video posts)
     m = re.search(r'<meta property="og:video" content="([^"]+)"', text)
     if m:
         return m.group(1)
@@ -63,3 +68,4 @@ async def _fetch_media_url(url: str) -> str:
         return m.group(1)
 
     raise ValueError("Could not find public media URL. Is the post public?")
+    
