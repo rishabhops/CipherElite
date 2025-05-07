@@ -1,37 +1,35 @@
-import os
-import sys
-import json
-import asyncio
-import aiohttp
+import os, sys, json, asyncio, aiohttp
 from pathlib import Path
 from telethon import events
 from utils.utils import CipherElite
 from utils.decorators import rishabh
 
-# ──────────────────────────────────────────────────────────────────────────────
-# CONFIGURE THESE
+# ──────────────────────────────────────────────────────────────
 GITHUB_OWNER  = "rishabhops"
 GITHUB_REPO   = "CipherElite"
 GITHUB_BRANCH = "elite"
-# ──────────────────────────────────────────────────────────────────────────────
+API_BASE      = f"https://api.github.com/repos/{GITHUB_OWNER}/{GITHUB_REPO}"
+RAW_BASE      = f"https://raw.githubusercontent.com/{GITHUB_OWNER}/{GITHUB_REPO}/{GITHUB_BRANCH}"
+# ──────────────────────────────────────────────────────────────
 
-RAW_BASE = f"https://raw.githubusercontent.com/{GITHUB_OWNER}/{GITHUB_REPO}/{GITHUB_BRANCH}"
-API_BASE = f"https://api.github.com/repos/{GITHUB_OWNER}/{GITHUB_REPO}"
-COMPARE_API = API_BASE + "/compare"
-
-# Where to persist last‐seen SHA
 PROJECT_ROOT = Path(__file__).parent.parent
 DB_DIR       = PROJECT_ROOT / "DB"
 DB_DIR.mkdir(exist_ok=True)
 DB_FILE      = DB_DIR / "updater_db.json"
 
+# ANY files here will be *skipped* by the updater
+SKIP_FILES = {
+  "vars.py",            # your credentials + IDs
+  "config/config.py",   # if you also customize your Config
+}
+
 def load_db() -> dict:
     if DB_FILE.exists():
-        return json.loads(DB_FILE.read_text(encoding="utf-8"))
+        return json.loads(DB_FILE.read_text())
     return {}
 
 def save_db(d: dict):
-    DB_FILE.write_text(json.dumps(d, indent=2), encoding="utf-8")
+    DB_FILE.write_text(json.dumps(d, indent=2))
 
 async def get_json(url: str):
     async with aiohttp.ClientSession() as sess:
@@ -46,85 +44,111 @@ async def download_file(relpath: str) -> bytes:
             resp.raise_for_status()
             return await resp.read()
 
-@CipherElite.on(events.NewMessage(pattern=r"\.checkupdate$", incoming=True))
+async def fetch_full_tree():
+    tree_url = f"{API_BASE}/git/trees/{GITHUB_BRANCH}?recursive=1"
+    js = await get_json(tree_url)
+    return [e for e in js.get("tree", []) if e["type"] == "blob"]
+
+@CipherElite.on(events.NewMessage(pattern=r"\.checkupdate$", outgoing=True))
 @rishabh()
 async def check_update(event):
-    """
-    .checkupdate — show which files/lines would change if you updated.
-    """
-    db = load_db()
+    db       = load_db()
     last_sha = db.get("last_sha", "")
-    await event.reply("🔍 Checking GitHub for updates…")
-    # get current head SHA
+    await event.reply("🔍 Checking for updates…")
+
     branch = await get_json(f"{API_BASE}/branches/{GITHUB_BRANCH}")
     remote_sha = branch["commit"]["sha"]
 
-    if remote_sha == last_sha:
-        return await event.reply("✅ Already up-to-date on GitHub.")
+    if not last_sha:
+        # initial import listing
+        tree = await fetch_full_tree()
+        text = "**Initial import – files you will get:**\n\n"
+        for e in tree:
+            if e["path"] in SKIP_FILES:
+                continue
+            text += f"• ADDED   {e['path']}\n"
+        return await event.reply(text)
 
-    # compare
-    comp = await get_json(f"{COMPARE_API}/{last_sha}...{remote_sha}")
+    comp = await get_json(f"{API_BASE}/compare/{last_sha}...{remote_sha}")
     files = comp.get("files", [])
     if not files:
-        return await event.reply("ℹ️ No file changes reported.")
+        return await event.reply("✅ Already up-to-date.")
 
     text = "**Updates available:**\n\n"
     for f in files:
-        status = f["status"]    # added, removed, modified, renamed
-        name   = f["filename"]
-        additions = f["additions"]
-        deletions = f["deletions"]
-        text += f"• {status.upper():8} {name} (+{additions}/–{deletions})\n"
+        name = f["filename"]
+        if name in SKIP_FILES:
+            continue
+        text += f"• {f['status'].upper():8} {name} (+{f['additions']}/–{f['deletions']})\n"
     await event.reply(text)
 
-@CipherElite.on(events.NewMessage(pattern=r"\.update$", incoming=True))
+@CipherElite.on(events.NewMessage(pattern=r"\.update$", outgoing=True))
 @rishabh()
 async def do_update(event):
-    """
-    .update — fetch only changed files from GitHub, write them, then restart.
-    """
-    db = load_db()
+    db       = load_db()
     last_sha = db.get("last_sha", "")
-    msg = await event.reply("🔄 Checking for updates…")
+    msg      = await event.reply("🔄 Fetching updates…")
 
-    # fetch current head
     branch = await get_json(f"{API_BASE}/branches/{GITHUB_BRANCH}")
     remote_sha = branch["commit"]["sha"]
 
-    if remote_sha == last_sha:
-        return await msg.edit("✅ Already up-to-date on GitHub.")
-
-    # compare base…head
-    comp = await get_json(f"{COMPARE_API}/{last_sha}...{remote_sha}")
-    files = comp.get("files", [])
-
-    if not files:
-        # no files? still update stored SHA
+    # ─── initial import ─────────────────────────────────────────────
+    if not last_sha:
+        tree = await fetch_full_tree()
+        await msg.edit(f"📦 Downloading {len(tree)} files (initial import)…")
+        for e in tree:
+            rel = e["path"]
+            if rel in SKIP_FILES:
+                continue
+            local = PROJECT_ROOT / rel
+            local.parent.mkdir(parents=True, exist_ok=True)
+            content = await download_file(rel)
+            local.write_bytes(content)
         db["last_sha"] = remote_sha
         save_db(db)
-        return await msg.edit("ℹ️ Nothing changed — just updated internal marker.")
+        return await msg.edit(
+          "✅ Initial import complete! Variables preserved.\n"
+          "Now try .ping and .alive\n"
+          "Restarting…"
+        )
 
-    await msg.edit(f"📄 {len(files)} files to update, fetching…")
-    # apply each change
+    # ─── delta update ───────────────────────────────────────────────
+    if remote_sha == last_sha:
+        return await msg.edit("✅ Already up-to-date.")
+
+    comp = await get_json(f"{API_BASE}/compare/{last_sha}...{remote_sha}")
+    files = comp.get("files", [])
+    if not files:
+        db["last_sha"] = remote_sha
+        save_db(db)
+        return await msg.edit("ℹ️ No changes detected – marker updated.")
+
+    await msg.edit(f"📄 {len(files)} files changed – downloading…")
     for f in files:
-        rel = f["filename"]
+        rel    = f["filename"]
         status = f["status"]
-        local_path = PROJECT_ROOT / rel
-        if status in ("modified", "added", "renamed"):
-            # download new content
-            content = await download_file(rel)
-            # ensure dir exists
-            local_path.parent.mkdir(parents=True, exist_ok=True)
-            local_path.write_bytes(content)
-        elif status == "removed":
-            if local_path.exists():
-                local_path.unlink()
+        if rel in SKIP_FILES:
+            continue
+        local = PROJECT_ROOT / rel
+        if status in ("added", "modified", "renamed"):
+            local.parent.mkdir(parents=True, exist_ok=True)
+            local.write_bytes(await download_file(rel))
+        elif status == "removed" and local.exists():
+            local.unlink()
 
-    # update stored SHA
     db["last_sha"] = remote_sha
     save_db(db)
 
-    await msg.edit("✅ Files updated, restarting…")
-    # small delay for edit to go through
+    # final success edit + preserve vars + tip
+    await msg.edit(
+      "✅ Update successful. Variables untouched.\n"
+      "Check .ping and .alive\n"
+      "Restarting now…"
+    )
     await asyncio.sleep(1.0)
     os.execv(sys.executable, [sys.executable] + sys.argv)
+
+def init(client):
+    # no-op so your loader doesn’t complain
+    pass
+    
