@@ -18,7 +18,7 @@ class Config:
     # alive picture Control
     DEFAULT_PING_PIC = PING_PIC
     DEFAULT_ALIVE_PIC = ALIVE_PIC
-    DEFAULT_PMPERMIT_PIC = 
+    DEFAULT_PMPERMIT_PIC = PMPERMIT_PIC
     # Version Info
     VERSION = "1.0.0"
     BRANCH = "elite"
