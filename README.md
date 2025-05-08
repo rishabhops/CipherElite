@@ -8,7 +8,7 @@
 </p>
 
 <p align="center">
-    <a href="https://github.com/rishabhops/CipherElite_userbot/stargazers"><img src="https://img.shields.io/github/stars/rishabhops/CipherElite_userbot?label=Stars&style=flat-square&logo=github&color=F10070" alt="Stars" /></a>
+    <a href="https://github.com/rishabhops/CipherElite/stargazers"><img src="https://img.shields.io/github/stars/rishabhops/CipherElite?label=Stars&style=flat-square&logo=github&color=F10070" alt="Stars" /></a>
 </p>
 
 ## ⚡ FEATURES
@@ -31,7 +31,7 @@
 
 ## 💫 SUPPORT & UPDATES
 <p align="center">
-  <a href="https://t.me/cipher_elite"><img src="https://img.shields.io/badge/UPDATES-CHANNEL-red?style=for-the-badge&logo=telegram"></a>
+  <a href="https://t.me/THANOS_PRO"><img src="https://img.shields.io/badge/UPDATES-CHANNEL-red?style=for-the-badge&logo=telegram"></a>
   <a href="https://t.me/cipher_elite_support"><img src="https://img.shields.io/badge/SUPPORT-GROUP-blue?style=for-the-badge&logo=telegram"></a>
 </p>
 
