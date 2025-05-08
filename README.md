@@ -46,5 +46,5 @@
 
 ---
 <p align="center">
-  <b>⭐ Star this repository if you like Cipher Elite!</b>
+  <b>⭐ Star this repository if you like 匚ɪᴘԋᴇʀ Ξʟɪᴛᴇ!</b>
 </p>
