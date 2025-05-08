@@ -32,7 +32,7 @@
 ## 💫 SUPPORT & UPDATES
 <p align="center">
   <a href="https://t.me/THANOS_PRO"><img src="https://img.shields.io/badge/UPDATES-CHANNEL-red?style=for-the-badge&logo=telegram"></a>
-  <a href="https://t.me/cipher_elite_support"><img src="https://img.shields.io/badge/SUPPORT-GROUP-blue?style=for-the-badge&logo=telegram"></a>
+  <a href="https://t.me/thanosprosss"><img src="https://img.shields.io/badge/SUPPORT-GROUP-blue?style=for-the-badge&logo=telegram"></a>
 </p>
 
 ## ⚙️ REQUIREMENTS
