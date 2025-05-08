@@ -1,4 +1,4 @@
-# CIPHER ELITE USERBOT
+# 匚ɪᴘԋᴇʀ Ξʟɪᴛᴇ USERBOT
 <p align="center">
   <img src="https://media-hosting.imagekit.io//fd283047604843c6/1000009341.jpg?Expires=1832164181&Key-Pair-Id=K2ZIVPTIP2VGHC&Signature=2rL39oKrh5Lj5YrZZEOGmW0AleEbXFkNNxswiWQVM~FAMemrtjoHREGdrTWwPgmPTCaW8DdZNkQMhej2HFq8m2LkhOSHZQO46P07aW0KkudS~WxIN6PFMCSNyv6X6q2ccIGEPAS0CA3uxw~Po7uUQt04Lah9potKFZTLOuJAvWRX08PZyikfxLgDR5ipunDyZPYGYzKL6X6zeJG8FUWud0H~pp2JLscZ3sYv0SeZpD6QCChRVJPyWXPuGQhd1m3T5tf4PIRUUgwzM0LI~HBJEu87hX~1HuSBSa8q4RncGRAzfJu2YggdWJj56BzDTGF9LYLMWny8tpfcbxfGh1gzjw__" alt="Cipher Elite" width="300" height="300">
 </p>
