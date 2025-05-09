@@ -21,6 +21,7 @@ DB_DIR       = PROJECT_ROOT / "DB"
 DB_DIR.mkdir(exist_ok=True)
 DB_FILE      = DB_DIR / "assistant_db.json"
 
+
 class PersonalAssistant:
     def __init__(self):
         self.data = {
@@ -60,6 +61,16 @@ class PersonalAssistant:
             logging.error(f"Assistant save error: {e}")
 
     async def send_message(self, event, mtype, **kwargs):
+        """
+        Send a permit‐flow message. This safely resolves the entity
+        for typing actions and sending files to avoid 'could not find entity'.
+        """
+        # Prepare target entity (User or chat)
+        try:
+            target = await event.get_sender()
+        except Exception:
+            target = event.chat_id
+
         cfg = self.data["config"]
         texts = {
             "introduction": [
@@ -85,32 +96,48 @@ class PersonalAssistant:
                 "🚫 You have been blocked due to repeated messages."
             ],
         }
+
         lst = texts.get(mtype, [])
         if not lst:
             return
+
         msg = random.choice(lst).format(**kwargs)
-        # typing indicator
-        async with event.client.action(event.chat_id, 'typing'):
-            await asyncio.sleep(1.0)
-        # send with picture on introduction
+
+        # Show typing indicator (if possible)
+        try:
+            async with event.client.action(target, 'typing'):
+                await asyncio.sleep(1.0)
+        except Exception:
+            pass
+
+        # Send with picture on introduction if enabled
         if mtype == "introduction" and cfg.get("use_pic"):
-            await event.client.send_file(
-                event.chat_id,
-                cfg["pmpermit_pic"],
-                caption=msg
-            )
+            try:
+                await event.client.send_file(
+                    target,
+                    cfg["pmpermit_pic"],
+                    caption=msg
+                )
+            except Exception:
+                await event.reply(msg)
         else:
             await event.reply(msg)
 
     async def handle_message(self, event):
+        # only private chats
         if not event.is_private:
             return
+
         sender = await event.get_sender()
         uid = str(sender.id)
+
+        # ignore bots and already-approved
         if sender.bot or uid in self.data["approved_users"]:
             return
+
         text = (event.message.text or "").lower()
-        # new user introduction
+
+        # 1) First-time user → introduction
         if uid not in self.data["users"]:
             self.data["users"][uid] = {
                 "name": sender.first_name,
@@ -122,20 +149,24 @@ class PersonalAssistant:
             await self.send_message(event, "introduction")
             self._save()
             return
-        # acknowledgment
+
+        # 2) Acknowledgment
         if self.data["user_states"].get(uid) == "introduced" and text in ("ok", "okay"):
             self.data["user_states"][uid] = "acknowledged"
             await self.send_message(event, "acknowledgment")
             self._save()
             return
-        # warnings & blocking
+
+        # 3) Warnings / blocking
         self.data["warnings"].setdefault(uid, 0)
         self.data["warnings"][uid] += 1
+
         if self.data["warnings"][uid] >= self.data["config"]["max_warnings"]:
             await self.send_message(event, "blocked")
             await event.client(functions.contacts.BlockRequest(int(uid)))
             self._save()
             return
+
         await self.send_message(
             event,
             "warning",
@@ -143,6 +174,7 @@ class PersonalAssistant:
             max_warnings=self.data["config"]["max_warnings"]
         )
         self._save()
+
 
 def init(client):
     assistant = PersonalAssistant()
@@ -170,6 +202,7 @@ def init(client):
             if not reply:
                 return await event.reply("↪️ Reply to the user to approve.")
             uid = str(reply.sender_id)
+
         if uid not in assistant.data["approved_users"]:
             assistant.data["approved_users"].append(uid)
         assistant.data["warnings"].pop(uid, None)
@@ -186,6 +219,7 @@ def init(client):
             if not reply:
                 return await event.reply("↪️ Reply to the user to disapprove.")
             uid = str(reply.sender_id)
+
         assistant.data["approved_users"] = [
             u for u in assistant.data["approved_users"] if u != uid
         ]
@@ -247,6 +281,7 @@ def init(client):
             if not reply:
                 return await event.reply("↪️ Reply to the user to block.")
             uid = str(reply.sender_id)
+
         assistant.data["approved_users"] = [
             u for u in assistant.data["approved_users"] if u != uid
         ]
