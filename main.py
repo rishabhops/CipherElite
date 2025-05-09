@@ -23,18 +23,19 @@ client = TelegramClient(
 )
 
 async def load_plugins():
-    path = Path(__file__).parent / "plugins"
+    path    = Path(__file__).parent / "plugins"
     plugins = [f"plugins.{f.stem}" for f in path.glob("*.py") if f.stem != "__init__"]
-    
+
     loaded_plugins = []
     for plugin_name in plugins:
         module = importlib.import_module(plugin_name)
         module.init(client)
-        if hasattr(module, 'register_commands'):
+        if hasattr(module, "register_commands"):
             await module.register_commands()
-        loaded_plugins.append(plugin_name.split('.')[-1])
+
+        loaded_plugins.append(plugin_name.split(".")[-1])
         print(f"Loaded plugin: {plugin_name.split('.')[-1]}")
-    
+
     return loaded_plugins
 
 async def generate_startup_info():
@@ -105,26 +106,16 @@ async def send_startup_message(plugins, system_info):
         print(f"\033[1;31mError sending startup message: {e}\033[0m")
 
 async def start_bot():
-    print("\n\033[1;36m==================================================")
-    print("      Initializing CIPHER ELITE USERBOT")
-    print("==================================================\033[0m\n")
-    
     await client.start()
     init_client(client)
     bot = await init_bot()
-    
-    # Load plugins with a loading animation
-    print("\033[1;33mLoading plugins...\033[0m")
+
+    print("Loading plugins…")
     plugins = await load_plugins()
-    
-    # Display startup message in terminal
+
     system_info = await display_startup_message(plugins)
-    
-    # Send startup message to LOG_CHAT_ID
     await send_startup_message(plugins, system_info)
-    
-    print("\033[1;32mCipher Elite is ready and serving!\033[0m")
-    
+
     await asyncio.gather(
         client.run_until_disconnected(),
         bot.run_until_disconnected()
@@ -132,4 +123,4 @@ async def start_bot():
 
 if __name__ == "__main__":
     with client:
-        client.loop.run_until_complete(start_bot())
+        client.loop.run_until_complete(start_bot
