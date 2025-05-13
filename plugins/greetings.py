@@ -10,8 +10,8 @@ def init(client):
     commands = [
         ".hii       — Big ‘HI’ in emojis",
         ".thanks    — Big ‘THANKS’ in emojis",
-        ".ok        — Big ‘OK’ in emojis",
-        ".gn        — Big ‘GN’ in emojis"
+        ".ok        — Sparkling OK in emojis",
+        ".gn        — Sparkling GN in emojis"
     ]
     add_handler("greetings", commands, "Emoji Greetings Plugin")
 
@@ -44,9 +44,9 @@ async def thanks(event):
     if getattr(event.message, "fwd_from", None):
         return
     art = (
-        "🌟🌟🌟🌟🌟🌟🌟\n"
-        "🌟 THANKS 🌟\n"
-        "🌟🌟🌟🌟🌟🌟🌟"
+        "💖💖💖💖💖💖💖💖💖💖\n"
+        "💖  THANKS  💖\n"
+        "💖💖💖💖💖💖💖💖💖💖"
     )
     await edit_or_reply(event, art)
 
@@ -56,9 +56,7 @@ async def ok(event):
     if getattr(event.message, "fwd_from", None):
         return
     art = (
-        "👌👌👌👌👌\n"
-        "👌   OK   👌\n"
-        "👌👌👌👌👌"
+        "✨✨✨✨✨✨✨✨✨💙💙💙✨✨✨💙✨✨✨💙✨✨💙✨✨✨💙✨✨💙✨✨✨💙✨✨✨💙💙💙✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨💙✨✨✨💙✨✨💙✨✨💙✨✨✨💙💙💙✨✨✨✨💙✨✨💙✨✨✨💙✨✨✨💙✨✨✨✨✨✨✨✨"
     )
     await edit_or_reply(event, art)
 
@@ -68,8 +66,8 @@ async def good_night(event):
     if getattr(event.message, "fwd_from", None):
         return
     art = (
-        "🌙🌙🌙🌙🌙\n"
-        "🌙   GN   🌙\n"
-        "🌙🌙🌙🌙🌙"
+        "🌟🌙🌟🌙🌟🌙🌟\n"
+        "🌙   G N   🌙\n"
+        "🌟🌙🌟🌙🌟🌙🌟"
     )
     await edit_or_reply(event, art)
