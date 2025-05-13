@@ -1,6 +1,9 @@
 import asyncio
 import random
+
 from telethon import events
+from telethon.errors.rpcerrorlist import MessageNotModifiedError
+
 from utils.utils import CipherElite
 from utils.decorators import rishabh
 from plugins.bot import add_handler
@@ -15,26 +18,26 @@ def init(client):
 @CipherElite.on(events.NewMessage(pattern=r"^\.animate\s+([\s\S]+)$", outgoing=True))
 @rishabh()
 async def animate_text(event):
-    # 1) Try regex match
+    # Grab everything after ".animate "
     text = event.pattern_match.group(1).strip()
-
-    # 2) Fallback: split on first space if regex didn't capture properly
     if not text:
-        full = event.message.text or ""
-        parts = full.split(" ", 1)
-        if len(parts) < 2 or not parts[1].strip():
-            return await event.reply("❗️ Usage: `.animate <text>`")
-        text = parts[1].strip()
+        return await event.reply("❗️ Usage: `.animate <text>`")
 
-    # send a visible placeholder so we can edit it
+    # Send a visible placeholder so we can edit it
     msg = await event.reply("⏳")
 
-    # type out one char at a time with slight randomness
+    # Type out one char at a time
     for i in range(1, len(text) + 1):
+        new = text[:i]
+        try:
+            await msg.edit(new)
+        except MessageNotModifiedError:
+            # Happens if new == old; just ignore and continue
+            pass
+        # small random delay for a “human” feel
         await asyncio.sleep(0.05 + random.random() * 0.1)
-        await msg.edit(text[:i])
 
-    # leave the final text up for a bit
+    # Pause on the full text for a moment
     await asyncio.sleep(0.5)
 
 @CipherElite.on(events.NewMessage(pattern=r"^\.spinner(?:\s+(\d+))?$", outgoing=True))
@@ -48,9 +51,12 @@ async def spinner(event):
     start = asyncio.get_event_loop().time()
     idx = 0
     while asyncio.get_event_loop().time() - start < total:
-        await asyncio.sleep(0.2)
         frame = frames[idx % len(frames)]
-        await msg.edit(f"{frame} spinning…")
+        try:
+            await msg.edit(f"{frame} spinning…")
+        except MessageNotModifiedError:
+            pass
         idx += 1
+        await asyncio.sleep(0.2)
 
     await msg.edit("✅ Done!")
