@@ -12,12 +12,19 @@ def init(client):
     ]
     add_handler("animation", commands, "Text & Spinner Animation Plugin")
 
-@CipherElite.on(events.NewMessage(pattern=r"\.animate\s+(.+)", outgoing=True))
+@CipherElite.on(events.NewMessage(pattern=r"^\.animate\s+([\s\S]+)$", outgoing=True))
 @rishabh()
 async def animate_text(event):
+    # 1) Try regex match
     text = event.pattern_match.group(1).strip()
+
+    # 2) Fallback: split on first space if regex didn't capture properly
     if not text:
-        return await event.reply("❗️ Usage: `.animate <text>`")
+        full = event.message.text or ""
+        parts = full.split(" ", 1)
+        if len(parts) < 2 or not parts[1].strip():
+            return await event.reply("❗️ Usage: `.animate <text>`")
+        text = parts[1].strip()
 
     # send a visible placeholder so we can edit it
     msg = await event.reply("⏳")
@@ -27,10 +34,10 @@ async def animate_text(event):
         await asyncio.sleep(0.05 + random.random() * 0.1)
         await msg.edit(text[:i])
 
-    # brief pause on full text
+    # leave the final text up for a bit
     await asyncio.sleep(0.5)
 
-@CipherElite.on(events.NewMessage(pattern=r"\.spinner(?:\s+(\d+))?", outgoing=True))
+@CipherElite.on(events.NewMessage(pattern=r"^\.spinner(?:\s+(\d+))?$", outgoing=True))
 @rishabh()
 async def spinner(event):
     sec = event.pattern_match.group(1)
