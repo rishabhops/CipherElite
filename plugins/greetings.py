@@ -1,7 +1,8 @@
 import asyncio
 from telethon import events
+from telethon.errors.rpcerrorlist import MessageNotModifiedError
 
-from utils.utils import CipherElite, edit_or_reply
+from utils.utils import CipherElite
 from utils.decorators import rishabh
 from plugins.bot import add_handler
 
@@ -13,6 +14,15 @@ def init(client):
         ".gn        — Big ‘GN’ in emojis"
     ]
     add_handler("greetings", commands, "Emoji Greetings Plugin")
+
+async def edit_or_reply(event, text):
+    """
+    Try to edit the triggering message; if that fails, send a reply.
+    """
+    try:
+        return await event.edit(text)
+    except (MessageNotModifiedError, Exception):
+        return await event.reply(text)
 
 @CipherElite.on(events.NewMessage(pattern=r"^\.hii$", outgoing=True))
 @rishabh()
@@ -46,11 +56,9 @@ async def ok(event):
     if getattr(event.message, "fwd_from", None):
         return
     art = (
-        "⭕⭕⭕⭕⭕     K   \n"
-        "⭕    ⭕    K  K \n"
-        "⭕    ⭕   K K  \n"
-        "⭕    ⭕    K  K \n"
-        "⭕⭕⭕⭕⭕     K   "
+        "👌👌👌👌👌\n"
+        "👌   OK   👌\n"
+        "👌👌👌👌👌"
     )
     await edit_or_reply(event, art)
 
@@ -60,10 +68,8 @@ async def good_night(event):
     if getattr(event.message, "fwd_from", None):
         return
     art = (
-        "🌙🌙🌙🌙    🌙   🌙\n"
-        "🌙        🌙🌙  🌙\n"
-        "🌙🌙🌙🌙    🌙 🌙 🌙\n"
-        "🌙    🌙    🌙  🌙🌙\n"
-        "🌙🌙🌙🌙    🌙   🌙"
+        "🌙🌙🌙🌙🌙\n"
+        "🌙   GN   🌙\n"
+        "🌙🌙🌙🌙🌙"
     )
     await edit_or_reply(event, art)
