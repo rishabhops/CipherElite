@@ -150,79 +150,98 @@ async def register_commands():
                 await msg.edit("❌ Invalid Instagram URL. Make sure it's a post, reel or story URL.")
                 return
                 
-            await msg.edit("📥 Downloading media...")
+            await msg.edit(f"📥 Downloading media with ID: {media_id}...")
             
             # Use the Instagram client to download
-            media_type, media_path = await download_instagram_media(media_id)
-            
-            if not os.path.exists(media_path):
-                await msg.edit("❌ Failed to download media")
-                return
+            try:
+                media_type, media_path = await download_instagram_media(media_id)
                 
-            # Send the downloaded file
-            await event.client.send_file(
-                event.chat_id,
-                media_path,
-                caption="📥 Downloaded by CipherElite userbot"
-            )
-            
-            # Clean up
-            os.remove(media_path)
-            await msg.delete()
+                if not os.path.exists(media_path):
+                    await msg.edit("❌ Failed to download media: File not found")
+                    return
+                    
+                # Send the downloaded file
+                await event.client.send_file(
+                    event.chat_id,
+                    media_path,
+                    caption=f"📥 Downloaded {media_type} by CipherElite userbot"
+                )
+                
+                # Clean up
+                if os.path.isfile(media_path):
+                    os.remove(media_path)
+                elif os.path.isdir(media_path):
+                    import shutil
+                    shutil.rmtree(media_path, ignore_errors=True)
+                    
+                await msg.delete()
+            except Exception as download_err:
+                await msg.edit(f"❌ Download process failed: {str(download_err)}")
             
         except Exception as e:
-            await msg.edit(f"❌ Download failed: {str(e)}")
+            await msg.edit(f"❌ Process failed: {str(e)}")
 
 def extract_media_id(url):
     """Extract media ID from Instagram URL"""
-    # Handle different URL formats
+    # Extract shortcode from URL
     patterns = [
-        r'instagram.com/p/([^/]+)',      # Regular posts
-        r'instagram.com/reel/([^/]+)',   # Reels
+        r'instagram.com/p/([^/?]+)',      # Regular posts
+        r'instagram.com/reel/([^/?]+)',   # Reels
         r'instagram.com/stories/[^/]+/(\d+)'  # Stories
     ]
     
+    shortcode = None
     for pattern in patterns:
         match = re.search(pattern, url)
         if match:
-            return match.group(1)
+            shortcode = match.group(1)
+            break
             
-    return None
+    if not shortcode:
+        return None
+        
+    return shortcode
 
 async def download_instagram_media(media_id):
     """Download media using authenticated Instagram client"""
     global ig_client
     
-    # Determine if it's a regular post or reel
     # Create temp file path
     temp_dir = "temp"
     os.makedirs(temp_dir, exist_ok=True)
     
     try:
-        # First try as a regular post
+        # For reels and posts, we can use the shortcode directly
         try:
+            # Try as a regular post/reel using shortcode
+            media_pk = await asyncio.get_event_loop().run_in_executor(
+                None,
+                lambda: ig_client.media_pk_from_code(media_id)
+            )
+            
+            # Once we have the media_pk, we can get media info
             media_info = await asyncio.get_event_loop().run_in_executor(
                 None,
-                lambda: ig_client.media_info(media_id)
+                lambda: ig_client.media_info(media_pk)
             )
             
             if media_info.media_type == 1:  # Photo
                 path = await asyncio.get_event_loop().run_in_executor(
                     None,
-                    lambda: ig_client.photo_download(media_id, folder=temp_dir)
+                    lambda: ig_client.photo_download(media_pk, folder=temp_dir)
                 )
                 return "photo", path
             elif media_info.media_type == 2:  # Video
                 path = await asyncio.get_event_loop().run_in_executor(
                     None,
-                    lambda: ig_client.video_download(media_id, folder=temp_dir)
+                    lambda: ig_client.video_download(media_pk, folder=temp_dir)
                 )
                 return "video", path
             elif media_info.media_type == 8:  # Album
                 # For albums, download first item for now
                 path = await asyncio.get_event_loop().run_in_executor(
                     None,
-                    lambda: ig_client.album_download(media_id, folder=temp_dir)
+                    lambda: ig_client.album_download(media_pk, folder=temp_dir)
                 )
                 # Find the first file in album folder
                 album_files = os.listdir(path)
@@ -233,21 +252,18 @@ async def download_instagram_media(media_id):
             else:
                 raise Exception(f"Unsupported media type: {media_info.media_type}")
         except Exception as e:
-            # Maybe it's a reel or story
-            try:
-                # Try as a reel
-                path = await asyncio.get_event_loop().run_in_executor(
-                    None,
-                    lambda: ig_client.clip_download(media_id, folder=temp_dir)
-                )
-                return "reel", path
-            except Exception:
-                # Try as a story
-                path = await asyncio.get_event_loop().run_in_executor(
-                    None,
-                    lambda: ig_client.story_download(media_id, folder=temp_dir)
-                )
-                return "story", path
+            # Try for story - these use numeric IDs directly
+            if media_id.isdigit():
+                try:
+                    path = await asyncio.get_event_loop().run_in_executor(
+                        None,
+                        lambda: ig_client.story_download(int(media_id), folder=temp_dir)
+                    )
+                    return "story", path
+                except Exception as story_e:
+                    raise Exception(f"Failed to download story: {str(story_e)}")
+            else:
+                raise Exception(f"Failed to process media: {str(e)}")
                 
     except Exception as e:
         raise Exception(f"Failed to download: {str(e)}")
