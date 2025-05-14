@@ -12,7 +12,6 @@ from plugins.bot import add_handler
 # Path to store Instagram session data
 SESSIONS_DIR = os.path.join("data", "sessions")
 SESSION_FILE = os.path.join(SESSIONS_DIR, "instagram_session.json")
-COOKIE_FILE = os.path.join(SESSIONS_DIR, "instagram_cookies.json")
 
 # Ensure directories exist
 os.makedirs(SESSIONS_DIR, exist_ok=True)
@@ -45,14 +44,9 @@ def load_session():
             with open(SESSION_FILE, 'r') as f:
                 session_data = json.load(f)
                 
+            # Load settings
             ig_client.load_settings(session_data)
             
-            # Also load cookies if available for better session persistence
-            if os.path.exists(COOKIE_FILE):
-                with open(COOKIE_FILE, 'r') as f:
-                    cookies = json.load(f)
-                ig_client.set_cookies(cookies)
-                
             # Verify the session is still valid (lightweight operation)
             try:
                 # Just fetch account info to validate session
@@ -78,11 +72,6 @@ def save_session():
             session_data = ig_client.get_settings()
             with open(SESSION_FILE, 'w') as f:
                 json.dump(session_data, f)
-                
-            # Also save cookies separately for better persistence
-            cookies = ig_client.get_cookies()
-            with open(COOKIE_FILE, 'w') as f:
-                json.dump(cookies, f)
                 
             print("Instagram session saved successfully")
             return True
@@ -181,10 +170,12 @@ def perform_login(username, password):
     global ig_client
     
     try:
-        # Clear any existing session data
-        ig_client.set_settings({})
-        ig_client.set_cookies({})
-        
+        # Reset settings if needed
+        try:
+            ig_client.set_settings({})
+        except:
+            pass
+            
         # Try logging in with credentials
         ig_client.login(username, password)
         
