@@ -1,68 +1,49 @@
 import os
+import re
+import shutil
 import asyncio
+import requests
 
 from telethon import events
-from snapchat_scraper import SnapchatScraper
+from pyppeteer import launch
 
 from utils.utils import CipherElite
 from utils.decorators import rishabh
 from plugins.bot import add_handler
 
-# where we store your Snapchat‐Scraper session
-SESSIONS_DIR   = os.path.join("data", "sessions")
-SNAP_SESSION   = os.path.join(SESSIONS_DIR, "snapchat_session.json")
-TEMP_DIR       = os.path.join("temp", "snapchat")
-
-os.makedirs(SESSIONS_DIR, exist_ok=True)
+TEMP_DIR = "temp/snapchat"
 os.makedirs(TEMP_DIR, exist_ok=True)
 
-snap: SnapchatScraper = None
+_browser = None
 _registered = False
 
 def init(client):
     """
-    Called once on bot startup:
-      • register help commands
-      • try to load saved Snapchat session (cookies)
-      • schedule event wiring
+    Called on bot startup:
+      • register /help text
+      • launch headless browser
+      • wire up commands
     """
     cmds = [
-        ".snap <username>      — Download public Snapchat story",
-        ".snaplogin <u> <p>    — Login to Snapchat (required for private stories)",
-        ".snapstatus           — Check Snapchat login status",
-        ".snapclear            — Clear saved Snapchat session"
+        ".snap <username>   — Download public Snapchat Story",
+        ".snapstatus        — Check Snapchat status",
+        ".snapclear         — Clear any Snapchat cache"
     ]
-    add_handler("snapchat", cmds, "Download Snapchat Stories")
-    load_session()
+    add_handler("snapchat", cmds, "Download public Snapchat Stories")
+
+    # launch browser once
+    asyncio.get_event_loop().create_task(_ensure_browser())
+    # register commands
     asyncio.get_event_loop().create_task(_register_handlers())
 
-
-def load_session() -> bool:
-    """Load saved cookies for SnapchatScraper."""
-    global snap
-    try:
-        snap = SnapchatScraper()
-        if os.path.exists(SNAP_SESSION):
-            snap.load_session(SNAP_SESSION)
-            return True
-    except Exception as e:
-        print(f"⚠️ Snapchat: could not load session: {e}")
-    snap = None
-    return False
-
-
-def save_session() -> bool:
-    """Dump cookies to disk."""
-    global snap
-    if not snap:
-        return False
-    try:
-        snap.save_session(SNAP_SESSION)
-        return True
-    except Exception as e:
-        print(f"❌ Snapchat: could not save session: {e}")
-        return False
-
+async def _ensure_browser():
+    global _browser
+    if _browser:
+        return
+    _browser = await launch({
+        "headless": True,
+        "args": ["--no-sandbox", "--disable-setuid-sandbox"]
+    })
 
 async def _register_handlers():
     global _registered
@@ -70,106 +51,99 @@ async def _register_handlers():
         return
     _registered = True
 
-    @CipherElite.on(events.NewMessage(pattern=r"\.snaplogin\s+(\S+)\s+(\S+)"))
-    @rishabh()
-    async def _snap_login(event):
-        """Login to Snapchat so we can access private stories."""
-        await event.delete()
-        user, pw = event.pattern_match.group(1), event.pattern_match.group(2)
-        msg = await event.respond("🔐 Logging in to Snapchat…")
+    async def _spin(msg, prefix="🔄", delay=0.1):
+        frames = ["⣾","⣽","⣻","⢿","⡿","⣟","⣯","⣷"]
+        i = 0
         try:
-            global snap
-            snap = SnapchatScraper()
-            await asyncio.get_event_loop().run_in_executor(
-                None, lambda: snap.login(user, pw)
-            )
-            save_session()
-            await msg.edit("✅ Snapchat login successful & session saved!")
-        except Exception as e:
-            await msg.edit(f"❌ Snapchat login failed: {e}")
+            while True:
+                await asyncio.sleep(delay)
+                await msg.edit(f"{prefix} {frames[i % len(frames)]}")
+                i += 1
+        except asyncio.CancelledError:
+            return
 
     @CipherElite.on(events.NewMessage(pattern=r"\.snapstatus"))
     @rishabh()
     async def _snap_status(event):
-        msg = await event.reply("🔍 Checking Snapchat status…")
-        if not snap:
-            return await msg.edit("❌ Not logged in. Use `.snaplogin <user> <pass>`")
-        try:
-            info = snap.whoami()  # returns your own username if logged in
-            await msg.edit(f"✅ Logged in as @{info['username']}")
-        except Exception as e:
-            await msg.edit(f"❌ Session invalid: {e}")
-
-    @CipherElite.on(events.NewMessage(pattern=r"\.snap\s+(\w+)"))
-    @rishabh()
-    async def _snap_download(event):
-        """Download a user’s public Snap story (requires login for private)."""
-        username = event.pattern_match.group(1)
-        if not snap:
-            load_session()
-        if not snap:
-            return await event.reply("❌ Not logged in. Use `.snaplogin <user> <pass>`")
-
-        # start spinner
-        msg = await event.reply("🔄 Fetching story…")
-        spinner = asyncio.create_task(_spin(msg, prefix="🔄 Downloading"))
-
-        try:
-            # download into TEMP_DIR/<username>/
-            folder = os.path.join(TEMP_DIR, username)
-            os.makedirs(folder, exist_ok=True)
-            await asyncio.get_event_loop().run_in_executor(
-                None, lambda: snap.download_story(username, folder)
-            )
-            spinner.cancel()
-            await spinner
-
-            # find all files
-            files = sorted(os.listdir(folder))
-            if not files:
-                return await msg.edit("❌ No story available or profile is private.")
-
-            await msg.edit("✅ Download complete!")
-            # send all media in one album
-            paths = [os.path.join(folder, f) for f in files]
-            await event.client.send_file(
-                event.chat_id,
-                paths,
-                caption=(
-                    f"📸 Snapchat story of @{username}\n"
-                    "💪 Powered by Thanos"
-                )
-            )
-        except Exception as e:
-            spinner.cancel()
-            await spinner
-            await msg.edit(f"❌ Story download failed: {e}")
-        finally:
-            # cleanup
-            for f in os.listdir(folder):
-                try: os.remove(os.path.join(folder, f))
-                except: pass
+        # Snapchat has no persistent web session here.
+        await event.reply("ℹ️ This plugin uses a headless browser for public Stories only.")
 
     @CipherElite.on(events.NewMessage(pattern=r"\.snapclear"))
     @rishabh()
     async def _snap_clear(event):
-        """Clear saved Snapchat session (cookies)."""
         await event.delete()
-        if os.path.exists(SNAP_SESSION):
-            os.remove(SNAP_SESSION)
-        global snap
-        snap = None
-        await event.respond("✅ Snapchat session cleared.")
+        # clear out temp folder
+        if os.path.isdir(TEMP_DIR):
+            shutil.rmtree(TEMP_DIR, ignore_errors=True)
+            os.makedirs(TEMP_DIR, exist_ok=True)
+        await event.respond("✅ Snapchat cache cleared.")
 
+    @CipherElite.on(events.NewMessage(pattern=r"\.snap\s+(\w+)"))
+    @rishabh()
+    async def _snap_download(event):
+        username = event.pattern_match.group(1)
+        msg = await event.reply(f"🔄 Preparing to download @{username}’s story…")
 
-async def _spin(msg, prefix="…", delay=0.1):
-    """Simple spinner animation (cancellable)."""
-    frames = ["⣾","⣽","⣻","⢿","⡿","⣟","⣯","⣷"]
-    i = 0
-    try:
-        while True:
-            await asyncio.sleep(delay)
-            await msg.edit(f"{prefix} {frames[i % len(frames)]}")
-            i += 1
-    except asyncio.CancelledError:
-        return
+        # spinner
+        spin_task = asyncio.create_task(_spin(msg, prefix="🔄 Downloading"))
+
+        try:
+            await _ensure_browser()
+            page = await _browser.newPage()
+            url = f"https://story.snapchat.com/{username}"
+            await page.goto(url, {"waitUntil": "networkidle2", "timeout": 60000})
+
+            # collect all img/video src attributes
+            # this selector may need tweaking if Snapchat changes their markup
+            imgs = await page.evaluate("""
+                Array.from(document.querySelectorAll('img')).map(i=>i.src)
+            """)
+            vids = await page.evaluate("""
+                Array.from(document.querySelectorAll('video source')).map(v=>v.src)
+            """)
+
+            media = [u for u in imgs + vids if u.startswith("https://")]
+            if not media:
+                raise RuntimeError("No public story found or user has no public story.")
+
+            # download each file
+            user_temp = os.path.join(TEMP_DIR, username)
+            os.makedirs(user_temp, exist_ok=True)
+            paths = []
+            for idx, murl in enumerate(media, 1):
+                ext = ".mp4" if murl.endswith(".mp4") else ".jpg"
+                fn = f"{username}_{idx}{ext}"
+                fp = os.path.join(user_temp, fn)
+                r = requests.get(murl, timeout=30)
+                with open(fp, "wb") as f:
+                    f.write(r.content)
+                paths.append(fp)
+
+            # stop spinner
+            spin_task.cancel()
+            await spin_task
+
+            # edit to complete
+            await msg.edit("✅ Download complete!")
+
+            # send as album
+            await event.client.send_file(
+                event.chat_id,
+                paths,
+                caption=(
+                    f"📸 Snapchat Story of @{username}\n"
+                    "💪 Downloaded by Elite Userbot | Powered by Thanos"
+                )
+            )
+
+        except Exception as e:
+            spin_task.cancel()
+            await spin_task
+            await msg.edit(f"❌ Failed: {e}")
+
+        finally:
+            # cleanup this user's temp folder
+            try:
+                shutil.rmtree(os.path.join(TEMP_DIR, username), ignore_errors=True)
+            except:
+                pass
