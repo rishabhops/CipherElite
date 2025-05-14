@@ -1,4 +1,3 @@
-# python:plugins/instagram.py
 import re
 import os
 import asyncio
@@ -20,12 +19,6 @@ ig_client = None
 _commands_registered = False
 
 def init(client):
-    """
-    Called once on bot startup:
-     1) register help text
-     2) try to load a saved session
-     3) schedule event-handler registration
-    """
     global ig_client
 
     cmds = [
@@ -45,25 +38,21 @@ def init(client):
 
 
 def load_session() -> bool:
-    """Load saved session dump from disk."""
     global ig_client
     client = Client()
     if not os.path.exists(SESSION_FILE):
         return False
-
     try:
         client.load_settings(SESSION_FILE)
-        # quick verify
         client.account_info()
         ig_client = client
         return True
     except Exception as e:
-        print(f"⚠️ Instagram: failed to load/verify session: {e}")
+        print(f"⚠️ Instagram: failed to load session: {e}")
         return False
 
 
 def save_session() -> bool:
-    """Dump session (cookies + settings) to disk."""
     global ig_client
     if not ig_client:
         return False
@@ -76,7 +65,6 @@ def save_session() -> bool:
 
 
 def perform_login(username: str, password: str) -> bool:
-    """Blocking login for executor."""
     global ig_client
     ig_client = Client()
     try:
@@ -88,7 +76,6 @@ def perform_login(username: str, password: str) -> bool:
 
 
 async def register_commands():
-    """Wire up all the .insta / .instalog / .instastatus / .instaclear handlers."""
     global _commands_registered
     if _commands_registered:
         return
@@ -139,18 +126,33 @@ async def register_commands():
         if not ig_client and not load_session():
             return await event.reply("❌ Not logged in. Use `.instalog <user> <pass>`")
 
-        msg = await event.reply("📥 Preparing download…")
-        # animation
-        for dots in ["📥 Downloading.", "📥 Downloading..", "📥 Downloading..."]:
-            await asyncio.sleep(0.4)
-            await msg.edit(dots)
+        # send initial message
+        msg = await event.reply("🔄 Preparing download…")
 
+        # spinner coroutine
+        async def spinner(m):
+            frames = ["⣾","⣽","⣻","⢿","⡿","⣟","⣯","⣷"]
+            i = 0
+            try:
+                while True:
+                    await asyncio.sleep(0.1)
+                    await m.edit(f"🔄 Downloading {frames[i % len(frames)]}")
+                    i += 1
+            except asyncio.CancelledError:
+                return
+
+        spin_task = asyncio.create_task(spinner(msg))
+
+        # extract shortcode
         m = re.search(r"(?:/p/|/reel/|/tv/)([^/?]+)", url)
         if not m:
+            spin_task.cancel()
+            await spin_task
             return await msg.edit("❌ Could not extract shortcode from URL.")
         code = m.group(1)
 
         try:
+            # fetch media pk & info
             media_pk = await asyncio.get_event_loop().run_in_executor(
                 None, lambda: ig_client.media_pk_from_code(code)
             )
@@ -158,7 +160,10 @@ async def register_commands():
                 None, lambda: ig_client.media_info(media_pk)
             )
 
-            tmp = "temp"; os.makedirs(tmp, exist_ok=True)
+            # perform download
+            tmp = "temp"
+            os.makedirs(tmp, exist_ok=True)
+
             if info.media_type == 1:
                 path = await asyncio.get_event_loop().run_in_executor(
                     None, lambda: ig_client.photo_download(media_pk, folder=tmp)
@@ -170,12 +175,30 @@ async def register_commands():
             else:
                 raise RuntimeError(f"Unsupported media type {info.media_type}")
 
-            await event.client.send_file(event.chat_id, path)
+            # stop spinner
+            spin_task.cancel()
+            await spin_task
+
+            # edit to complete
+            await msg.edit("✅ Download complete!")
+
+            # send file with caption
+            await event.client.send_file(
+                event.chat_id,
+                path,
+                caption=(
+                    "📥 Downloaded by Elite Userbot\n"
+                    "💪 Powered by Thanos"
+                )
+            )
+
+            # cleanup
             try: os.remove(path)
             except: pass
-            await msg.delete()
 
         except Exception as e:
+            spin_task.cancel()
+            await spin_task
             await msg.edit(f"❌ Download failed: {e}")
 
     @CipherElite.on(events.NewMessage(pattern=r"\.instaclear"))
