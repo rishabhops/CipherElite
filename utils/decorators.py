@@ -28,7 +28,7 @@ def rishabh_help():
                 await event.answer(
                     "🔒 Access Restricted!\n\n"
                     "Deploy your own Cipher Elite Bot:\n"
-                    "github.com/rishabhops/CipherBot", 
+                    "github.com/rishabhops/CipherElite", 
                     alert=True
                 )
                 return
@@ -42,7 +42,7 @@ def rishabh():
         @wraps(func)
         async def wrapper(event):
             if event.sender_id not in Config.SUDO_USERS:
-                print("sudo user only")
+                print("this command only for sudo and owner.")
                 return
             return await func(event)
         return wrapper
