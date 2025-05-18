@@ -16,6 +16,7 @@ def add_command(plugin_name, commands):
 
 async def register_commands():
     @client.on(events.NewMessage(pattern=r"\.help"))
+    @rishabh()
     async def help_handler(event):
         results = await event.client.inline_query(
             f"{Config.TG_BOT_USERNAME}",  # Using your bot username
