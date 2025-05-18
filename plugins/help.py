@@ -1,6 +1,6 @@
 from telethon import events
 from config.config import Config
-
+from utils.decorators import rishabh
 client = None
 CMD_LIST = {}
 
