@@ -1,7 +1,7 @@
 # Core Configuration
 API_ID = 10248430
 API_HASH = "42396a6ff14a569b9d59931643897d0d"
-ELITE_SESSION = "your elite session"
+ELITE_SESSION = "your elite session" #make elite session from this bot
 # Bot Settings
 ELITE_BOT_PREFIX = "."
 BOT_TOKEN = "your bot token"
