@@ -31,11 +31,15 @@ async def hi(event):
     if getattr(event.message, "fwd_from", None):
         return
     art = (
-        "🌸   🌸   🌸🌸🌸\n"
-        "🌸   🌸     🌸\n"
-        "🌸🌸🌸     🌸\n"
-        "🌸   🌸     🌸\n"
-        "🌸   🌸   🌸🌸🌸"
+        """
+██╗░░██╗██╗
+██║░░██║██║
+███████║██║
+██╔══██║██║
+██║░░██║██║
+╚═╝░░╚═╝╚═╝
+🦋✨🄷🄴🄻🄻🄾✨🦋\n
+"""
     )
     await edit_or_reply(event, art)
 
