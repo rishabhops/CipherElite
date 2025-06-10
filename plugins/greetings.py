@@ -49,9 +49,10 @@ async def thanks(event):
     if getattr(event.message, "fwd_from", None):
         return
     art = (
-        "💖💖💖💖💖💖💖💖💖💖\n"
-        "💖  THANKS  💖\n"
-        "💖💖💖💖💖💖💖💖💖💖"
+        """
+▀█▀ █░█ ▄▀█ █▄░█ █▄▀ █▀
+░█░ █▀█ █▀█ █░▀█ █░█ ▄█
+"""
     )
     await edit_or_reply(event, art)
 
