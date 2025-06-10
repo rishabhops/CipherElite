@@ -1,4 +1,5 @@
 import asyncio
+import re
 from telethon import events
 from telethon.errors.rpcerrorlist import MessageNotModifiedError
 
@@ -8,10 +9,10 @@ from plugins.bot import add_handler
 
 def init(client):
     commands = [
-        ".hii       — Big ‘HI’ in emojis",
-        ".thanks    — Big ‘THANKS’ in emojis",
-        ".ok        — Sparkling OK in emojis",
-        ".gn        — Sparkling GN in emojis"
+        "hii       — Big ‘HI’ in emojis",
+        "thanks    — Big ‘THANKS’ in emojis",
+        "ok        — Sparkling OK in emojis",
+        "gn        — Sparkling GN in emojis"
     ]
     add_handler("greetings", commands, "Emoji Greetings Plugin")
 
@@ -24,7 +25,7 @@ async def edit_or_reply(event, text):
     except (MessageNotModifiedError, Exception):
         return await event.reply(text)
 
-@CipherElite.on(events.NewMessage(pattern=r"^\.hii$", outgoing=True))
+@CipherElite.on(events.NewMessage(pattern=r"^(?i)hii$", outgoing=True))
 @rishabh()
 async def hi(event):
     if getattr(event.message, "fwd_from", None):
@@ -38,7 +39,7 @@ async def hi(event):
     )
     await edit_or_reply(event, art)
 
-@CipherElite.on(events.NewMessage(pattern=r"^\.thanks$", outgoing=True))
+@CipherElite.on(events.NewMessage(pattern=r"^(?i)thanks$", outgoing=True))
 @rishabh()
 async def thanks(event):
     if getattr(event.message, "fwd_from", None):
@@ -50,7 +51,7 @@ async def thanks(event):
     )
     await edit_or_reply(event, art)
 
-@CipherElite.on(events.NewMessage(pattern=r"^\.ok$", outgoing=True))
+@CipherElite.on(events.NewMessage(pattern=r"^(?i)ok$", outgoing=True))
 @rishabh()
 async def ok(event):
     if getattr(event.message, "fwd_from", None):
@@ -60,7 +61,7 @@ async def ok(event):
     )
     await edit_or_reply(event, art)
 
-@CipherElite.on(events.NewMessage(pattern=r"^\.gn$", outgoing=True))
+@CipherElite.on(events.NewMessage(pattern=r"^(?i)gn$", outgoing=True))
 @rishabh()
 async def good_night(event):
     if getattr(event.message, "fwd_from", None):
