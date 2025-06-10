@@ -66,8 +66,11 @@ async def good_night(event):
     if getattr(event.message, "fwd_from", None):
         return
     art = (
-        "🌟🌙🌟🌙🌟🌙🌟\n"
-        "🌙   G N   🌙\n"
-        "🌟🌙🌟🌙🌟🌙🌟"
+        "░██████╗░███╗░░██╗\n"
+        "██╔════╝░████╗░██║\n"
+        "██║░░██╗░██╔██╗██║\n"
+        "╚██████╔╝██║░╚███║"
+        "░╚═════╝░╚═╝░░╚══╝"
+        "🦋✨🄶🄾🄾🄳 🄽🄸🄶🄷🅃✨🦋"
     )
     await edit_or_reply(event, art)
