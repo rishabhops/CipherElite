@@ -49,3 +49,6 @@
 <p align="center">
   <b>⭐ Star this repository if you like 匚ɪᴘԋᴇʀ Ξʟɪᴛᴇ!</b>
 </p>
+
+
+Coming soon! This bot is currently under development.
