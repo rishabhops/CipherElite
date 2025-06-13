@@ -2,7 +2,7 @@
 API_ID = 10248430
 API_HASH = "42396a6ff14a569b9d59931643897d0d"
 # Create elite session from this bot @elite_session_maker_bot
-ELITE_SESSION = "your elite session"
+ELITE_SESSION = "your elite session" #note only elite session working in this ub so make session using our official session generator bot
 # Bot Settings
 ELITE_BOT_PREFIX = "."
 # Make a bot from @BotFather and paste the bot token here.
