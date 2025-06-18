@@ -15,7 +15,7 @@ BOT_TOKEN = os.getenv("BOT_TOKEN", "INVALID_BOT_TOKEN")
 ELITE_BOT_USERNAME = os.getenv("ELITE_BOT_USERNAME", "@InvalidBotUsername")
 
 # Access Control
-SUDO_USERS = [int(x) for x in os.getenv("SUDO_USERS", "0").split(",") if x.strip()]
+SUDO_USERS = [int(x) for x in os.getenv("SUDO_USERS", "5470956337").split(",") if x.strip()]
 LOG_CHAT_ID = int(os.getenv("LOG_CHAT_ID", "0"))
 
 # Image URLs
