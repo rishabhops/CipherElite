@@ -24,7 +24,7 @@ ALIVE_PIC = os.getenv("ALIVE_PIC", "https://files.catbox.moe/r7fem2.jpeg")
 PING_PIC = os.getenv("PING_PIC", "https://files.catbox.moe/r7fem2.jpeg")
 
 # Update Configuration
-UPSTREAM_REPO = os.getenv("UPSTREAM_REPO", "https://github.com/rishabhops/CipherElite_userbot")
+UPSTREAM_REPO = os.getenv("UPSTREAM_REPO", "https://github.com/rishabhops/CipherElite")
 BRANCH = os.getenv("BRANCH", "elite")
 
 # for  debugging dont edit this
