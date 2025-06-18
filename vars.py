@@ -1,22 +1,44 @@
-# Core Configuration
-API_ID = 10248430
-API_HASH = "42396a6ff14a569b9d59931643897d0d"
-# Create elite session from this bot @elite_session_maker_bot
-ELITE_SESSION = "your elite session" #note only elite session working in this ub so make session using our official session generator bot
+from dotenv import load_dotenv
+import os
+
+
+load_dotenv()
+
+# api Configuration
+API_ID = int(os.getenv("API_ID", "0"))  
+API_HASH = os.getenv("API_HASH", "INVALID_API_HASH")  
+#Please generate a session using @elite_session_maker_bot else your session not working 
+ELITE_SESSION = os.getenv("ELITE_SESSION", "INVALID_SESSION")  
 # Bot Settings
-ELITE_BOT_PREFIX = "."
-# Make a bot from @BotFather and paste the bot token here.
-BOT_TOKEN = "YOUR BOT_TOKEN"
-# Enter your bot username with @
-ELITE_BOT_USERNAME = "@BOT_USERNAME" #your bot username 
+ELITE_BOT_PREFIX = os.getenv("ELITE_BOT_PREFIX", ".")
+BOT_TOKEN = os.getenv("BOT_TOKEN", "INVALID_BOT_TOKEN")
+ELITE_BOT_USERNAME = os.getenv("ELITE_BOT_USERNAME", "@InvalidBotUsername")
 
 # Access Control
-SUDO_USERS = [5470956337] #replace with your ids
-LOG_CHAT_ID = #your logger group id with -100
+SUDO_USERS = [int(x) for x in os.getenv("SUDO_USERS", "0").split(",") if x.strip()]
+LOG_CHAT_ID = int(os.getenv("LOG_CHAT_ID", "0"))
 
-PMPERMIT_PIC = "https://files.catbox.moe/r7fem2.jpeg"
-ALIVE_PIC = "https://files.catbox.moe/r7fem2.jpeg"
-PING_PIC = "https://files.catbox.moe/r7fem2.jpeg"
+# Image URLs
+PMPERMIT_PIC = os.getenv("PMPERMIT_PIC", "https://files.catbox.moe/r7fem2.jpeg")  
+ALIVE_PIC = os.getenv("ALIVE_PIC", "https://files.catbox.moe/r7fem2.jpeg") 
+PING_PIC = os.getenv("PING_PIC", "https://files.catbox.moe/r7fem2.jpeg")
+
 # Update Configuration
-UPSTREAM_REPO = "https://github.com/rishabhops/CipherElite_userbot"
-BRANCH = "elite"
+UPSTREAM_REPO = os.getenv("UPSTREAM_REPO", "https://github.com/rishabhops/CipherElite_userbot")
+BRANCH = os.getenv("BRANCH", "elite")
+
+# for  debugging dont edit this
+if API_ID == 0:
+    print("Warning: API_ID is not set. Please update .env with a valid API_ID.")
+if API_HASH == "INVALID_API_HASH":
+    print("Warning: API_HASH is not set. Please update .env with a valid API_HASH.")
+if ELITE_SESSION == "INVALID_SESSION":
+    print("Warning: ELITE_SESSION is not set. Please generate a session using @elite_session_maker_bot.")
+if BOT_TOKEN == "INVALID_BOT_TOKEN":
+    print("Warning: BOT_TOKEN is not set. Please update .env with a valid bot token from @BotFather.")
+if ELITE_BOT_USERNAME == "@InvalidBotUsername":
+    print("Warning: ELITE_BOT_USERNAME is not set. Please update .env with your bot username.")
+if SUDO_USERS == [0]:
+    print("Warning: SUDO_USERS is not set. Please update .env with valid Telegram user ID(s).")
+if LOG_CHAT_ID == 0:
+    print("Warning: LOG_CHAT_ID is not set. Please update .env with a valid logger group ID.")
