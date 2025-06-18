@@ -20,7 +20,6 @@
 - **Dynamic Plugin System**
 - **Secure Sudo Protection**
 - **Beautiful Help Menu**
-- **Logo Generation**
 - **Advanced Commands**
 - **Real-time Updates**
 - **Enhanced Security**
@@ -33,7 +32,7 @@
   <a href="https://sevalla.com"><img src="https://img.shields.io/badge/Deploy%20on-Sevalla-orange?style=for-the-badge&logo=vercel"></a>
 </p>
 
-> ✅ You can easily deploy this userbot on **[Sevalla](https://sevalla.com)** – A powerful and beginner-friendly Telegram bot hosting platform.
+> ✅ You can easily deploy this userbot on **[Sevalla](https://sevalla.com)** – A powerful and beginner-friendly hosting platform.
 
 Deployment guide coming soon...
 
