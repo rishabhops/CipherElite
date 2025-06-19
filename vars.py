@@ -19,9 +19,9 @@ SUDO_USERS = [int(x) for x in os.getenv("SUDO_USERS", "5470956337").split(",") i
 LOG_CHAT_ID = int(os.getenv("LOG_CHAT_ID", "0"))
 
 # Image URLs
-PMPERMIT_PIC = os.getenv("PMPERMIT_PIC", "https://files.catbox.moe/r7fem2.jpeg")  
-ALIVE_PIC = os.getenv("ALIVE_PIC", "https://files.catbox.moe/r7fem2.jpeg") 
-PING_PIC = os.getenv("PING_PIC", "https://files.catbox.moe/r7fem2.jpeg")
+PMPERMIT_PIC = os.getenv("PMPERMIT_PIC", "https://files.catbox.moe/tocisn.png")  
+ALIVE_PIC = os.getenv("ALIVE_PIC", "https://files.catbox.moe/tocisn.png") 
+PING_PIC = os.getenv("PING_PIC", "https://files.catbox.moe/tocisn.png")
 
 # Update Configuration
 UPSTREAM_REPO = os.getenv("UPSTREAM_REPO", "https://github.com/rishabhops/CipherElite")
