@@ -23,7 +23,7 @@ import time
 import asyncio
 from datetime import datetime, timedelta
 from telethon import events
-from telethon.tl.types import MessageMediaPhoto, MessageMediaDocument
+from telethon.tl.types import MessageMediaPhoto, MessageMediaDocument, MessageEntityMention, MessageEntityMentionName
 from utils.utils import CipherElite
 from utils.decorators import rishabh
 from plugins.bot import add_handler
@@ -32,7 +32,7 @@ afk_users = {}
 afk_mentions = {}
 afk_stats = {}
 
-# quotes maked by hellbot team we just improved with emojis
+# Quotes made by Hellbot team, improved with emojis
 afk_quotes = [
     "🚶‍♂️ Taking a break, be back soon!",
     "⏳ AFK - Away From the Keyboard momentarily.",
@@ -260,8 +260,6 @@ async def afkhelp_handler(event):
     except Exception as e:
         await event.reply(f"❌ **Error showing help:** `{str(e)}`")
 
-
-
 @CipherElite.on(events.NewMessage(incoming=True))
 async def afk_watcher(event):
     """AFK Auto-responder for private and group messages"""
@@ -292,30 +290,28 @@ async def afk_watcher(event):
                 if reply_msg and reply_msg.sender_id == bot_owner_id:
                     should_respond = True
             
-            # Check if your username is mentioned
+            # Check for username or mention
             if not should_respond and event.text:
                 try:
                     me = await event.client.get_me()
+                    # Check for username mention
                     if me.username and f"@{me.username}" in event.text.lower():
                         should_respond = True
-                except:
-                    pass
+                    # Check for entity mention (e.g., by name or ID)
+                    if not should_respond and event.entities:
+                        for entity in event.entities:
+                            if isinstance(entity, (MessageEntityMention, MessageEntityMentionName)):
+                                if isinstance(entity, MessageEntityMentionName) and entity.user_id == bot_owner_id:
+                                    should_respond = True
+                                elif isinstance(entity, MessageEntityMention):
+                                    # Extract the mentioned text and check if it matches the username
+                                    mention_text = event.text[entity.offset:entity.offset + entity.length]
+                                    if me.username and mention_text.lower() == f"@{me.username.lower()}":
+                                        should_respond = True
+                except Exception as e:
+                    print(f"Error checking mentions: {e}")
         
         if should_respond:
-            # Anti-spam mechanism
-            current_time = time.time()
-            if not hasattr(afk_watcher, 'cooldowns'):
-                afk_watcher.cooldowns = {}
-            
-            cooldown_key = f"{event.sender_id}_{event.chat_id}"
-            
-            # 5 minute cooldown per user per chat
-            if cooldown_key in afk_watcher.cooldowns:
-                if current_time - afk_watcher.cooldowns[cooldown_key] < 300:
-                    return
-            
-            afk_watcher.cooldowns[cooldown_key] = current_time
-            
             # Add to mentions
             if bot_owner_id not in afk_mentions:
                 afk_mentions[bot_owner_id] = []
@@ -323,12 +319,12 @@ async def afk_watcher(event):
             afk_mentions[bot_owner_id].append({
                 'from_user': event.sender_id,
                 'chat_id': event.chat_id,
-                'time': current_time,
+                'time': time.time(),
                 'message': event.text[:100] + "..." if event.text and len(event.text) > 100 else (event.text or "Media")
             })
             
             # Calculate AFK duration
-            afk_duration = int(current_time - afk_data['time'])
+            afk_duration = int(time.time() - afk_data['time'])
             
             # Get sender name
             try:
@@ -366,8 +362,6 @@ async def afk_watcher(event):
     except Exception as e:
         print(f"❌ Error in AFK watcher: {e}")
 
-
-# AFK Auto-removal watcher
 @CipherElite.on(events.NewMessage(outgoing=True))
 async def afk_auto_remove(event):
     """Automatically remove AFK when user sends a message"""
