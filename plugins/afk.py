@@ -33,7 +33,7 @@ afk_users = {}
 afk_mentions = {}
 afk_stats = {}
 
-# quotes maked by hellbot team we use concept 
+# quotes maked by hellbot team we just improved with emojis
 afk_quotes = [
     "🚶‍♂️ Taking a break, be back soon!",
     "⏳ AFK - Away From the Keyboard momentarily.",
