@@ -260,72 +260,103 @@ async def afkhelp_handler(event):
     except Exception as e:
         await event.reply(f"❌ **Error showing help:** `{str(e)}`")
 
-# AFK Mention Watcher
+
+
 @CipherElite.on(events.NewMessage(incoming=True))
-async def afk_mention_watcher(event):
-    """Watch for mentions of AFK users"""
+async def afk_simple_watcher(event):
+    """Simple AFK watcher - responds to any message when user is AFK"""
     try:
-        # Skip if sender is a bot
-        if event.sender_id in afk_users:
+        # Skip if no AFK users
+        if not afk_users:
             return
-        
-        # Check if any AFK user is mentioned
+            
+        # Skip bot messages
+        if event.sender_id and event.sender_id in afk_users:
+            return
+            
+        # Check each AFK user
         for afk_user_id, afk_data in afk_users.items():
             try:
-                # Get AFK user entity
-                afk_user = await event.client.get_entity(afk_user_id)
+                should_respond = False
                 
-                # Check if mentioned in text or replied to
-                mentioned = False
-                if event.is_reply:
-                    reply_msg = await event.get_reply_message()
-                    if reply_msg and reply_msg.sender_id == afk_user_id:
-                        mentioned = True
+                # For private chats - respond if someone messages the AFK user directly
+                if event.is_private:
+                    # Check if this private chat is with the AFK user
+                    if event.chat_id == afk_user_id:
+                        should_respond = True
                 
-                # Check for username/name mentions in text
-                if event.text and afk_user.username:
-                    if f"@{afk_user.username}" in event.text.lower():
-                        mentioned = True
+                # For groups - respond to any message in groups where AFK user is present
+                else:
+                    try:
+                        # Check if AFK user is in this chat
+                        participants = await event.client.get_participants(event.chat_id, limit=1000)
+                        afk_user_in_chat = any(p.id == afk_user_id for p in participants)
+                        if afk_user_in_chat:
+                            should_respond = True
+                    except:
+                        # If can't get participants, check if it's the same chat where AFK was set
+                        if event.chat_id == afk_data.get('chat_id'):
+                            should_respond = True
                 
-                if mentioned:
-                    # Add to mentions list
+                if should_respond:
+                    # Avoid spam - don't respond to the same user multiple times in short period
+                    current_time = time.time()
+                    last_responses = getattr(afk_simple_watcher, 'last_responses', {})
+                    response_key = f"{afk_user_id}_{event.sender_id}_{event.chat_id}"
+                    
+                    if response_key in last_responses:
+                        if current_time - last_responses[response_key] < 300:  # 5 minutes cooldown
+                            continue
+                    
+                    last_responses[response_key] = current_time
+                    afk_simple_watcher.last_responses = last_responses
+                    
+                    # Add to mentions
+                    if afk_user_id not in afk_mentions:
+                        afk_mentions[afk_user_id] = []
+                        
                     afk_mentions[afk_user_id].append({
                         'from_user': event.sender_id,
                         'chat_id': event.chat_id,
-                        'time': time.time(),
-                        'message': event.text[:100] + "..." if len(event.text) > 100 else event.text
+                        'time': current_time,
+                        'message': event.text[:50] + "..." if event.text and len(event.text) > 50 else (event.text or "Media")
                     })
                     
                     # Calculate AFK duration
-                    afk_duration = int(time.time() - afk_data['time'])
+                    afk_duration = int(current_time - afk_data['time'])
+                    
+                    # Get sender name
+                    try:
+                        sender = await event.get_sender()
+                        sender_name = getattr(sender, 'first_name', 'User') or 'User'
+                    except:
+                        sender_name = "Someone"
                     
                     # Prepare response
                     quote = random.choice(afk_quotes)
                     response = f"**{quote}**\n\n"
                     response += f"💫 **Reason:** `{afk_data['reason']}`\n"
                     response += f"⏰ **AFK Since:** `{readable_time(afk_duration)}`\n"
-                    response += f"🔔 **Mentions:** `{len(afk_mentions[afk_user_id])}`"
+                    response += f"🔔 **Total Messages:** `{len(afk_mentions[afk_user_id])}`"
                     
-                    # Send response with media if available
-                    if afk_data['media']:
-                        media_info = afk_data['media']
-                        if media_info['type'] == 'photo':
-                            await event.reply(response, file=media_info['media'])
-                        elif media_info['type'] in ['gif', 'video', 'audio', 'document']:
-                            await event.reply(response, file=media_info['media'])
+                    # Send response
+                    try:
+                        if afk_data.get('media'):
+                            await event.reply(response, file=afk_data['media']['media'])
                         else:
                             await event.reply(response)
-                    else:
+                    except:
                         await event.reply(response)
                     
                     break
-                
+                    
             except Exception as e:
-                print(f"Error in mention watcher: {e}")
+                print(f"Error in AFK simple watcher for user {afk_user_id}: {e}")
                 continue
-        
+                
     except Exception as e:
-        print(f"Error in AFK watcher: {e}")
+        print(f"Error in AFK simple watcher: {e}")
+
 
 # AFK Auto-removal watcher
 @CipherElite.on(events.NewMessage(outgoing=True))
