@@ -62,7 +62,10 @@ Deployment guide coming soon...
 ---
 
 ## 📜 LICENSE
-- Licensed under [MIT License](LICENSE)
+
+This project is licensed under the MIT License.  
+© 2025 Rishabh — [GitHub](https://github.com/rishabhops)  
+Feel free to use, modify, and distribute with credit.
 
 ---
 
