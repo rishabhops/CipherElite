@@ -1,7 +1,7 @@
 # =============================================================================
 #  CipherElite Userbot Plugin
 #
-#  Plugin Name:    afk
+#  Plugin Name:    greetings
 #  Author:         CipherElite Dev (@rishabhops)
 #  Repository:     https://github.com/rishabhops/CipherElite
 #
