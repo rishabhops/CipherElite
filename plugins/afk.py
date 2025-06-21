@@ -5,16 +5,16 @@
 #  Author:         CipherElite Dev (@rishabhops)
 #  Repository:     https://github.com/rishabhops/CipherElite
 #
-#  LICENSE:        MIT
+#  License:        MIT
 #
 #  IMPORTANT:
-#    • If you copy, fork or include this plugin in your own bot,
+#    • If you copy, fork, or include this plugin in your own bot,
 #      you MUST keep this header intact.
-#    • Give proper credit back to the CipherElite Userbot author:
-#        – GitHub: https://github.com/rishabhops/CipherElite
-#        – Telegram: @rishabhops
+#    • You MUST give proper credit to the CipherElite Userbot author:
+#        – GitHub:    https://github.com/rishabhops/CipherElite
+#        – Telegram:  @thanosceo
 #
-#  Thank you for respecting open‐source software!
+#  Thank you for respecting open-source software!
 # =============================================================================
 
 import os
