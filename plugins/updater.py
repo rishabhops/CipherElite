@@ -1,3 +1,21 @@
+# =============================================================================
+#  CipherElite Userbot Plugin
+#
+#  Plugin Name:    updater
+#  Author:         CipherElite Dev (@rishabhops)
+#  Repository:     https://github.com/rishabhops/CipherElite
+#
+#  License:        MIT
+#
+#  IMPORTANT:
+#    • If you copy, fork, or include this plugin in your own bot,
+#      you MUST keep this header intact.
+#    • You MUST give proper credit to the CipherElite Userbot author:
+#        – GitHub:    https://github.com/rishabhops/CipherElite
+#        – Telegram:  @thanosceo
+#
+#  Thank you for respecting open-source software!
+# =============================================================================
 import os, sys, json, asyncio, aiohttp
 from pathlib import Path
 from telethon import events
