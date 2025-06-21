@@ -63,7 +63,7 @@ Deployment guide coming soon...
 
 ## 📜 LICENSE
 
-This project is licensed under the MIT License.  
+This project is licensed under the [MIT License](https://github.com/rishabhops/CipherElite/blob/elite/LICENSE).  
 © 2025 Rishabh — [GitHub](https://github.com/rishabhops)  
 Feel free to use, modify, and distribute with credit.
 
