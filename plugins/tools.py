@@ -1,3 +1,21 @@
+# =============================================================================
+#  CipherElite Userbot Plugin
+#
+#  Plugin Name:    tools
+#  Author:         CipherElite Dev (@rishabhops)
+#  Repository:     https://github.com/rishabhops/CipherElite
+#
+#  License:        MIT
+#
+#  IMPORTANT:
+#    • If you copy, fork, or include this plugin in your own bot,
+#      you MUST keep this header intact.
+#    • You MUST give proper credit to the CipherElite Userbot author:
+#        – GitHub:    https://github.com/rishabhops/CipherElite
+#        – Telegram:  @thanosceo
+#
+#  Thank you for respecting open-source software!
+# =============================================================================
 from telethon import events
 import time
 import platform
@@ -9,7 +27,6 @@ from utils.utils import CipherElite
 def init(client_instance):
     commands = [
         ".id - Get user/chat ID",
-        ".info - Get user info",
         ".dc - Get DC info"
     ]
     description = "Useful utility tools for your userbot "
