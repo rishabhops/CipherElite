@@ -1,3 +1,7 @@
+# This plugin is part of the Cipher Elite Telegram UserBot
+# Author: Rishabh (https://github.com/rishabhops)
+# License: MIT License — See LICENSE file for full text
+
 from telethon import events, errors
 from telethon.tl.functions.channels import EditBannedRequest
 from telethon.tl.types import ChatBannedRights
