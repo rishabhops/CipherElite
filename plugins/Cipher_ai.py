@@ -1,7 +1,7 @@
 # =============================================================================
 #  CipherElite Userbot Plugin
 #
-#  Plugin Name:    cipher_ai
+#  Plugin Name:    nvidia_ai
 #  Author:         CipherElite Dev (@rishabhops)
 #  Repository:     https://github.com/rishabhops/CipherElite
 #
@@ -12,25 +12,32 @@
 #      you MUST keep this header intact.
 #    • Give proper credit back to the CipherElite Userbot author:
 #        – GitHub: https://github.com/rishabhops/CipherElite
-#        – Telegram: @thanosceo
+#        – Telegram: @rishabhops
 #
 #  Thank you for respecting open-source software!
 # =============================================================================
 
-import os
 import asyncio
-import aiohttp
 import re
+from openai import AsyncOpenAI
+from openai import OpenAIError, AuthenticationError, RateLimitError
 from telethon import events
 from utils.utils import CipherElite
 from utils.decorators import rishabh
 from plugins.bot import add_handler
 from vars import ELITE_BOT_USERNAME
+import os
 
 # Configuration
 NVIDIA_API_KEY = os.getenv("NVIDIA_API_KEY", "")
 NVIDIA_BASE_URL = "https://integrate.api.nvidia.com/v1"
-DEFAULT_MODEL = "deepseek-ai/deepseek-r1"
+DEFAULT_MODEL = "mistralai/mistral-nemotron"
+
+# Initialize OpenAI client
+client = AsyncOpenAI(
+    base_url=NVIDIA_BASE_URL,
+    api_key=NVIDIA_API_KEY
+)
 
 # Store conversation history per chat
 conversation_history = {}
@@ -55,52 +62,36 @@ def init(client):
     print("🤖 NVIDIA AI Plugin initialized successfully")
     return True
 
-async def make_nvidia_request(messages, temperature=0.5, top_p=0.7, max_tokens=512):
-    """Make async request to NVIDIA API"""
+async def make_nvidia_request(messages, temperature=0.6, top_p=0.7, max_tokens=2048):
+    """Make async request to NVIDIA API with streaming"""
     try:
-        headers = {
-            "Authorization": f"Bearer {NVIDIA_API_KEY}",
-            "Content-Type": "application/json"
-        }
+        stream = await client.chat.completions.create(
+            model=DEFAULT_MODEL,
+            messages=messages,
+            temperature=temperature,
+            top_p=top_p,
+            max_tokens=max_tokens,
+            stream=True
+        )
         
-        payload = {
-            "model": DEFAULT_MODEL,
-            "messages": messages,
-            "temperature": temperature,
-            "top_p": top_p,
-            "max_tokens": max_tokens,
-            "stream": False
-        }
+        # Collect streamed response
+        response = ""
+        async for chunk in stream:
+            if chunk.choices[0].delta.content is not None:
+                response += chunk.choices[0].delta.content
         
-        timeout = aiohttp.ClientTimeout(total=30)
+        # Filter out <think> blocks
+        response = re.sub(r'<think>.*?</think>', '', response, flags=re.DOTALL).strip()
+        return response
         
-        async with aiohttp.ClientSession(timeout=timeout) as session:
-            async with session.post(
-                f"{NVIDIA_BASE_URL}/chat/completions",
-                headers=headers,
-                json=payload
-            ) as response:
-                
-                if response.status == 200:
-                    data = await response.json()
-                    content = data["choices"][0]["message"]["content"]
-                    # Filter out <think> blocks
-                    content = re.sub(r'<think>.*?</think>', '', content, flags=re.DOTALL).strip()
-                    return content
-                elif response.status == 401:
-                    return "❌ **Authentication Error:** Invalid API key. Use `.aiset <key>` to set a valid key."
-                elif response.status == 429:
-                    return "⏳ **Rate Limited:** Too many requests. Please wait a moment."
-                elif response.status == 403:
-                    return "🚫 **Access Denied:** Check your API key permissions."
-                else:
-                    error_text = await response.text()
-                    return f"❌ **API Error ({response.status}):** {error_text[:200]}"
-                    
+    except AuthenticationError:
+        return "❌ **Authentication Error:** Invalid API key. Use `.aiset <key>` to set a valid key."
+    except RateLimitError:
+        return "⏳ **Rate Limited:** Too many requests. Please wait a moment."
+    except OpenAIError as e:
+        return f"❌ **API Error:** {str(e)[:200]}"
     except asyncio.TimeoutError:
         return "⏰ **Timeout Error:** Request took too long. Please try again."
-    except aiohttp.ClientError as e:
-        return f"🌐 **Network Error:** {str(e)}"
     except Exception as e:
         return f"❌ **Unexpected Error:** {str(e)}"
 
@@ -145,7 +136,7 @@ async def ai_handler(event):
             response = "⏰ **Request Timeout:** The AI took too long to respond. Try a shorter question."
             print("❌ AI request timed out")
         
-        if response.startswith("❌") or response.startswith("⏳") or response.startswith("🚫"):
+        if response.startswith("❌") or response.startswith("⏳"):
             await thinking_msg.edit(response)
             print(f"❌ AI error response: {response[:100]}")
             return
@@ -189,8 +180,9 @@ async def aiset_handler(event):
             return
         
         os.environ["NVIDIA_API_KEY"] = api_key
-        global NVIDIA_API_KEY
+        global NVIDIA_API_KEY, client
         NVIDIA_API_KEY = api_key
+        client = AsyncOpenAI(base_url=NVIDIA_BASE_URL, api_key=NVIDIA_API_KEY)
         
         success_msg = await event.reply("✅ **API Key set successfully!**\n\n🔒 Your key is now configured.\n🤖 You can now use `.ai <question>` command.")
         print(f"✅ NVIDIA API key set: {api_key[:10]}...")
@@ -228,7 +220,7 @@ async def aitest_handler(event):
             timeout=20.0
         )
         
-        if response.startswith("❌") or response.startswith("⏳") or response.startswith("🚫"):
+        if response.startswith("❌") or response.startswith("⏳"):
             await test_msg.edit(f"❌ **Test Failed:**\n\n{response}")
             print(f"❌ AI test failed: {response}")
         else:
@@ -276,11 +268,11 @@ async def aistatus_handler(event):
 • **Active Chats:** `{history_count}`
 • **Total Messages:** `{total_messages}`
 
-⚡ Options:
-• `{ELITE_BOT_USERNAME} .ai <question>` — Ask Cipher AI
-• `{ELITE_BOT_USERNAME} .aitest` — Test connection
-• `{ELITE_BOT_USERNAME} .aiclear` — Clear history
-• `{ELITE_BOT_USERNAME} .aiset <info>` — Set API key
+⚙️ **Commands:**
+• `{ELITE_BOT_USERNAME} .ai <question>` - Ask Cipher AI
+• `{ELITE_BOT_USERNAME} .aitest` - Test connection
+• `{ELITE_BOT_USERNAME} .aiclear` - Clear history
+• `{ELITE_BOT_USERNAME} .aiset <key>` - Set API key
 
 🔗 **Get API Key:** https://build.nvidia.com/"""
         
@@ -288,6 +280,6 @@ async def aistatus_handler(event):
         
     except Exception as e:
         await event.reply(f"❌ **Error:** {str(e)}")
-        print(f"❌ Status: {e}")
+        print(f"❌ Status Error: {e}")
 
-print(f"✅ {DEFAULT_NAME} AI Plugin loaded successfully")
+print("✅ NVIDIA AI Plugin loaded successfully")
