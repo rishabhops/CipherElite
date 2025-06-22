@@ -24,21 +24,19 @@ import re
 import os
 from datetime import datetime, timedelta
 from pathlib import Path
-from cryptography.fernet import Fernet
 from openai import AsyncOpenAI, OpenAIError
 from telethon import events, functions
-from telethon.tl.types import ChatBannedRights
+from telethon.tl.types import ChatBannedRights, InputMediaUploadedPhoto
 from utils.utils import CipherElite
 from utils.decorators import rishabh
 from plugins.bot import add_handler
 from vars import ELITE_BOT_USERNAME
 
-# DB setup for encrypted API key
+# DB setup for API key
 PROJECT_ROOT = Path(__file__).parent.parent
 DB_DIR = PROJECT_ROOT / "DB"
 DB_DIR.mkdir(exist_ok=True)
-ENCRYPTED_KEY_FILE = DB_DIR / "api_key.enc"
-FERNET_KEY_FILE = DB_DIR / "fernet.key"
+API_KEY_FILE = DB_DIR / "api_key.txt"
 
 # AI Configuration
 NVIDIA_BASE_URL = "https://integrate.api.nvidia.com/v1"
@@ -47,47 +45,35 @@ DEFAULT_MODEL = "mistralai/mistral-nemotron"
 # AI System Prompt
 SYSTEM_PROMPT = {
     "role": "system",
-    "content": "You are Cipher AI, part of the CipherElite Userbot, created by @rishabhops. Parse natural language commands (e.g., 'ban karo isko', 'mute isko', 'message karo Hello') to identify the action (ban, mute, kick, message) and target (user or chat). Return a JSON object with 'action' (e.g., 'ban', 'mute', 'kick', 'message'), 'target' (e.g., 'user', 'chat'), and 'details' (e.g., duration for mute, message content). Be concise and accurate, avoiding <think> blocks or markdown."
+    "content": "You are Cipher AI, part of the CipherElite Userbot, created by @rishabhops. Parse natural language commands (e.g., 'ban karo isko', 'send sticker', 'pin this message') to identify the Telegram action and target. Return a JSON object with 'action' (e.g., 'ban', 'mute', 'send_message', 'pin'), 'target' (e.g., 'user', 'chat', 'message'), and 'details' (e.g., duration, content, media_type). Support a wide range of Telegram actions. Be concise, accurate, and avoid <think> blocks or markdown."
 }
 
-def get_fernet_key():
-    """Generate or load Fernet key for encryption/decryption"""
-    if not FERNET_KEY_FILE.exists():
-        key = Fernet.generate_key()
-        with FERNET_KEY_FILE.open("wb") as f:
-            f.write(key)
-        os.chmod(FERNET_KEY_FILE, 0o600)
-    with FERNET_KEY_FILE.open("rb") as f:
-        return f.read()
-
-def encrypt_api_key(api_key):
-    """Encrypt and store the API key"""
+def load_api_key():
+    """Load the API key from file"""
     try:
-        fernet = Fernet(get_fernet_key())
-        encrypted_key = fernet.encrypt(api_key.encode())
-        with ENCRYPTED_KEY_FILE.open("wb") as f:
-            f.write(encrypted_key)
-        os.chmod(ENCRYPTED_KEY_FILE, 0o600)
-        return True
+        if API_KEY_FILE.exists():
+            with API_KEY_FILE.open("r", encoding="utf-8") as f:
+                return f.read().strip()
+        return None
     except Exception as e:
-        logging.error(f"API key encryption error: {e}")
-        return False
-
-def decrypt_api_key():
-    """Decrypt the API key"""
-    try:
-        fernet = Fernet(get_fernet_key())
-        with ENCRYPTED_KEY_FILE.open("rb") as f:
-            encrypted_key = f.read()
-        return fernet.decrypt(encrypted_key).decode()
-    except Exception as e:
-        logging.error(f"API key decryption error: {e}")
+        logging.error(f"API key load error: {e}")
         return None
 
+def save_api_key(api_key):
+    """Save the API key to file"""
+    try:
+        with API_KEY_FILE.open("w", encoding="utf-8") as f:
+            f.write(api_key)
+        os.chmod(API_KEY_FILE, 0o600)
+        return True
+    except Exception as e:
+        logging.error(f"API key save error: {e}")
+        return False
+
 # Initialize OpenAI client
-api_key = decrypt_api_key()
+api_key = load_api_key()
 if not api_key:
-    logging.warning("Failed to decrypt NVIDIA_API_KEY. AI features will fail.")
+    logging.warning("NVIDIA_API_KEY not found. AI features will fail.")
 client = AsyncOpenAI(
     base_url=NVIDIA_BASE_URL,
     api_key=api_key or "dummy_key"
@@ -96,10 +82,10 @@ client = AsyncOpenAI(
 def init(client):
     """Initialize the cipher_cmd plugin"""
     commands = [
-        f".cipher <instruction> — Issue a natural language command (e.g., ban karo isko, mute isko, message karo Hello)",
-        f".cipher setkey <key> — Set the encrypted NVIDIA API key"
+        f".cipher <instruction> — Issue a natural language command (e.g., ban karo isko, send sticker, pin this message)",
+        f".cipher setkey <key> — Set the NVIDIA API key"
     ]
-    description = "Execute natural language commands with Cipher AI"
+    description = "Execute any Telegram action with Cipher AI"
     add_handler("cipher_cmd", commands, description)
     print("🤖 Cipher Command Plugin initialized successfully")
     return True
@@ -137,7 +123,7 @@ async def cipher_handler(event):
     """Handle .cipher commands"""
     instruction = event.pattern_match.group(1)
     if not instruction:
-        await event.reply(f"❓ **Usage:** `{ELITE_BOT_USERNAME} .cipher <instruction>`\n\n**Examples:**\n• `.cipher ban karo isko` (reply to user)\n• `.cipher mute isko 1 hour`\n• `.cipher message karo Hello`\n• `.cipher setkey <key>`")
+        await event.reply(f"❓ **Usage:** `{ELITE_BOT_USERNAME} .cipher <instruction>`\n\n**Examples:**\n• `.cipher ban karo isko` (reply to user)\n• `.cipher mute isko 1 hour`\n• `.cipher send message Hello`\n• `.cipher pin this message` (reply to message)\n• `.cipher setkey <key>`")
         return
 
     if instruction.startswith("setkey"):
@@ -145,11 +131,14 @@ async def cipher_handler(event):
         if not key:
             await event.reply("❌ **Error:** Provide an API key with `.cipher setkey <key>`.")
             return
-        if encrypt_api_key(key):
-            await event.reply("✅ **API Key Set:** Encrypted and stored securely.")
-            print("✅ API key encrypted and stored")
+        if save_api_key(key):
+            global api_key, client
+            api_key = key
+            client = AsyncOpenAI(base_url=NVIDIA_BASE_URL, api_key=api_key)
+            await event.reply("✅ **API Key Set:** Stored securely.")
+            print("✅ API key stored")
         else:
-            await event.reply("❌ **Error:** Failed to encrypt API key.")
+            await event.reply("❌ **Error:** Failed to store API key.")
         return
 
     if not api_key:
@@ -159,18 +148,20 @@ async def cipher_handler(event):
     thinking_msg = await event.reply("🤔 **Cipher AI is processing your command...**")
     print(f"🤖 Processing command: {instruction[:50]}...")
 
-    # Get replied-to user or chat
+    # Get context: replied-to user or message
     reply = await event.get_reply_message()
     target_user = None
+    target_user_id = None
+    target_message_id = None
     chat_id = event.chat_id
     if reply:
         try:
             target_user = await reply.get_sender()
-            target_user_id = target_user.id
+            target_user_id = target_user.id if target_user else None
+            target_message_id = reply.id
         except Exception:
             target_user_id = None
-    else:
-        target_user_id = None
+            target_message_id = reply.id if reply else None
 
     # Parse command with AI
     parsed = await parse_command(instruction)
@@ -187,27 +178,23 @@ async def cipher_handler(event):
             if not target_user_id or target != "user":
                 await thinking_msg.edit("❌ **Error:** Reply to a user to ban.")
                 return
-            try:
-                await event.client(functions.channels.EditBannedRequest(
-                    channel=chat_id,
-                    participant=target_user_id,
-                    banned_rights=ChatBannedRights(
-                        until_date=None,
-                        view_messages=True,
-                        send_messages=True,
-                        send_media=True,
-                        send_stickers=True,
-                        send_gifs=True,
-                        send_games=True,
-                        send_inline=True,
-                        embed_links=True
-                    )
-                ))
-                await thinking_msg.edit(f"✅ **Banned:** User `{target_user_id}` in chat `{chat_id}`.")
-                print(f"✅ Banned user {target_user_id} in chat {chat_id}")
-            except Exception as e:
-                await thinking_msg.edit(f"❌ **Ban Error:** {str(e)}")
-                print(f"❌ Ban error: {e}")
+            await event.client(functions.channels.EditBannedRequest(
+                channel=chat_id,
+                participant=target_user_id,
+                banned_rights=ChatBannedRights(
+                    until_date=None,
+                    view_messages=True,
+                    send_messages=True,
+                    send_media=True,
+                    send_stickers=True,
+                    send_gifs=True,
+                    send_games=True,
+                    send_inline=True,
+                    embed_links=True
+                )
+            ))
+            await thinking_msg.edit(f"✅ **Banned:** User `{target_user_id}` in chat `{chat_id}`.")
+            print(f"✅ Banned user {target_user_id} in chat {chat_id}")
 
         elif action == "mute":
             if not target_user_id or target != "user":
@@ -225,55 +212,107 @@ async def cipher_handler(event):
                         until_date = datetime.now() + timedelta(minutes=minutes)
                 except:
                     until_date = None
-            try:
-                await event.client(functions.channels.EditBannedRequest(
-                    channel=chat_id,
-                    participant=target_user_id,
-                    banned_rights=ChatBannedRights(
-                        until_date=until_date,
-                        send_messages=True
-                    )
-                ))
-                duration_text = f"for {duration}" if duration else "indefinitely"
-                await thinking_msg.edit(f"✅ **Muted:** User `{target_user_id}` {duration_text} in chat `{chat_id}`.")
-                print(f"✅ Muted user {target_user_id} {duration_text} in chat {chat_id}")
-            except Exception as e:
-                await thinking_msg.edit(f"❌ **Mute Error:** {str(e)}")
-                print(f"❌ Mute error: {e}")
+            await event.client(functions.channels.EditBannedRequest(
+                channel=chat_id,
+                participant=target_user_id,
+                banned_rights=ChatBannedRights(
+                    until_date=until_date,
+                    send_messages=True
+                )
+            ))
+            duration_text = f"for {duration}" if duration else "indefinitely"
+            await thinking_msg.edit(f"✅ **Muted:** User `{target_user_id}` {duration_text} in chat `{chat_id}`.")
+            print(f"✅ Muted user {target_user_id} {duration_text} in chat {chat_id}")
 
         elif action == "kick":
             if not target_user_id or target != "user":
                 await thinking_msg.edit("❌ **Error:** Reply to a user to kick.")
                 return
-            try:
-                await event.client(functions.channels.EditParticipantRequest(
-                    channel=chat_id,
-                    participant=target_user_id,
-                    banned_rights=None
-                ))
-                await event.client.kick_participant(chat_id, target_user_id)
-                await thinking_msg.edit(f"✅ **Kicked:** User `{target_user_id}` from chat `{chat_id}`.")
-                print(f"✅ Kicked user {target_user_id} from chat {chat_id}")
-            except Exception as e:
-                await thinking_msg.edit(f"❌ **Kick Error:** {str(e)}")
-                print(f"❌ Kick error: {e}")
+            await event.client(functions.channels.EditParticipantRequest(
+                channel=chat_id,
+                participant=target_user_id,
+                banned_rights=None
+            ))
+            await event.client.kick_participant(chat_id, target_user_id)
+            await thinking_msg.edit(f"✅ **Kicked:** User `{target_user_id}` from chat `{chat_id}`.")
+            print(f"✅ Kicked user {target_user_id} from chat {chat_id}")
 
-        elif action == "message":
+        elif action == "send_message":
             message_content = details.get("content", "")
             if not message_content:
-                await thinking_msg.edit("❌ **Error:** Specify a message to send (e.g., 'message karo Hello').")
+                await thinking_msg.edit("❌ **Error:** Specify a message to send (e.g., 'send message Hello').")
+                return
+            target_id = target_user_id if target == "user" and target_user_id else chat_id
+            await event.client.send_message(target_id, message_content)
+            await thinking_msg.edit(f"✅ **Message Sent:** '{message_content}' to {'user' if target_user_id else 'chat'} `{target_id}`.")
+            print(f"✅ Sent message to {target_id}: {message_content[:30]}...")
+
+        elif action == "send_sticker":
+            sticker = details.get("sticker_id", None) or "CAACAgIAAxkBAAIBJ2cB8yY1l0Z5z3Xz7x0AAf7Z6YqFAAIAAAM7YCQU1c6A4pL2t0A4BA"  # Default sticker
+            target_id = target_user_id if target == "user" and target_user_id else chat_id
+            await event.client.send_file(target_id, file=sticker, force_document=False)
+            await thinking_msg.edit(f"✅ **Sticker Sent:** To {'user' if target_user_id else 'chat'} `{target_id}`.")
+            print(f"✅ Sent sticker to {target_id}")
+
+        elif action == "send_photo":
+            photo_url = details.get("photo_url", None)
+            if not photo_url:
+                await thinking_msg.edit("❌ **Error:** Specify a photo URL (e.g., 'send photo <url>').")
                 return
             target_id = target_user_id if target == "user" and target_user_id else chat_id
             try:
-                await event.client.send_message(target_id, message_content)
-                await thinking_msg.edit(f"✅ **Message Sent:** '{message_content}' to {'user' if target_user_id else 'chat'} `{target_id}`.")
-                print(f"✅ Sent message to {target_id}: {message_content[:30]}...")
+                await event.client.send_file(target_id, file=photo_url, force_document=False)
+                await thinking_msg.edit(f"✅ **Photo Sent:** To {'user' if target_user_id else 'chat'} `{target_id}`.")
+                print(f"✅ Sent photo to {target_id}")
             except Exception as e:
-                await thinking_msg.edit(f"❌ **Message Error:** {str(e)}")
-                print(f"❌ Message error: {e}")
+                await thinking_msg.edit(f"❌ **Photo Error:** Invalid URL or access issue.")
+                print(f"❌ Photo error: {e}")
+
+        elif action == "pin":
+            if not target_message_id or target != "message":
+                await thinking_msg.edit("❌ **Error:** Reply to a message to pin.")
+                return
+            await event.client(functions.messages.UpdatePinnedMessageRequest(
+                peer=chat_id,
+                id=target_message_id,
+                unpin=False
+            ))
+            await thinking_msg.edit(f"✅ **Pinned:** Message `{target_message_id}` in chat `{chat_id}`.")
+            print(f"✅ Pinned message {target_message_id} in chat {chat_id}")
+
+        elif action == "unpin":
+            if not target_message_id or target != "message":
+                await thinking_msg.edit("❌ **Error:** Reply to a message to unpin.")
+                return
+            await event.client(functions.messages.UpdatePinnedMessageRequest(
+                peer=chat_id,
+                id=target_message_id,
+                unpin=True
+            ))
+            await thinking_msg.edit(f"✅ **Unpinned:** Message `{target_message_id}` in chat `{chat_id}`.")
+            print(f"✅ Unpinned message {target_message_id} in chat {chat_id}")
+
+        elif action == "delete":
+            if not target_message_id or target != "message":
+                await thinking_msg.edit("❌ **Error:** Reply to a message to delete.")
+                return
+            await event.client.delete_messages(chat_id, [target_message_id])
+            await thinking_msg.edit(f"✅ **Deleted:** Message `{target_message_id}` in chat `{chat_id}`.")
+            print(f"✅ Deleted message {target_message_id} in chat {chat_id}")
+
+        elif action == "invite":
+            if not target_user_id or target != "user":
+                await thinking_msg.edit("❌ **Error:** Reply to a user to invite.")
+                return
+            await event.client(functions.channels.InviteToChannelRequest(
+                channel=chat_id,
+                users=[target_user_id]
+            ))
+            await thinking_msg.edit(f"✅ **Invited:** User `{target_user_id}` to chat `{chat_id}`.")
+            print(f"✅ Invited user {target_user_id} to chat {chat_id}")
 
         else:
-            await thinking_msg.edit(f"❌ **Unknown Action:** '{action}' not supported. Try 'ban', 'mute', 'kick', or 'message'.")
+            await thinking_msg.edit(f"❌ **Unknown Action:** '{action}' not supported. Try 'ban', 'mute', 'send message', 'pin', etc.")
             print(f"❌ Unknown action: {action}")
 
     except Exception as e:
