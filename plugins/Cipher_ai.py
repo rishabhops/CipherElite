@@ -33,6 +33,11 @@ DEFAULT_MODEL = "deepseek-ai/deepseek-r1"
 # Store conversation history per chat
 conversation_history = {}
 
+def init(client):
+    """Initialize the NVIDIA AI plugin"""
+    print("🤖 NVIDIA AI Plugin initialized successfully")
+    return True
+
 async def make_nvidia_request(messages, temperature=0.6, top_p=0.7, max_tokens=1024):
     """Make async request to NVIDIA API"""
     try:
@@ -104,6 +109,8 @@ async def ai_handler(event):
         # Show thinking message
         thinking_msg = await event.reply("🤔 **Processing your query...**\n\n⏳ This may take a few seconds.")
         
+        print(f"🤖 Processing AI query: {query[:50]}...")
+        
         # Get conversation history for this chat
         chat_id = event.chat_id
         if chat_id not in conversation_history:
@@ -122,12 +129,15 @@ async def ai_handler(event):
                 make_nvidia_request(conversation_history[chat_id]),
                 timeout=45.0  # 45 second total timeout
             )
+            print(f"✅ AI response received: {len(response)} characters")
         except asyncio.TimeoutError:
             response = "⏰ **Request Timeout:** The AI took too long to respond. Please try a shorter question."
+            print("❌ AI request timed out")
         
         # Check if response is an error
         if response.startswith("❌") or response.startswith("⏳") or response.startswith("🚫"):
             await thinking_msg.edit(response)
+            print(f"❌ AI error response: {response[:100]}")
             return
         
         # Add AI response to history
@@ -146,7 +156,7 @@ async def ai_handler(event):
             formatted_response += f"💭 **Query:** `{query[:100]}{'...' if len(query) > 100 else ''}`"
             await thinking_msg.edit(formatted_response)
         
-        print(f"✅ AI response sent successfully for query: {query[:50]}...")
+        print(f"✅ AI response sent successfully")
         
     except Exception as e:
         error_msg = f"❌ **Error:** {str(e)}"
@@ -182,6 +192,8 @@ async def aiset_handler(event):
         
         success_msg = await event.reply("✅ **API Key set successfully!**\n\n🔒 Your key is now configured.\n🤖 You can now use `.ai <question>` command.")
         
+        print(f"✅ NVIDIA API key set: {api_key[:10]}...")
+        
         # Delete messages for security
         await asyncio.sleep(5)
         try:
@@ -189,8 +201,6 @@ async def aiset_handler(event):
             await success_msg.delete()
         except:
             pass
-        
-        print("✅ NVIDIA API key configured successfully")
         
     except Exception as e:
         await event.reply(f"❌ **Error setting API key:** {str(e)}")
@@ -206,6 +216,7 @@ async def aitest_handler(event):
             return
         
         test_msg = await event.reply("🧪 **Testing NVIDIA AI connection...**")
+        print("🧪 Testing NVIDIA AI connection...")
         
         # Simple test query
         test_messages = [{"role": "user", "content": "Say 'Hello, I am working!' in exactly those words."}]
@@ -217,8 +228,10 @@ async def aitest_handler(event):
         
         if response.startswith("❌") or response.startswith("⏳") or response.startswith("🚫"):
             await test_msg.edit(f"❌ **Test Failed:**\n\n{response}")
+            print(f"❌ AI test failed: {response}")
         else:
             await test_msg.edit(f"✅ **Test Successful!**\n\n🤖 **AI Response:** {response}\n\n🎉 Your NVIDIA AI is working correctly!")
+            print(f"✅ AI test successful: {response}")
         
     except Exception as e:
         await event.reply(f"❌ **Test Error:** {str(e)}")
@@ -235,11 +248,13 @@ async def aiclear_handler(event):
             messages_count = len(conversation_history[chat_id])
             del conversation_history[chat_id]
             await event.reply(f"🗑️ **History cleared!**\n\n📊 Removed `{messages_count}` messages from this chat.")
+            print(f"🗑️ Cleared {messages_count} messages from chat {chat_id}")
         else:
             await event.reply("📭 **No history found** for this chat.")
             
     except Exception as e:
         await event.reply(f"❌ **Error:** {str(e)}")
+        print(f"❌ Clear History Error: {e}")
 
 @CipherElite.on(events.NewMessage(pattern=r"\.aistatus"))
 @rishabh()
@@ -272,5 +287,6 @@ async def aistatus_handler(event):
         
     except Exception as e:
         await event.reply(f"❌ **Error:** {str(e)}")
+        print(f"❌ Status Error: {e}")
 
 print("✅ NVIDIA AI Plugin loaded successfully")
