@@ -8,15 +8,14 @@
 #  License:        MIT
 #
 #  IMPORTANT:
-#    • If you copy, fork, or include this plugin in your own bot,
+#    â€¢ If you copy, fork, or include this plugin in your own bot,
 #      you MUST keep this header intact.
-#    • You MUST give proper credit to the CipherElite Userbot author:
-#        – GitHub:    https://github.com/rishabhops/CipherElite
-#        – Telegram:  @rishabhops
+#    â€¢ You MUST give proper credit to the CipherElite Userbot author:
+#        â€“ GitHub:    https://github.com/rishabhops/CipherElite
+#        â€“ Telegram:  @thanosceo
 #
 #  Thank you for respecting open-source software!
 # =============================================================================
-
 import os
 import json
 import random
@@ -24,41 +23,22 @@ import asyncio
 import logging
 from datetime import datetime
 from pathlib import Path
-from openai import AsyncOpenAI, OpenAIError, AuthenticationError, RateLimitError
+
 from telethon import events, functions
 from utils.utils import CipherElite
 from utils.decorators import rishabh
 from plugins.bot import add_handler
 from config.config import Config
-from vars import ELITE_BOT_USERNAME
-import re
+
 # Default PM permit picture
 DEFAULT_PMPERMIT_PIC = Config.DEFAULT_PMPERMIT_PIC
 
 # DB setup
 PROJECT_ROOT = Path(__file__).parent.parent
-DB_DIR = PROJECT_ROOT / "DB"
+DB_DIR       = PROJECT_ROOT / "DB"
 DB_DIR.mkdir(exist_ok=True)
-DB_FILE = DB_DIR / "assistant_db.json"
+DB_FILE      = DB_DIR / "assistant_db.json"
 
-# AI Configuration
-NVIDIA_API_KEY = os.getenv("NVIDIA_API_KEY", getattr(Config, "NVIDIA_API_KEY", ""))
-NVIDIA_BASE_URL = "https://integrate.api.nvidia.com/v1"
-DEFAULT_MODEL = "mistralai/mistral-nemotron"
-
-# Initialize OpenAI client
-if not NVIDIA_API_KEY:
-    logging.warning("NVIDIA_API_KEY not set. AI features will use static messages.")
-client = AsyncOpenAI(
-    base_url=NVIDIA_BASE_URL,
-    api_key=NVIDIA_API_KEY or "dummy_key"  # Fallback to avoid client initialization errors
-)
-
-# AI System Prompt
-SYSTEM_PROMPT = {
-    "role": "system",
-    "content": "You are Cipher AI, the personal assistant for the CipherElite Userbot, created by @rishabhops. Respond in private chats to manage PM permissions, acting as a polite gatekeeper. Generate short, natural, and context-aware messages tailored to the sender’s input and profile (e.g., name, username). Avoid <think> blocks, technical details, or markdown. Maintain a professional yet friendly tone, and request acknowledgment (e.g., 'Type ok to proceed')."
-}
 
 class PersonalAssistant:
     def __init__(self):
@@ -98,99 +78,57 @@ class PersonalAssistant:
         except Exception as e:
             logging.error(f"Assistant save error: {e}")
 
-    async def generate_ai_message(self, mtype, sender, user_message=None, **kwargs):
-        """Generate AI-driven message using Cipher AI"""
-        if not NVIDIA_API_KEY:
-            return None
-
-        cfg = self.data["config"]
-        context = {
-            "assistant_name": cfg["assistant_name"],
-            "alive_name": cfg["alive_name"],
-            "sender_name": sender.first_name or "Unknown",
-            "sender_username": sender.username or "None",
-            "max_warnings": cfg["max_warnings"],
-            "warn_count": kwargs.get("warn_count", 0),
-        }
-
-        if mtype == "introduction":
-            prompt = f"Generate a polite introduction message for {context['sender_name']} (@{context['sender_username']}) contacting {context['alive_name']}. Ask why they’re messaging and request 'ok' to proceed. Keep it short and friendly."
-            if user_message:
-                prompt += f" Their message: '{user_message}'."
-        elif mtype == "acknowledgment":
-            prompt = f"Generate a brief acknowledgment message thanking {context['sender_name']} (@{context['sender_username']}) for responding. Notify them that {context['alive_name']} will be informed."
-        elif mtype == "warning":
-            prompt = f"Generate a warning message for {context['sender_name']} (@{context['sender_username']}), warning {context['warn_count']}/{context['max_warnings']}. Politely ask them to wait for approval."
-        else:
-            return None
-
-        try:
-            stream = await client.chat.completions.create(
-                model=DEFAULT_MODEL,
-                messages=[
-                    SYSTEM_PROMPT,
-                    {"role": "user", "content": prompt}
-                ],
-                temperature=0.6,
-                top_p=0.7,
-                max_tokens=512,
-                stream=True
-            )
-            response = ""
-            async for chunk in stream:
-                if chunk.choices[0].delta.content is not None:
-                    response += chunk.choices[0].delta.content
-            response = re.sub(r'<think>.*?</think>', '', response, flags=re.DOTALL).strip()
-            return response
-        except Exception as e:
-            logging.error(f"AI message generation error: {e}")
-            return None
-
     async def send_message(self, event, mtype, **kwargs):
-        """Send a permit-flow message with AI or static fallback"""
+        """
+        Send a permitâ€flow message. This safely resolves the entity
+        for typing actions and sending files to avoid 'could not find entity'.
+        """
+        # Prepare target entity (User or chat)
         try:
             target = await event.get_sender()
         except Exception:
             target = event.chat_id
 
         cfg = self.data["config"]
-        static_texts = {
+        texts = {
             "introduction": [
-                f"👋 Hi! I'm {cfg['assistant_name']}, {cfg['alive_name']}'s assistant.\n"
+                f"ðŸ‘‹ Hi! I'm {cfg['assistant_name']}, {cfg['alive_name']}'s assistant.\n"
                 "Please explain briefly why you want to contact them.\n"
                 "Type 'ok' to acknowledge."
             ],
             "acknowledgment": [
-                "👍 Thanks for understanding!\n"
+                "ðŸ‘ Thanks for understanding!\n"
                 f"I will notify {cfg['alive_name']}."
             ],
             "warning": [
-                "⚠️ Warning {warn_count}/{max_warnings}\n"
+                "âš ï¸ Warning {warn_count}/{max_warnings}\n"
                 "Please wait for approval before messaging again."
             ],
             "approved": [
-                "✅ You are now approved! Feel free to continue."
+                "âœ… You are now approved! Feel free to continue."
             ],
             "disapproved": [
-                "❌ Your approval has been revoked."
+                "âŒ Your approval has been revoked."
             ],
             "blocked": [
-                "🚫 You have been blocked due to repeated messages."
+                "ðŸš« You have been blocked due to repeated messages."
             ],
         }
 
-        sender = await event.get_sender()
-        user_message = event.message.text or ""
-        ai_msg = await self.generate_ai_message(mtype, sender, user_message, **kwargs)
+        lst = texts.get(mtype, [])
+        if not lst:
+            return
 
-        msg = ai_msg if ai_msg else random.choice(static_texts.get(mtype, [""])).format(**kwargs)
+        msg = random.choice(lst).format(**kwargs)
 
+        # Show typing indicator (if possible)
         try:
             async with event.client.action(target, 'typing'):
                 await asyncio.sleep(1.0)
         except Exception:
             pass
 
+        # Send with picture on introduction if enabled
         if mtype == "introduction" and cfg.get("use_pic"):
             try:
                 await event.client.send_file(
@@ -204,17 +142,20 @@ class PersonalAssistant:
             await event.reply(msg)
 
     async def handle_message(self, event):
+        # only private chats
         if not event.is_private:
             return
 
         sender = await event.get_sender()
         uid = str(sender.id)
 
+        # ignore bots and already-approved
         if sender.bot or uid in self.data["approved_users"]:
             return
 
         text = (event.message.text or "").lower()
 
+        # 1) First-time user â†’ introduction
         if uid not in self.data["users"]:
             self.data["users"][uid] = {
                 "name": sender.first_name,
@@ -227,12 +168,14 @@ class PersonalAssistant:
             self._save()
             return
 
+        # 2) Acknowledgment
         if self.data["user_states"].get(uid) == "introduced" and text in ("ok", "okay"):
             self.data["user_states"][uid] = "acknowledged"
             await self.send_message(event, "acknowledgment")
             self._save()
             return
 
+        # 3) Warnings / blocking
         self.data["warnings"].setdefault(uid, 0)
         self.data["warnings"][uid] += 1
 
@@ -250,15 +193,16 @@ class PersonalAssistant:
         )
         self._save()
 
+
 def init(client):
     assistant = PersonalAssistant()
     commands = [
-        f".a / .approve — Approve a user",
-        f".da / .disapprove — Revoke approval",
-        f".block — Block a user",
-        f".listapproved — List approved users",
-        f".setpermitpic — Set the permit picture",
-        f".togglepermitpic — Enable/disable the picture"
+        ".a / .approve        â€” Approve a user",
+        ".da / .disapprove    â€” Revoke approval",
+        ".block               â€” Block a user",
+        ".listapproved        â€” List approved users",
+        ".setpermitpic        â€” Set the permit picture",
+        ".togglepermitpic     â€” Enable/disable the picture"
     ]
     add_handler("pmpermit", commands, "Personal Assistant PM Manager")
 
@@ -274,7 +218,7 @@ def init(client):
         else:
             reply = await event.get_reply_message()
             if not reply:
-                return await event.reply("↪️ Reply to the user to approve.")
+                return await event.reply("â†ªï¸ Reply to the user to approve.")
             uid = str(reply.sender_id)
 
         if uid not in assistant.data["approved_users"]:
@@ -291,7 +235,7 @@ def init(client):
         else:
             reply = await event.get_reply_message()
             if not reply:
-                return await event.reply("↪️ Reply to the user to disapprove.")
+                return await event.reply("â†ªï¸ Reply to the user to disapprove.")
             uid = str(reply.sender_id)
 
         assistant.data["approved_users"] = [
@@ -311,12 +255,13 @@ def init(client):
         for uid in approved:
             info = assistant.data["users"].get(uid, {})
             name = info.get("name", "Unknown")
-            text += f"• {name} (`{uid}`)\n"
+            text += f"â€¢ {name} (`{uid}`)\n"
         await event.reply(text)
 
     @CipherElite.on(events.NewMessage(outgoing=True, pattern=r"\.setpermitpic(?:\s+.*)?$"))
     @rishabh()
     async def _setpic(event):
+        # from reply
         if event.reply_to_msg_id:
             msg = await event.get_reply_message()
             if msg.media:
@@ -324,15 +269,16 @@ def init(client):
                 assistant.data["config"]["pmpermit_pic"] = path
                 assistant.data["config"]["use_pic"] = True
                 assistant._save()
-                return await event.reply("✅ Permit picture set from reply")
-            return await event.reply("❌ Reply to an image.")
+                return await event.reply("âœ… Permit picture set from reply")
+            return await event.reply("âŒ Reply to an image.")
+        # from URL
         parts = event.text.split(None, 1)
         if len(parts) > 1:
             assistant.data["config"]["pmpermit_pic"] = parts[1].strip()
             assistant.data["config"]["use_pic"] = True
             assistant._save()
-            return await event.reply("✅ Permit picture set from URL")
-        await event.reply("❌ Usage: .setpermitpic <url> or reply to an image")
+            return await event.reply("âœ… Permit picture set from URL")
+        await event.reply("âŒ Usage: .setpermitpic <url> or reply to an image")
 
     @CipherElite.on(events.NewMessage(outgoing=True, pattern=r"\.togglepermitpic$"))
     @rishabh()
@@ -341,7 +287,7 @@ def init(client):
         cfg["use_pic"] = not cfg.get("use_pic", True)
         assistant._save()
         state = "enabled" if cfg["use_pic"] else "disabled"
-        await event.reply(f"✅ Permit picture {state}")
+        await event.reply(f"âœ… Permit picture {state}")
 
     @CipherElite.on(events.NewMessage(outgoing=True, pattern=r"\.block(?:$|\s)"))
     @rishabh()
@@ -351,7 +297,7 @@ def init(client):
         else:
             reply = await event.get_reply_message()
             if not reply:
-                return await event.reply("↪️ Reply to the user to block.")
+                return await event.reply("â†ªï¸ Reply to the user to block.")
             uid = str(reply.sender_id)
 
         assistant.data["approved_users"] = [
@@ -361,8 +307,6 @@ def init(client):
         assistant.data["user_states"].pop(uid, None)
         assistant._save()
         await event.client(functions.contacts.BlockRequest(int(uid)))
-        await event.reply(f"🚫 User `{uid}` has been blocked.")
+        await event.reply(f"ðŸš« User `{uid}` has been blocked.")
 
     return assistant
-
-print("✅ PM Permit Plugin loaded successfully")
