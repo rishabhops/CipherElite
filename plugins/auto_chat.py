@@ -105,7 +105,7 @@ async def autochat_handler(event):
     await event.reply(f"🤖 **Auto Chat {status}!**\n\nCipher AI will {'now' if auto_chat_enabled else 'no longer'} respond in private chats on your behalf.")
     print(f"🤖 Auto Chat {status}")
 
-@CipherElite.on(events.NewMessage(outgoing=True, chats=CipherElite.get_private_chats()))
+@CipherElite.on(events.NewMessage(outgoing=True))
 async def store_user_message(event):
     """Store user’s outgoing messages in private chats for style mimicking"""
     if not isinstance(event.chat, User):  # Ensure it’s a private chat
@@ -127,14 +127,14 @@ async def store_user_message(event):
     
     print(f"📜 Stored user message in chat {chat_id}: {message[:30]}...")
 
-@CipherElite.on(events.NewMessage(incoming=True, chats=CipherElite.get_private_chats()))
+@CipherElite.on(events.NewMessage(incoming=True))
 @rishabh()
 async def auto_respond_handler(event):
     """Handle incoming private messages when auto-chat is enabled"""
     if not auto_chat_enabled or not isinstance(event.chat, User):  # Check if enabled and private chat
         return
     
-    if event.is_bot or event.raw_text.startswith("."):  # Ignore bots and commands
+    if event.sender.bot or event.raw_text.startswith("."):  # Ignore bots and commands
         return
     
     if not NVIDIA_API_KEY:
