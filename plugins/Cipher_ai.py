@@ -1,7 +1,7 @@
 # =============================================================================
 #  CipherElite Userbot Plugin
 #
-#  Plugin Name:    nvidia_ai
+#  Plugin Name:    cipher_ai
 #  Author:         CipherElite Dev (@rishabhops)
 #  Repository:     https://github.com/rishabhops/CipherElite
 #
@@ -12,7 +12,7 @@
 #      you MUST keep this header intact.
 #    • Give proper credit back to the CipherElite Userbot author:
 #        – GitHub: https://github.com/rishabhops/CipherElite
-#        – Telegram: @rishabhops
+#        – Telegram: @thanosceo
 #
 #  Thank you for respecting open-source software!
 # =============================================================================
@@ -20,6 +20,7 @@
 import os
 import asyncio
 import aiohttp
+import re
 from telethon import events
 from utils.utils import CipherElite
 from utils.decorators import rishabh
@@ -37,7 +38,7 @@ conversation_history = {}
 # System prompt to define AI identity and behavior
 SYSTEM_PROMPT = {
     "role": "system",
-    "content": "You are Cipher AI, created by @rishabhops for the CipherElite Userbot. Provide short, natural, and accurate answers. Avoid verbose explanations, technical model details, or markdown unless requested. Do not include thinking processes or internal deliberations in responses."
+    "content": "You are Cipher AI, created by @rishabhops for the CipherElite Userbot. Provide short, natural, and accurate answers. Return only the final result without any thinking process, internal deliberations, or <think> blocks. Avoid verbose explanations, technical model details, or markdown unless requested."
 }
 
 def init(client):
@@ -82,7 +83,10 @@ async def make_nvidia_request(messages, temperature=0.5, top_p=0.7, max_tokens=5
                 
                 if response.status == 200:
                     data = await response.json()
-                    return data["choices"][0]["message"]["content"]
+                    content = data["choices"][0]["message"]["content"]
+                    # Filter out <think> blocks
+                    content = re.sub(r'<think>.*?</think>', '', content, flags=re.DOTALL).strip()
+                    return content
                 elif response.status == 401:
                     return "❌ **Authentication Error:** Invalid API key. Use `.aiset <key>` to set a valid key."
                 elif response.status == 429:
@@ -272,11 +276,11 @@ async def aistatus_handler(event):
 • **Active Chats:** `{history_count}`
 • **Total Messages:** `{total_messages}`
 
-⚙️ **Commands:**
-• `{ELITE_BOT_USERNAME} .ai <question>` - Ask Cipher AI
-• `{ELITE_BOT_USERNAME} .aitest` - Test connection
-• `{ELITE_BOT_USERNAME} .aiclear` - Clear history
-• `{ELITE_BOT_USERNAME} .aiset <key>` - Set API key
+⚡ Options:
+• `{ELITE_BOT_USERNAME} .ai <question>` — Ask Cipher AI
+• `{ELITE_BOT_USERNAME} .aitest` — Test connection
+• `{ELITE_BOT_USERNAME} .aiclear` — Clear history
+• `{ELITE_BOT_USERNAME} .aiset <info>` — Set API key
 
 🔗 **Get API Key:** https://build.nvidia.com/"""
         
@@ -284,6 +288,6 @@ async def aistatus_handler(event):
         
     except Exception as e:
         await event.reply(f"❌ **Error:** {str(e)}")
-        print(f"❌ Status Error: {e}")
+        print(f"❌ Status: {e}")
 
-print("✅ NVIDIA AI Plugin loaded successfully")
+print(f"✅ {DEFAULT_NAME} AI Plugin loaded successfully")
