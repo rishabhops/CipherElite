@@ -1,4 +1,5 @@
-from telethon import events, functions
+from telethon import events
+from telethon.tl.functions.channels import GetAdminedPublicChannelsRequest
 from utils.utils import CipherElite
 from utils.decorators import rishabh
 from plugins.bot import add_handler
@@ -150,7 +151,7 @@ async def register_commands():
                 await msg.edit(f"🔐 Fetching reserved usernames{dots}")
                 await asyncio.sleep(0.3)
 
-            result = await event.client(functions.channels.GetAdminedPublicChannels())
+            result = await event.client(GetAdminedPublicChannelsRequest())
             lines = [f"🔐 **{mention}'s Reserved Usernames**\n"]
             for chat in result.chats:
                 if chat.username:
