@@ -40,6 +40,7 @@ async def register_commands():
         """
         try:
             me = await event.client.get_me()
+            mention = f"[{me.first_name}](tg://user?id={me.id})"
             dialogs = [d async for d in event.client.iter_dialogs()]
             total = len(dialogs)
             msg = await event.reply(f"🔍 Counting chats… 0/{total}")
@@ -66,7 +67,7 @@ async def register_commands():
 
             overall = bots + users + groups + super_groups + channels
             text = (
-                f"📊 **{me.mention}'s Chat Stats**\n\n"
+                f"📊 **{mention}'s Chat Stats**\n\n"
                 f"👤 **Users**: {users}\n"
                 f"🤖 **Bots**: {bots}\n"
                 f"👥 **Groups**: {groups}\n"
@@ -86,6 +87,7 @@ async def register_commands():
         """
         try:
             me = await event.client.get_me()
+            mention = f"[{me.first_name}](tg://user?id={me.id})"
             dialogs = [d async for d in event.client.iter_dialogs()]
             total = len(dialogs)
             msg = await event.reply(f"📈 Collecting stats… 0/{total}")
@@ -117,7 +119,7 @@ async def register_commands():
 
             duration = format_time(time.time() - start)
             text = (
-                f"📊 **{me.mention}'s Detailed Stats**\n\n"
+                f"📊 **{mention}'s Detailed Stats**\n\n"
                 f"**🔗 Chats Overview**\n"
                 f"👤 Users: {users}\n"
                 f"🤖 Bots: {bots}\n"
@@ -141,6 +143,7 @@ async def register_commands():
         """
         try:
             me = await event.client.get_me()
+            mention = f"[{me.first_name}](tg://user?id={me.id})"
             msg = await event.reply("🔐 Fetching reserved usernames…")
 
             for dots in ("", ".", "..", "..."):
@@ -148,7 +151,7 @@ async def register_commands():
                 await asyncio.sleep(0.3)
 
             result = await event.client(functions.channels.GetAdminedPublicChannels())
-            lines = [f"🔐 **{me.mention}'s Reserved Usernames**\n"]
+            lines = [f"🔐 **{mention}'s Reserved Usernames**\n"]
             for chat in result.chats:
                 if chat.username:
                     lines.append(f"• {chat.title} — **@{chat.username}**")
