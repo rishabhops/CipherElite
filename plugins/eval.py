@@ -1,7 +1,7 @@
 # =============================================================================
 #  CipherElite Userbot Plugin
 #
-#  Plugin Name:    alive
+#  Plugin Name:    eval
 #  Author:         CipherElite Dev (@rishabhops)
 #  Repository:     https://github.com/rishabhops/CipherElite
 #
@@ -40,9 +40,10 @@ def init(client_instance):
         ".shell <shell script> - Execute shell script and get results. Use with caution!",
         ".fext <file extension> - Get details of a file extension.",
         ".pypi <package name> - Get details of a package from PyPI.",
-        ".speedtest - Test server and client speed."
+        ".speedtest - Test server and client speed.",
+        ".logs - Retrieve the last 70 lines of the bot's terminal logs."
     ]
-    description = "Plugin to execute Python, Linux, and shell scripts, fetch file extension and PyPI package details, and run speed tests."
+    description = "Plugin to execute Python, Linux, and shell scripts, fetch file extension and PyPI package details, run speed tests, and view terminal logs."
     add_handler("eval", commands, description)
 
 async def aexec(code, client, event):
@@ -294,5 +295,45 @@ async def register_commands():
                 reply_to=event.reply_to_msg_id or event.message.id
             )
             await elite.delete()
+        except Exception as e:
+            await event.reply(f"Error: {str(e)}")
+
+    @CipherElite.on(events.NewMessage(pattern=r"\.logs"))
+    @rishabh()
+    async def logs_handler(event):
+        """
+        Retrieve the last 70 lines of the bot's terminal logs.
+        """
+        try:
+            reply_to = event.reply_to_msg_id or event.message.id
+            elite = await event.reply("`Fetching logs...`")
+            log_file = "bot.log"  # Adjust this path if the bot uses a different log file
+
+            try:
+                result = subprocess.run(
+                    ["tail", "-n", "70", log_file],
+                    capture_output=True,
+                    text=True
+                )
+                output = result.stdout.strip()
+                if not output:
+                    await elite.edit("**𝖫𝗈𝗀𝗌:** __No logs found or log file is empty!__")
+                    return
+
+                heading = f"**𝖫𝗈𝗀𝗌 (Last 70 Lines):**\n"
+                final_output = heading + f"```\n{output}\n```"
+
+                try:
+                    await event.client.send_message(event.chat_id, final_output, reply_to=reply_to)
+                except Exception:
+                    with io.BytesIO(str.encode(output)) as out_file:
+                        out_file.name = "logs.txt"
+                        await event.client.send_file(event.chat_id, out_file, caption=heading, reply_to=reply_to)
+
+                await elite.delete()
+            except FileNotFoundError:
+                await elite.edit(f"**𝖫𝗈𝗀𝗌:** __Log file '{log_file}' not found!__")
+            except Exception as e:
+                await elite.edit(f"**𝖤𝗋𝗋𝗈𝗋:** `{str(e)}`")
         except Exception as e:
             await event.reply(f"Error: {str(e)}")
