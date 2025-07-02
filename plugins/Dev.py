@@ -7,7 +7,7 @@ from functools import wraps
 
 from utils.utils import CipherElite
 from utils.decorators import rishabh
-
+from plugins.bot import add_handler
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
