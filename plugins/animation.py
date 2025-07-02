@@ -11,7 +11,12 @@ from plugins.bot import add_handler
 def init(client):
     commands = [
         ".animate <text>   — Simulate typing animation",
-        ".spinner [sec]    — Show spinner animation"
+        ".spinner [sec]    — Show spinner animation",
+        ".loveu              — Rainbow heart animation",
+        ".matrix [sec]       — Matrix rain in text",
+        ".hearts <text>      — Bubble hearts around your text",
+        ".countdown <n>      — Count down from n to 0",
+        ".wave <text>        — Text wave effect"
     ]
     add_handler("animation", commands, "Animation Plugin")
 
