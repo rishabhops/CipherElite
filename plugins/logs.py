@@ -5,7 +5,7 @@ from telethon import events
 import logging
 from functools import wraps
 
-from bot import CipherElite
+from utils.utils import CipherElite
 from bot.utils import rishabh, add_handler
 
 # Configure logging
