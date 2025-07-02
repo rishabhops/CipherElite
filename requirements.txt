@@ -101,6 +101,7 @@ typing_extensions==4.12.2
 tzlocal==5.3.1
 urllib3==2.3.0
 utils==1.0.2
+lxml
 webencodings==0.5.1
 yarl==1.18.3
 youtube-dl==2021.12.17
