@@ -1,7 +1,7 @@
 # =============================================================================
 #  CipherElite Userbot Plugin
 #
-#  Plugin Name:    nvidia_ai
+#  Plugin Name:    cipher_ai
 #  Author:         CipherElite Dev (@rishabhops)
 #  Repository:     https://github.com/rishabhops/CipherElite
 #
@@ -12,7 +12,7 @@
 #      you MUST keep this header intact.
 #    • Give proper credit back to the CipherElite Userbot author:
 #        – GitHub: https://github.com/rishabhops/CipherElite
-#        – Telegram: @rishabhops
+#        – Telegram: @thanosceo
 #
 #  Thank you for respecting open-source software!
 # =============================================================================
@@ -45,7 +45,7 @@ conversation_history = {}
 # System prompt to define AI identity and behavior
 SYSTEM_PROMPT = {
     "role": "system",
-    "content": "You are Cipher AI, created by @rishabhops for the CipherElite Userbot. Provide short, natural, and accurate answers. Return only the final result without any thinking process, internal deliberations, or <think> blocks. Avoid verbose explanations, technical model details, or markdown unless requested."
+    "content": "You are Cipher AI, created by @thanosceo for the CipherElite Userbot. Provide short, natural, and accurate answers. Return only the final result without any thinking process, internal deliberations, or <think> blocks. Avoid verbose explanations, technical model details, or markdown unless requested."
 }
 
 def init(client):
@@ -58,8 +58,8 @@ def init(client):
         f".aistatus — Show AI status"
     ]
     description = "Interact with Cipher AI powered by NVIDIA API"
-    add_handler("nvidia_ai", commands, description)
-    print("🤖 NVIDIA AI Plugin initialized successfully")
+    add_handler("cipher_ai", commands, description)
+    print("🤖 CIPHER AI Plugin initialized successfully")
     return True
 
 async def make_nvidia_request(messages, temperature=0.6, top_p=0.7, max_tokens=2048):
@@ -282,4 +282,4 @@ async def aistatus_handler(event):
         await event.reply(f"❌ **Error:** {str(e)}")
         print(f"❌ Status Error: {e}")
 
-print("✅ NVIDIA AI Plugin loaded successfully")
+print("CIPHER AI Plugin loaded successfully")
