@@ -13,7 +13,14 @@ def init(client):
         ".animate <text>   — Simulate typing animation",
         ".spinner [sec]    — Show spinner animation"
     ]
-    add_handler("animation", commands, "Text & Spinner Animation Plugin")
+    add_handler("animation", commands, "Animation Plugin")
+
+async def safe_edit(msg, text):
+    try:
+        await msg.edit(text)
+    except MessageNotModifiedError:
+        pass
+
 
 @CipherElite.on(events.NewMessage(pattern=r"^\.animate\s+([\s\S]+)$", outgoing=True))
 @rishabh()
