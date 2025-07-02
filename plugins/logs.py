@@ -6,7 +6,7 @@ import logging
 from functools import wraps
 
 from utils.utils import CipherElite
-from bot.utils import rishabh, add_handler
+from utils.utils import rishabh, add_handler
 
 # Configure logging
 logging.basicConfig(
