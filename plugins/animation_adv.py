@@ -17,7 +17,7 @@ def init(client):
         ".countdown <n>      — Count down from n to 0",
         ".wave <text>        — Text wave effect"
     ]
-    add_handler("animation_adv", commands, "Advanced Animations")
+    add_handler("animation2", commands, "Advanced Animations")
 
 async def safe_edit(msg, text):
     try:
