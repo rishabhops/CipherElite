@@ -8,6 +8,9 @@ from telethon.tl.functions.channels import EditAdminRequest
 from telethon.tl.types import ChatAdminRights
 from telethon import Button
 from telethon.errors import UserNotParticipantError, UserAlreadyParticipantError, ChatAdminRequiredError
+from telethon.tl.functions.bots import SetBotCommandsRequest
+from telethon.tl.functions.photos import UploadProfilePhotoRequest, DeletePhotosRequest
+from telethon.tl.functions.account import UpdateProfileRequest
 from plugins.bot import init_bot
 from utils.utils import init_client
 
@@ -64,6 +67,87 @@ Started : {system_info["uptime"]}
 """
     print(banner)
     return system_info
+
+async def update_bot_profile(bot_client, user_client):
+    """Update bot profile to match user account"""
+    try:
+        # Get user information
+        user = await user_client.get_me()
+        user_first_name = user.first_name
+        
+        # Get bot information
+        bot_me = await bot_client.get_me()
+        current_bot_name = bot_me.first_name
+        
+        # Expected bot name
+        expected_bot_name = f"{user_first_name}'s Assistant"
+        
+        print(f"\033[1;33mUser: {user_first_name}\033[0m")
+        print(f"\033[1;33mCurrent bot name: {current_bot_name}\033[0m")
+        print(f"\033[1;33mExpected bot name: {expected_bot_name}\033[0m")
+        
+        # Check if bot name needs to be updated
+        if current_bot_name != expected_bot_name:
+            print(f"\033[1;33mUpdating bot name from '{current_bot_name}' to '{expected_bot_name}'...\033[0m")
+            
+            # Update bot name and bio
+            bio_text = f"🤖 Personal Assistant Bot for {user_first_name}\n\n🔰 Cipher Elite Userbot Assistant\n⚡ Powered by thanospros\n🛡️ Advanced Automation & Management\n\n🔗 Support: @thanosprosss"
+            
+            try:
+                await bot_client(UpdateProfileRequest(
+                    first_name=expected_bot_name,
+                    about=bio_text
+                ))
+                print(f"\033[1;32m✅ Bot name updated to: {expected_bot_name}\033[0m")
+                print(f"\033[1;32m✅ Bot bio updated\033[0m")
+            except Exception as e:
+                print(f"\033[1;31m❌ Failed to update bot name/bio: {e}\033[0m")
+        else:
+            print(f"\033[1;32m✅ Bot name is already correct: {current_bot_name}\033[0m")
+        
+        # Update bot profile picture
+        await update_bot_profile_picture(bot_client, user_client)
+        
+        return True
+        
+    except Exception as e:
+        print(f"\033[1;31mError updating bot profile: {e}\033[0m")
+        return False
+
+async def update_bot_profile_picture(bot_client, user_client):
+    """Update bot profile picture using cipher.jpg from images folder"""
+    try:
+        # Path to the cipher.jpg image
+        cipher_image_path = Path(__file__).parent.parent / "images" / "cipher.jpg"
+        
+        if not cipher_image_path.exists():
+            print(f"\033[1;31m❌ cipher.jpg not found at: {cipher_image_path}\033[0m")
+            print(f"\033[1;33m💡 Please ensure cipher.jpg exists in the images folder\033[0m")
+            return
+        
+        print(f"\033[1;33m📸 Found cipher.jpg at: {cipher_image_path}\033[0m")
+        
+        # Check if bot already has a profile picture
+        bot_photos = await bot_client.get_profile_photos('me', limit=1)
+        
+        should_update = True
+        if bot_photos:
+            # Check if we should update (you can add more sophisticated checking here)
+            # For now, we'll update if there's a cipher.jpg file
+            print(f"\033[1;33m📸 Bot already has profile picture, updating with cipher.jpg...\033[0m")
+        else:
+            print(f"\033[1;33m📸 Bot has no profile picture, setting cipher.jpg...\033[0m")
+        
+        if should_update:
+            # Upload cipher.jpg as bot profile picture
+            with open(cipher_image_path, 'rb') as f:
+                file = await bot_client.upload_file(f)
+                await bot_client(UploadProfilePhotoRequest(file=file))
+            
+            print(f"\033[1;32m✅ Bot profile picture updated with cipher.jpg\033[0m")
+        
+    except Exception as e:
+        print(f"\033[1;31m❌ Failed to update bot profile picture: {e}\033[0m")
 
 async def ensure_bot_in_group(bot_client, user_client, log_chat_id):
     """Ensure bot is in logger group and has admin privileges"""
@@ -281,6 +365,10 @@ async def start_bot(client):
         # Ensure bot is properly connected
         bot_me = await bot.get_me()
         print(f"\033[1;32mBot client initialized: @{bot_me.username}\033[0m")
+        
+        # Update bot profile to match user account
+        print("\033[1;33m🔄 Updating bot profile...\033[0m")
+        await update_bot_profile(bot, client)
 
     print("\033[1;33mLoading plugins...\033[0m")
     plugins = await load_plugins(client)
