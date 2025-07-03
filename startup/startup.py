@@ -4,7 +4,7 @@ import asyncio
 from datetime import datetime
 from pathlib import Path
 from telethon.tl.functions.channels import JoinChannelRequest
-from telethon.types import InlineKeyboardMarkup, InlineKeyboardButton
+from telethon import Button  # Correct import for buttons
 from plugins.bot import init_bot
 from utils.utils import init_client
 
@@ -86,16 +86,15 @@ async def send_startup_message(client, plugins, system_info, config):
             "=====================\n"
             "**Elite Power Activated!**"
         )
-        buttons = InlineKeyboardMarkup(
-            inline_keyboard=[
-                [InlineKeyboardButton(text="Support", url="https://t.me/thanosprosss")]
-            ]
-        )
+        # Correct button construction
+        buttons = [[Button.url("Support", "https://t.me/thanosprosss")]]
         logo_url = "https://files.catbox.moe/tocisn.png"
-        await client.send_file(
+        
+        # Send message with buttons using send_message instead of send_file
+        await client.send_message(
             config.LOG_CHAT_ID,
+            message,
             file=logo_url,
-            caption=message,
             buttons=buttons
         )
     except Exception as e:
@@ -119,17 +118,16 @@ async def start_bot(client):
     await client.start()
     init_client(client)
 
-    # Join group and channel
-    try:
-        await client(JoinChannelRequest("https://t.me/THANOS_PRO"))
-        print("\033[1;32mJoined group: https://t.me/THANOS_PRO\033[0m")
-    except Exception as e:
-        print(f"\033[1;31mFailed to join group https://t.me/THANOS_PRO: {e}\033[0m")
-    try:
-        await client(JoinChannelRequest("https://t.me/thanosprosss"))
-        print("\033[1;32mJoined channel: https://t.me/thanosprosss\033[0m")
-    except Exception as e:
-        print(f"\033[1;31mFailed to join channel https://t.me/thanosprosss: {e}\033[0m")
+    # Join group and channel with better error handling
+    for url, name in [
+        ("https://t.me/THANOS_PRO", "Group"),
+        ("https://t.me/thanosprosss", "Channel")
+    ]:
+        try:
+            await client(JoinChannelRequest(url))
+            print(f"\033[1;32mJoined {name}: {url}\033[0m")
+        except Exception as e:
+            print(f"\033[1;31mFailed to join {name} {url}: {e}\033[0m")
 
     bot = await init_bot()
 
