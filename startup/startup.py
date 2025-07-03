@@ -75,95 +75,87 @@ async def ensure_bot_in_group(bot_client, user_client, log_chat_id):
         
         print(f"\033[1;33mBot info: @{bot_username} (ID: {bot_id})\033[0m")
         
-        # Get the logger group entity
+        # Get the logger group entity using user client
         chat = await user_client.get_entity(log_chat_id)
+        print(f"\033[1;33mGroup info: {chat.title} (ID: {chat.id})\033[0m")
         
-        # Check if bot is in the group
+        # Check if bot is actually in the group by getting all participants
         is_bot_in_group = False
+        is_bot_admin = False
+        
         try:
-            # Try to get bot permissions in the group
-            bot_perms = await user_client.get_permissions(chat, bot_me)
-            is_bot_in_group = True
-            print(f"\033[1;32mBot is already in logger group ({log_chat_id})\033[0m")
-            
-            # Check if bot is already an admin
-            if bot_perms.is_admin:
-                print(f"\033[1;32mBot is already an admin in logger group\033[0m")
-                return True
+            # Get all participants to check if bot is really there
+            async for participant in user_client.iter_participants(chat):
+                if participant.id == bot_id:
+                    is_bot_in_group = True
+                    # Check if bot has admin rights
+                    perms = await user_client.get_permissions(chat, participant)
+                    if perms.is_admin:
+                        is_bot_admin = True
+                        print(f"\033[1;32mBot is in group and is admin\033[0m")
+                    else:
+                        print(f"\033[1;33mBot is in group but not admin\033[0m")
+                    break
+                    
+            if not is_bot_in_group:
+                print(f"\033[1;33mBot is NOT in the group\033[0m")
                 
-        except (UserNotParticipantError, ValueError, TypeError) as e:
-            print(f"\033[1;33mBot is not in logger group. Error: {e}\033[0m")
+        except Exception as e:
+            print(f"\033[1;31mError checking bot participation: {e}\033[0m")
             is_bot_in_group = False
             
         # Add bot to group if not present
         if not is_bot_in_group:
             print(f"\033[1;33mAdding bot to logger group ({log_chat_id})...\033[0m")
             try:
-                # Use bot username instead of ID for invitation
+                # Use bot username for invitation
                 await user_client(InviteToChannelRequest(
                     channel=chat,
-                    users=[bot_username]  # Use username instead of ID
+                    users=[bot_username] if bot_username else [bot_id]
                 ))
                 print(f"\033[1;32mBot added to logger group ({log_chat_id})\033[0m")
-                await asyncio.sleep(3)  # Wait longer for group to update
+                await asyncio.sleep(3)  # Wait for group to update
+                is_bot_in_group = True
                 
             except UserAlreadyParticipantError:
                 print(f"\033[1;32mBot was already in the group\033[0m")
+                is_bot_in_group = True
             except Exception as e:
                 print(f"\033[1;31mFailed to add bot to group: {e}\033[0m")
-                # Try alternative method using bot ID
-                try:
-                    await user_client(InviteToChannelRequest(
-                        channel=chat,
-                        users=[bot_id]
-                    ))
-                    print(f"\033[1;32mBot added to logger group using ID\033[0m")
-                    await asyncio.sleep(3)
-                except Exception as e2:
-                    print(f"\033[1;31mFailed to add bot using ID: {e2}\033[0m")
-                    return False
+                return False
         
-        # Now promote bot to admin
-        print(f"\033[1;33mMaking bot admin in logger group ({log_chat_id})...\033[0m")
-        try:
-            admin_rights = ChatAdminRights(
-                post_messages=True,
-                add_admins=False,
-                invite_users=True,
-                change_info=False,
-                ban_users=True,
-                delete_messages=True,
-                pin_messages=True,
-                edit_messages=True,
-                manage_call=True,
-                other=True
-            )
-            
-            # Use bot username for admin promotion
-            await user_client(EditAdminRequest(
-                channel=chat,
-                user_id=bot_username,  # Use username instead of ID
-                admin_rights=admin_rights,
-                rank="Cipher Elite Bot"
-            ))
-            print(f"\033[1;32mBot promoted to admin in logger group ({log_chat_id})\033[0m")
-            return True
-            
-        except Exception as e:
-            print(f"\033[1;31mFailed to promote bot to admin using username: {e}\033[0m")
-            # Try with bot ID as fallback
+        # Promote bot to admin if not already admin
+        if is_bot_in_group and not is_bot_admin:
+            print(f"\033[1;33mMaking bot admin in logger group ({log_chat_id})...\033[0m")
             try:
+                admin_rights = ChatAdminRights(
+                    post_messages=True,
+                    add_admins=False,
+                    invite_users=True,
+                    change_info=False,
+                    ban_users=True,
+                    delete_messages=True,
+                    pin_messages=True,
+                    edit_messages=True,
+                    manage_call=True,
+                    other=True
+                )
+                
+                # Use bot username for admin promotion
                 await user_client(EditAdminRequest(
                     channel=chat,
-                    user_id=bot_id,
+                    user_id=bot_username if bot_username else bot_id,
                     admin_rights=admin_rights,
                     rank="Cipher Elite Bot"
                 ))
-                print(f"\033[1;32mBot promoted to admin using ID\033[0m")
+                print(f"\033[1;32mBot promoted to admin in logger group ({log_chat_id})\033[0m")
                 return True
-            except Exception as e2:
-                print(f"\033[1;31mFailed to promote bot to admin using ID: {e2}\033[0m")
+                
+            except Exception as e:
+                print(f"\033[1;31mFailed to promote bot to admin: {e}\033[0m")
                 return False
+        
+        return True
         
     except ChatAdminRequiredError:
         print(f"\033[1;31mError: You need admin privileges in the logger group to add/promote the bot\033[0m")
@@ -182,10 +174,10 @@ async def send_startup_message(bot_client, user_client, plugins, system_info, co
 
     try:
         # Ensure bot is in logger group and has admin rights
-        if not await ensure_bot_in_group(bot_client, user_client, config.LOG_CHAT_ID):
-            print("\033[1;33mSkipping startup message due to bot setup issues\033[0m")
-            return
-            
+        bot_setup_success = await ensure_bot_in_group(bot_client, user_client, config.LOG_CHAT_ID)
+        if not bot_setup_success:
+            print("\033[1;33mBot setup failed, but trying to send startup message anyway\033[0m")
+        
         # Get user info from user client
         user = await user_client.get_me()
         
@@ -211,14 +203,44 @@ async def send_startup_message(bot_client, user_client, plugins, system_info, co
         buttons = [[Button.url("Support", "https://t.me/thanosprosss")]]
         logo_url = "https://files.catbox.moe/tocisn.png"
         
-        # Send message using bot client
-        await bot_client.send_message(
-            config.LOG_CHAT_ID,
-            message,
-            file=logo_url,
-            buttons=buttons
-        )
-        print(f"\033[1;32mStartup message sent to LOG_CHAT_ID ({config.LOG_CHAT_ID}) using bot token\033[0m")
+        # Try to get the group entity through user client first, then share it with bot
+        try:
+            # Get group entity from user client
+            chat_entity = await user_client.get_entity(config.LOG_CHAT_ID)
+            print(f"\033[1;33mGot group entity from user client: {chat_entity.title}\033[0m")
+            
+            # Try to get the same entity with bot client
+            # This forces the bot client to cache the entity
+            try:
+                bot_chat_entity = await bot_client.get_entity(config.LOG_CHAT_ID)
+                print(f"\033[1;32mBot client found group entity: {bot_chat_entity.title}\033[0m")
+            except Exception as e:
+                print(f"\033[1;33mBot client couldn't find group entity directly: {e}\033[0m")
+                # Try using the entity from user client
+                bot_chat_entity = chat_entity
+            
+            # Send message using bot client
+            await bot_client.send_message(
+                bot_chat_entity,
+                message,
+                file=logo_url,
+                buttons=buttons
+            )
+            print(f"\033[1;32mStartup message sent to LOG_CHAT_ID ({config.LOG_CHAT_ID}) using bot token\033[0m")
+            
+        except Exception as entity_error:
+            print(f"\033[1;31mFailed to get group entity: {entity_error}\033[0m")
+            print(f"\033[1;33mTrying to send message using LOG_CHAT_ID directly\033[0m")
+            
+            # Last resort: try sending directly with the chat ID
+            await bot_client.send_message(
+                config.LOG_CHAT_ID,
+                message,
+                file=logo_url,
+                buttons=buttons
+            )
+            print(f"\033[1;32mStartup message sent using direct chat ID\033[0m")
+            
     except Exception as e:
         print(f"\033[1;31mError sending startup message: {e}\033[0m")
 
