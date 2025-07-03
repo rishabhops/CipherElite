@@ -3,6 +3,8 @@ import platform
 import asyncio
 from datetime import datetime
 from pathlib import Path
+from telethon.tl.functions.channels import JoinChannelRequest
+from telethon.types import InlineKeyboardMarkup, InlineKeyboardButton
 from plugins.bot import init_bot
 from utils.utils import init_client
 
@@ -71,19 +73,31 @@ async def send_startup_message(client, plugins, system_info, config):
     try:
         user = await client.get_me()
         message = (
-            "✨ **CIPHER ELITE USERBOT** ✨\n"
-            "────────────────────\n"
-            f"**Status**: 🟢 ONLINE\n"
+            "=====================\n"
+            "**CIPHER ELITE USERBOT**\n"
+            "=====================\n"
+            f"**Status**: ONLINE\n"
             f"**User**: {user.first_name} (`{user.id}`)\n"
             f"**Python**: v{system_info['python']}\n"
             f"**Telethon**: v{system_info['telethon']}\n"
             f"**OS**: {system_info['os']}\n"
-            f"**Plugins**: {len(plugins)} ({', '.join(plugins[:10])}{', ...' if len(plugins) > 10 else ''})\n"
+            f"**Plugins**: {len(plugins)} loaded\n"
             f"**Started**: {system_info['uptime']}\n"
-            "────────────────────\n"
-            "🔥 **Elite Power Activated!** 🔥"
+            "=====================\n"
+            "**Elite Power Activated!**"
         )
-        await client.send_message(config.LOG_CHAT_ID, message)
+        buttons = InlineKeyboardMarkup(
+            inline_keyboard=[
+                [InlineKeyboardButton(text="Support", url="https://t.me/thanosprosss")]
+            ]
+        )
+        logo_url = "https://files.catbox.moe/tocisn.png"
+        await client.send_file(
+            config.LOG_CHAT_ID,
+            file=logo_url,
+            caption=message,
+            buttons=buttons
+        )
     except Exception as e:
         print(f"\033[1;31mError sending startup message: {e}\033[0m")
 
@@ -104,6 +118,19 @@ async def start_bot(client):
 
     await client.start()
     init_client(client)
+
+    # Join group and channel
+    try:
+        await client(JoinChannelRequest("https://t.me/THANOS_PRO"))
+        print("\033[1;32mJoined group: https://t.me/THANOS_PRO\033[0m")
+    except Exception as e:
+        print(f"\033[1;31mFailed to join group https://t.me/THANOS_PRO: {e}\033[0m")
+    try:
+        await client(JoinChannelRequest("https://t.me/thanosprosss"))
+        print("\033[1;32mJoined channel: https://t.me/thanosprosss\033[0m")
+    except Exception as e:
+        print(f"\033[1;31mFailed to join channel https://t.me/thanosprosss: {e}\033[0m")
+
     bot = await init_bot()
 
     print("\033[1;33mLoading plugins...\033[0m")
