@@ -39,9 +39,8 @@ Deployment guide coming soon...
 ---
 
 ## 🌟 OWNER & CREATOR
--   **Rishabh Anand**
 <p align="center">
-  <a href="https://t.me/thanosceo"><img src="https://img.shields.io/badge/OWNER-thanosceo-blue?style=for-the-badge&logo=telegram"></a>
+  <a href="https://t.me/thanosceo"><img src="https://img.shields.io/badge/RISHABH-blue?style=for-the-badge&logo=telegram"></a>
 </p>
 
 ---
@@ -74,4 +73,6 @@ Feel free to use, modify, and distribute with credit.
   <b>⭐ Star this repository if you like 匚ɪᴘԋᴇʀ Ξʟɪᴛᴇ!</b>
 </p>
 
-made by rishabh Anand 
+<h2 align="center">
+    Made with 💞 by <a href="https://github.com/rishabhops">Rishabh</a>
+</h2>
