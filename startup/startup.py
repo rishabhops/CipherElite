@@ -1,5 +1,6 @@
 import importlib
 import platform
+import asyncio
 from datetime import datetime
 from pathlib import Path
 from plugins.bot import init_bot
@@ -46,13 +47,13 @@ async def display_startup_message(client, plugins):
 \033[1;36m=====================
  CIPHER ELITE USERBOT
 =====================
-\033[1;32mStatus : ONLINE
-Python : v{system_info["python"]}
+\033[1;32mStatus  : ONLINE
+Python  : v{system_info["python"]}
 Telethon: v{system_info["telethon"]}
-OS     : {system_info["os"]}
-Plugins: {len(plugins)} loaded
-User   : {user_name}
-Started: {system_info["uptime"]}
+OS      : {system_info["os"]}
+Plugins : {len(plugins)} loaded
+User    : {user_name}
+Started : {system_info["uptime"]}
 \033[1;36m=====================
 \033[1;33mElite Power Activated!\033[0m
 """
@@ -71,7 +72,7 @@ async def send_startup_message(client, plugins, system_info, config):
         user = await client.get_me()
         message = (
             "✨ **CIPHER ELITE USERBOT** ✨\n"
-            "──────────────────\n"
+            "────────────────────\n"
             f"**Status**: 🟢 ONLINE\n"
             f"**User**: {user.first_name} (`{user.id}`)\n"
             f"**Python**: v{system_info['python']}\n"
@@ -79,8 +80,8 @@ async def send_startup_message(client, plugins, system_info, config):
             f"**OS**: {system_info['os']}\n"
             f"**Plugins**: {len(plugins)} ({', '.join(plugins[:10])}{', ...' if len(plugins) > 10 else ''})\n"
             f"**Started**: {system_info['uptime']}\n"
-            "──────────────────\n"
-            "🔥 **Ready to Rule Telegram!** 🔥"
+            "────────────────────\n"
+            "🔥 **Elite Power Activated!** 🔥"
         )
         await client.send_message(config.LOG_CHAT_ID, message)
     except Exception as e:
