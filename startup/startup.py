@@ -7,6 +7,7 @@ from telethon.tl.functions.channels import JoinChannelRequest, InviteToChannelRe
 from telethon.tl.functions.channels import EditAdminRequest
 from telethon.tl.types import ChatAdminRights
 from telethon import Button
+from telethon.errors import UserNotParticipantError
 from plugins.bot import init_bot
 from utils.utils import init_client
 
@@ -67,18 +68,23 @@ Started : {system_info["uptime"]}
 async def ensure_bot_in_group(bot_client, user_client, log_chat_id):
     """Ensure bot is in logger group and has admin privileges"""
     try:
-        # Check if bot is in the group
+        # Get bot information
+        bot_me = await bot_client.get_me()
+        bot_id = bot_me.id
+        
+        # Get the logger group entity
         chat = await user_client.get_entity(log_chat_id)
+        
+        # Check if bot is in the group
         try:
-            await bot_client.get_permissions(chat, bot_client.me)
+            await user_client.get_permissions(chat, bot_me)
             print(f"\033[1;32mBot is already in logger group ({log_chat_id})\033[0m")
-            return True
-        except (ValueError, TypeError):
+        except (UserNotParticipantError, ValueError, TypeError):
             # Bot is not in the group, add it
             print(f"\033[1;33mAdding bot to logger group ({log_chat_id})...\033[0m")
             await user_client(InviteToChannelRequest(
                 channel=chat,
-                users=[await user_client.get_input_entity(bot_client.me)]
+                users=[bot_id]
             ))
             print(f"\033[1;32mBot added to logger group ({log_chat_id})\033[0m")
             await asyncio.sleep(2)  # Wait for group to update
@@ -99,7 +105,7 @@ async def ensure_bot_in_group(bot_client, user_client, log_chat_id):
         )
         await user_client(EditAdminRequest(
             channel=chat,
-            user_id=await user_client.get_input_entity(bot_client.me),
+            user_id=bot_id,
             admin_rights=admin_rights,
             rank="Cipher Elite Bot"
         ))
@@ -194,7 +200,9 @@ async def start_bot(client):
     if not bot:
         print("\033[1;31mFailed to initialize bot client. Startup message won't be sent.\033[0m")
     else:
-        print(f"\033[1;32mBot client initialized: @{(await bot.get_me()).username}\033[0m")
+        # Ensure bot is properly connected
+        bot_me = await bot.get_me()
+        print(f"\033[1;32mBot client initialized: @{bot_me.username}\033[0m")
 
     print("\033[1;33mLoading plugins...\033[0m")
     plugins = await load_plugins(client)
