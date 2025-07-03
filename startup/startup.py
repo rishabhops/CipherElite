@@ -7,7 +7,7 @@ from telethon.tl.functions.channels import JoinChannelRequest, InviteToChannelRe
 from telethon.tl.functions.channels import EditAdminRequest
 from telethon.tl.types import ChatAdminRights
 from telethon import Button
-from telethon.errors import UserNotParticipantError
+from telethon.errors import UserNotParticipantError, UserAlreadyParticipantError, ChatAdminRequiredError
 from plugins.bot import init_bot
 from utils.utils import init_client
 
@@ -71,47 +71,103 @@ async def ensure_bot_in_group(bot_client, user_client, log_chat_id):
         # Get bot information
         bot_me = await bot_client.get_me()
         bot_id = bot_me.id
+        bot_username = bot_me.username
+        
+        print(f"\033[1;33mBot info: @{bot_username} (ID: {bot_id})\033[0m")
         
         # Get the logger group entity
         chat = await user_client.get_entity(log_chat_id)
         
         # Check if bot is in the group
+        is_bot_in_group = False
         try:
-            await user_client.get_permissions(chat, bot_me)
+            # Try to get bot permissions in the group
+            bot_perms = await user_client.get_permissions(chat, bot_me)
+            is_bot_in_group = True
             print(f"\033[1;32mBot is already in logger group ({log_chat_id})\033[0m")
-        except (UserNotParticipantError, ValueError, TypeError):
-            # Bot is not in the group, add it
-            print(f"\033[1;33mAdding bot to logger group ({log_chat_id})...\033[0m")
-            await user_client(InviteToChannelRequest(
-                channel=chat,
-                users=[bot_id]
-            ))
-            print(f"\033[1;32mBot added to logger group ({log_chat_id})\033[0m")
-            await asyncio.sleep(2)  # Wait for group to update
             
-        # Ensure bot has admin privileges
-        print(f"\033[1;33mMaking bot admin in logger group ({log_chat_id})...\033[0m")
-        admin_rights = ChatAdminRights(
-            post_messages=True,
-            add_admins=False,
-            invite_users=True,
-            change_info=False,
-            ban_users=True,
-            delete_messages=True,
-            pin_messages=True,
-            edit_messages=True,
-            manage_call=True,
-            other=True
-        )
-        await user_client(EditAdminRequest(
-            channel=chat,
-            user_id=bot_id,
-            admin_rights=admin_rights,
-            rank="Cipher Elite Bot"
-        ))
-        print(f"\033[1;32mBot promoted to admin in logger group ({log_chat_id})\033[0m")
-        return True
+            # Check if bot is already an admin
+            if bot_perms.is_admin:
+                print(f"\033[1;32mBot is already an admin in logger group\033[0m")
+                return True
+                
+        except (UserNotParticipantError, ValueError, TypeError) as e:
+            print(f"\033[1;33mBot is not in logger group. Error: {e}\033[0m")
+            is_bot_in_group = False
+            
+        # Add bot to group if not present
+        if not is_bot_in_group:
+            print(f"\033[1;33mAdding bot to logger group ({log_chat_id})...\033[0m")
+            try:
+                # Use bot username instead of ID for invitation
+                await user_client(InviteToChannelRequest(
+                    channel=chat,
+                    users=[bot_username]  # Use username instead of ID
+                ))
+                print(f"\033[1;32mBot added to logger group ({log_chat_id})\033[0m")
+                await asyncio.sleep(3)  # Wait longer for group to update
+                
+            except UserAlreadyParticipantError:
+                print(f"\033[1;32mBot was already in the group\033[0m")
+            except Exception as e:
+                print(f"\033[1;31mFailed to add bot to group: {e}\033[0m")
+                # Try alternative method using bot ID
+                try:
+                    await user_client(InviteToChannelRequest(
+                        channel=chat,
+                        users=[bot_id]
+                    ))
+                    print(f"\033[1;32mBot added to logger group using ID\033[0m")
+                    await asyncio.sleep(3)
+                except Exception as e2:
+                    print(f"\033[1;31mFailed to add bot using ID: {e2}\033[0m")
+                    return False
         
+        # Now promote bot to admin
+        print(f"\033[1;33mMaking bot admin in logger group ({log_chat_id})...\033[0m")
+        try:
+            admin_rights = ChatAdminRights(
+                post_messages=True,
+                add_admins=False,
+                invite_users=True,
+                change_info=False,
+                ban_users=True,
+                delete_messages=True,
+                pin_messages=True,
+                edit_messages=True,
+                manage_call=True,
+                other=True
+            )
+            
+            # Use bot username for admin promotion
+            await user_client(EditAdminRequest(
+                channel=chat,
+                user_id=bot_username,  # Use username instead of ID
+                admin_rights=admin_rights,
+                rank="Cipher Elite Bot"
+            ))
+            print(f"\033[1;32mBot promoted to admin in logger group ({log_chat_id})\033[0m")
+            return True
+            
+        except Exception as e:
+            print(f"\033[1;31mFailed to promote bot to admin using username: {e}\033[0m")
+            # Try with bot ID as fallback
+            try:
+                await user_client(EditAdminRequest(
+                    channel=chat,
+                    user_id=bot_id,
+                    admin_rights=admin_rights,
+                    rank="Cipher Elite Bot"
+                ))
+                print(f"\033[1;32mBot promoted to admin using ID\033[0m")
+                return True
+            except Exception as e2:
+                print(f"\033[1;31mFailed to promote bot to admin using ID: {e2}\033[0m")
+                return False
+        
+    except ChatAdminRequiredError:
+        print(f"\033[1;31mError: You need admin privileges in the logger group to add/promote the bot\033[0m")
+        return False
     except Exception as e:
         print(f"\033[1;31mFailed to add/make bot admin in logger group: {e}\033[0m")
         return False
@@ -127,7 +183,7 @@ async def send_startup_message(bot_client, user_client, plugins, system_info, co
     try:
         # Ensure bot is in logger group and has admin rights
         if not await ensure_bot_in_group(bot_client, user_client, config.LOG_CHAT_ID):
-            print("\033[1;33mSkipping startup message due to bot not in logger group\033[0m")
+            print("\033[1;33mSkipping startup message due to bot setup issues\033[0m")
             return
             
         # Get user info from user client
