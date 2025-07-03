@@ -84,6 +84,9 @@ async def configure_bot_via_botfather(user_client, bot_username):
         "🔗 Support: @thanosprosss"
     )
     
+    bot_about = (
+        f"🤖 Assistant for {user_first_name} | Cipher Elite | @thanosprosss"
+    )    
     print(f"\033[1;33mConfiguring bot @{bot_username} via BotFather...\033[0m")
     
     try:
@@ -131,7 +134,7 @@ async def configure_bot_via_botfather(user_client, bot_username):
             await asyncio.sleep(1)
             await conv.send_message(f"@{bot_username}")
             await asyncio.sleep(1)
-            await conv.send_message(bot_bio)
+            await conv.send_message(bot_about)
             await asyncio.sleep(2)
             
         print("\033[1;32m✅ Bot successfully configured via BotFather\033[0m")
