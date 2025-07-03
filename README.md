@@ -40,6 +40,7 @@ Deployment guide coming soon...
 
 ## 🌟 OWNER & CREATOR
 <p align="center">
+  Rishabh Anand
   <a href="https://t.me/thanosceo"><img src="https://img.shields.io/badge/OWNER-thanosceo-blue?style=for-the-badge&logo=telegram"></a>
 </p>
 
