@@ -1,4 +1,3 @@
-# Coming soon! This bot is currently under development.  
 # 匚ɪᴘԋᴇʀ Ξʟɪᴛᴇ USERBOT
 
 <p align="center">
