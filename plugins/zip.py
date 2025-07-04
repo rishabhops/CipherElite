@@ -56,8 +56,8 @@ async def register_commands():
 
         await elite.edit("`Zipped Successfully. Uploading...`")
         await event.reply(
-            file=zip_path,
-            text=f"**Zipped in {time.time() - start:.2f}s.**"
+            f"**Zipped in {time.time() - start:.2f}s.**",
+            file=zip_path
         )
         
         os.remove(zip_path)
@@ -90,8 +90,8 @@ async def register_commands():
             for file in files:
                 file_path = os.path.join(root, file)
                 await event.reply(
-                    file=file_path,
-                    text=f"**Unzipped {file}**"
+                    f"**Unzipped {file}**",
+                    file=file_path
                 )
                 uploaded += 1
                 os.remove(file_path)
