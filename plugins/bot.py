@@ -24,7 +24,8 @@ import math
 
 bot = TelegramClient('bot', Config.API_ID, Config.API_HASH)
 CMD_LIST = {}
-PLUGINS_PER_PAGE = 9  # Number of plugins per page
+PLUGINS_PER_PAGE = 9  # 3x3 grid (3 rows, 3 columns)
+PLUGINS_PER_ROW = 3   # 3 columns per row
 
 def init(client_instance):
     pass
@@ -52,14 +53,22 @@ async def init_bot():
                 "🔍 <i>Select a plugin to see its commands</i>"
             )
             
-            # Create buttons with pagination
+            # Create buttons in 3x3 grid
             buttons = []
             plugin_names = list(CMD_LIST.keys())
             total_pages = math.ceil(len(plugin_names) / PLUGINS_PER_PAGE)
             
-            # First page buttons
-            for plugin in plugin_names[:PLUGINS_PER_PAGE]:
-                buttons.append([Button.inline(f"🔹 {plugin.title()}", f"help_plugin_{plugin}")])
+            # First page buttons in 3x3 grid
+            row = []
+            for i, plugin in enumerate(plugin_names[:PLUGINS_PER_PAGE]):
+                row.append(Button.inline(f"🔹 {plugin.title()}", f"help_plugin_{plugin}"))
+                # Start new row every 3 buttons
+                if (i + 1) % PLUGINS_PER_ROW == 0:
+                    buttons.append(row)
+                    row = []
+            # Add any remaining buttons in the last row
+            if row:
+                buttons.append(row)
             
             # Add navigation buttons if needed
             nav_buttons = []
@@ -114,18 +123,27 @@ async def init_bot():
             text = (
                 "🌟 <b>CIPHER ELITE USERBOT</b> 🌟\n\n"
                 "⚡ <i>Advanced Telegram Userbot</i>\n"
-                f"📦 <b>Loaded Plugins:</b> <code>{len(CMD_LIST)}</code>\n"
+                f"📦 <b>Loaded Plugins:</b> <code>{len(plugin_names)}</code>\n"
                 f"📑 <b>Page:</b> <code>{page+1}/{total_pages}</code>\n\n"
                 "🔍 <i>Select a plugin to see its commands</i>"
             )
             
-            # Create buttons for current page
+            # Create buttons in 3x3 grid for current page
             buttons = []
             start_idx = page * PLUGINS_PER_PAGE
             end_idx = start_idx + PLUGINS_PER_PAGE
+            current_plugins = plugin_names[start_idx:end_idx]
             
-            for plugin in plugin_names[start_idx:end_idx]:
-                buttons.append([Button.inline(f"🔹 {plugin.title()}", f"help_plugin_{plugin}")])
+            row = []
+            for i, plugin in enumerate(current_plugins):
+                row.append(Button.inline(f"🔹 {plugin.title()}", f"help_plugin_{plugin}"))
+                # Start new row every 3 buttons
+                if (i + 1) % PLUGINS_PER_ROW == 0:
+                    buttons.append(row)
+                    row = []
+            # Add any remaining buttons in the last row
+            if row:
+                buttons.append(row)
             
             # Add navigation buttons
             nav_buttons = []
@@ -151,15 +169,23 @@ async def init_bot():
             text = (
                 "🌟 <b>CIPHER ELITE USERBOT</b> 🌟\n\n"
                 "⚡ <i>Advanced Telegram Userbot</i>\n"
-                f"📦 <b>Loaded Plugins:</b> <code>{len(CMD_LIST)}</code>\n"
+                f"📦 <b>Loaded Plugins:</b> <code>{len(plugin_names)}</code>\n"
                 f"📑 <b>Page:</b> <code>1/{total_pages}</code>\n\n"
                 "🔍 <i>Select a plugin to see its commands</i>"
             )
             
-            # Create buttons for first page
+            # Create buttons in 3x3 grid for first page
             buttons = []
-            for plugin in plugin_names[:PLUGINS_PER_PAGE]:
-                buttons.append([Button.inline(f"🔹 {plugin.title()}", f"help_plugin_{plugin}")])
+            row = []
+            for i, plugin in enumerate(plugin_names[:PLUGINS_PER_PAGE]):
+                row.append(Button.inline(f"✘{plugin.title()}✘", f"help_plugin_{plugin}"))
+                # Start new row every 3 buttons
+                if (i + 1) % PLUGINS_PER_ROW == 0:
+                    buttons.append(row)
+                    row = []
+            # Add any remaining buttons in the last row
+            if row:
+                buttons.append(row)
             
             # Add navigation buttons if needed
             nav_buttons = []
