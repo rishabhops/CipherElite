@@ -47,10 +47,12 @@ async def init_bot():
         if event.text == "help":
             # Create beautiful help menu
             text = (
-                "🌟 <b>CIPHER ELITE USERBOT</b> 🌟\n\n"
-                "⚡ <i>Advanced Telegram Userbot</i>\n"
-                f"📦 <b>Loaded Plugins:</b> <code>{len(CMD_LIST)}</code>\n\n"
-                "🔍 <i>Select a plugin to see its commands</i>"
+                "✨ <b>CIPHER ELITE USERBOT</b> ✨\n"
+                "━━━━━━━━━━━━━━━━━━━━━━\n"
+                f"⚡ <b>Loaded Plugins:</b> <code>{len(CMD_LIST)}</code>\n"
+                f"📂 <b>Commands:</b> <code>{sum(len(data['commands']) for data in CMD_LIST.values()}</code>\n\n"
+                "<i>Select a plugin to view its commands</i>\n"
+                "━━━━━━━━━━━━━━━━━━━━━━"
             )
             
             # Create buttons in 3x3 grid
@@ -61,7 +63,9 @@ async def init_bot():
             # First page buttons in 3x3 grid
             row = []
             for i, plugin in enumerate(plugin_names[:PLUGINS_PER_PAGE]):
-                row.append(Button.inline(f"{plugin.title()}", f"help_plugin_{plugin}"))
+                # Shorten long plugin names
+                display_name = plugin.title()[:10] + ".." if len(plugin) > 12 else plugin.title()
+                row.append(Button.inline(display_name, f"help_plugin_{plugin}"))
                 # Start new row every 3 buttons
                 if (i + 1) % PLUGINS_PER_ROW == 0:
                     buttons.append(row)
@@ -71,14 +75,8 @@ async def init_bot():
                 buttons.append(row)
             
             # Add navigation buttons if needed
-            nav_buttons = []
             if total_pages > 1:
-                nav_buttons.append(Button.inline("➡️ Next", f"help_page_1"))
-            
-            if nav_buttons:
-                buttons.append(nav_buttons)
-            
-            buttons.append([Button.url("📌 Support", "https://t.me/thanosprosss")])
+                buttons.append([Button.inline("Next Page →", f"help_page_1")])
             
             result = builder.article(
                 title="Cipher Elite Help Menu",
@@ -99,17 +97,18 @@ async def init_bot():
             if plugin_name in CMD_LIST:
                 # Create beautiful plugin details view
                 text = (
-                    f"✨ <b>{plugin_name.title()} Plugin</b> ✨\n\n"
-                    f"📝 <i>{CMD_LIST[plugin_name]['description']}</i>\n\n"
+                    f"🔹 <b>{plugin_name.title()} Plugin</b>\n"
+                    "━━━━━━━━━━━━━━━━━━━━━━\n"
+                    f"<i>{CMD_LIST[plugin_name]['description']}</i>\n\n"
                     "<b>Available Commands:</b>\n"
                 )
                 
-                # Add commands with emojis
+                # Add commands with consistent formatting
                 for cmd in CMD_LIST[plugin_name]["commands"]:
                     text += f"• <code>{cmd}</code>\n"
                 
                 # Add back button
-                buttons = [[Button.inline("🔙 Back to Main Menu", "help_main_0")]]
+                buttons = [[Button.inline("← Back to Menu", "help_page_0")]]
                 await event.edit(text, buttons=buttons, parse_mode='html')
             return
         
@@ -121,11 +120,12 @@ async def init_bot():
             
             # Create beautiful main menu
             text = (
-                "🌟 <b>CIPHER ELITE USERBOT</b> 🌟\n\n"
-                "⚡ <i>Advanced Telegram Userbot</i>\n"
-                f"📦 <b>Loaded Plugins:</b> <code>{len(plugin_names)}</code>\n"
-                f"📑 <b>Page:</b> <code>{page+1}/{total_pages}</code>\n\n"
-                "🔍 <i>Select a plugin to see its commands</i>"
+                "✨ <b>CIPHER ELITE USERBOT</b> ✨\n"
+                "━━━━━━━━━━━━━━━━━━━━━━\n"
+                f"⚡ <b>Loaded Plugins:</b> <code>{len(plugin_names)}</code>\n"
+                f"📂 <b>Page:</b> <code>{page+1}/{total_pages}</code>\n\n"
+                "<i>Select a plugin to view its commands</i>\n"
+                "━━━━━━━━━━━━━━━━━━━━━━"
             )
             
             # Create buttons in 3x3 grid for current page
@@ -136,7 +136,9 @@ async def init_bot():
             
             row = []
             for i, plugin in enumerate(current_plugins):
-                row.append(Button.inline(f"{plugin.title()}", f"help_plugin_{plugin}"))
+                # Shorten long plugin names
+                display_name = plugin.title()[:10] + ".." if len(plugin) > 12 else plugin.title()
+                row.append(Button.inline(display_name, f"help_plugin_{plugin}"))
                 # Start new row every 3 buttons
                 if (i + 1) % PLUGINS_PER_ROW == 0:
                     buttons.append(row)
@@ -148,56 +150,15 @@ async def init_bot():
             # Add navigation buttons
             nav_buttons = []
             if page > 0:
-                nav_buttons.append(Button.inline("⬅️ Prev", f"help_page_{page-1}"))
+                nav_buttons.append(Button.inline("← Previous", f"help_page_{page-1}"))
             if end_idx < len(plugin_names):
-                nav_buttons.append(Button.inline("➡️ Next", f"help_page_{page+1}"))
+                nav_buttons.append(Button.inline("Next →", f"help_page_{page+1}"))
             
             if nav_buttons:
                 buttons.append(nav_buttons)
-            
-            buttons.append([Button.url("📌 Support", "https://t.me/thanosprosss")])
             
             await event.edit(text, buttons=buttons, parse_mode='html')
             return
-        
-        # Handle main menu
-        if data == "main_0":
-            plugin_names = list(CMD_LIST.keys())
-            total_pages = math.ceil(len(plugin_names) / PLUGINS_PER_PAGE)
-            
-            # Create beautiful main menu
-            text = (
-                "🌟 <b>CIPHER ELITE USERBOT</b> 🌟\n\n"
-                "⚡ <i>Advanced Telegram Userbot</i>\n"
-                f"📦 <b>Loaded Plugins:</b> <code>{len(plugin_names)}</code>\n"
-                f"📑 <b>Page:</b> <code>1/{total_pages}</code>\n\n"
-                "🔍 <i>Select a plugin to see its commands</i>"
-            )
-            
-            # Create buttons in 3x3 grid for first page
-            buttons = []
-            row = []
-            for i, plugin in enumerate(plugin_names[:PLUGINS_PER_PAGE]):
-                row.append(Button.inline(f"{plugin.title()}", f"help_plugin_{plugin}"))
-                # Start new row every 3 buttons
-                if (i + 1) % PLUGINS_PER_ROW == 0:
-                    buttons.append(row)
-                    row = []
-            # Add any remaining buttons in the last row
-            if row:
-                buttons.append(row)
-            
-            # Add navigation buttons if needed
-            nav_buttons = []
-            if total_pages > 1:
-                nav_buttons.append(Button.inline("➡️ Next", f"help_page_1"))
-            
-            if nav_buttons:
-                buttons.append(nav_buttons)
-            
-            buttons.append([Button.url("📌 Support", "https://t.me/thanosprosss")])
-            
-            await event.edit(text, buttons=buttons, parse_mode='html')
     
     return bot
 
