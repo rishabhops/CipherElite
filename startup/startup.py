@@ -71,6 +71,7 @@ Started : {system_info["uptime"]}
 
 from telethon.tl.functions.users import GetFullUserRequest
 
+
 async def configure_bot_via_botfather(user_client, bot_username):
     """Automatically configure bot through BotFather using user account"""
     user = await user_client.get_me()
@@ -87,29 +88,16 @@ async def configure_bot_via_botfather(user_client, bot_username):
     )
     bot_about = f"🤖 Assistant for {user_first_name} | Cipher Elite | @thanosprosss"
 
-    # Initialize match flags
-    name_match, bio_match, about_match = False, False, False
-    
+    # Check only the bot name
     try:
-        # Get bot entity and full user info
         bot_entity = await user_client.get_entity(bot_username)
-        full_user = await user_client(GetFullUserRequest(bot_entity))
-        
-        # Get current bot settings
         current_name = bot_entity.first_name
-        current_bio = full_user.about or ""
-        current_about = full_user.bot.description if full_user.bot else ""
-
-        # Check if configuration matches
-        name_match = current_name == bot_name
-        bio_match = current_bio.strip() == bot_bio.strip()
-        about_match = current_about.strip() == bot_about.strip()
-
-        if name_match and bio_match and about_match:
-            print("\033[1;32m✅ Bot already configured properly - Skipping BotFather setup\033[0m")
+        
+        if current_name == bot_name:
+            print("\033[1;32m✅ Bot name already matches - Skipping BotFather setup\033[0m")
             return True
     except Exception as e:
-        print(f"\033[1;33m⚠️ Couldn't verify bot config: {e}\033[0m")
+        print(f"\033[1;33m⚠️ Couldn't verify bot name: {e}\033[0m")
 
     print(f"\033[1;33mConfiguring bot @{bot_username} via BotFather...\033[0m")
     
@@ -129,32 +117,29 @@ async def configure_bot_via_botfather(user_client, bot_username):
             await conv.send_message("\n".join(commands))
             await asyncio.sleep(2)
             
-            # Set bot name if needed
-            if not name_match:
-                await conv.send_message("/setname")
-                await asyncio.sleep(1)
-                await conv.send_message(f"@{bot_username}")
-                await asyncio.sleep(1)
-                await conv.send_message(bot_name)
-                await asyncio.sleep(2)
+            # Set bot name
+            await conv.send_message("/setname")
+            await asyncio.sleep(1)
+            await conv.send_message(f"@{bot_username}")
+            await asyncio.sleep(1)
+            await conv.send_message(bot_name)
+            await asyncio.sleep(2)
             
-            # Set bot description if needed
-            if not bio_match:
-                await conv.send_message("/setdescription")
-                await asyncio.sleep(1)
-                await conv.send_message(f"@{bot_username}")
-                await asyncio.sleep(1)
-                await conv.send_message(bot_bio)
-                await asyncio.sleep(2)
+            # Set bot description
+            await conv.send_message("/setdescription")
+            await asyncio.sleep(1)
+            await conv.send_message(f"@{bot_username}")
+            await asyncio.sleep(1)
+            await conv.send_message(bot_bio)
+            await asyncio.sleep(2)
             
-            # Set bot about text if needed
-            if not about_match:
-                await conv.send_message("/setabouttext")
-                await asyncio.sleep(1)
-                await conv.send_message(f"@{bot_username}")
-                await asyncio.sleep(1)
-                await conv.send_message(bot_about)
-                await asyncio.sleep(2)
+            # Set bot about text
+            await conv.send_message("/setabouttext")
+            await asyncio.sleep(1)
+            await conv.send_message(f"@{bot_username}")
+            await asyncio.sleep(1)
+            await conv.send_message(bot_about)
+            await asyncio.sleep(2)
             
         print("\033[1;32m✅ Bot successfully configured via BotFather\033[0m")
         return True
@@ -166,7 +151,6 @@ async def configure_bot_via_botfather(user_client, bot_username):
               f"2. Use /setdescription to set bio to:\n{bot_bio}\n"
               f"3. Use /setabouttext to set about text to:\n{bot_about}\033[0m")
         return False
-
 async def update_bot_profile_picture(bot_client, user_client):
     """Update bot profile picture using cipher.jpg from images folder"""
     try:
