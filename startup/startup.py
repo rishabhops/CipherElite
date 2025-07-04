@@ -69,6 +69,8 @@ Started : {system_info["uptime"]}
     print(banner)
     return system_info
 
+from telethon.tl.functions.users import GetFullUserRequest
+
 async def configure_bot_via_botfather(user_client, bot_username):
     """Automatically configure bot through BotFather using user account"""
     user = await user_client.get_me()
@@ -85,13 +87,20 @@ async def configure_bot_via_botfather(user_client, bot_username):
     )
     bot_about = f"🤖 Assistant for {user_first_name} | Cipher Elite | @thanosprosss"
 
-    # Check current bot configuration
+    # Initialize match flags
+    name_match, bio_match, about_match = False, False, False
+    
     try:
+        # Get bot entity and full user info
         bot_entity = await user_client.get_entity(bot_username)
+        full_user = await user_client(GetFullUserRequest(bot_entity))
+        
+        # Get current bot settings
         current_name = bot_entity.first_name
-        current_bio = getattr(bot_entity.bot, 'description', '') if bot_entity.bot else ''
-        current_about = bot_entity.about or ''
+        current_bio = full_user.about or ""
+        current_about = full_user.bot.description if full_user.bot else ""
 
+        # Check if configuration matches
         name_match = current_name == bot_name
         bio_match = current_bio.strip() == bot_bio.strip()
         about_match = current_about.strip() == bot_about.strip()
