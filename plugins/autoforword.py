@@ -19,9 +19,11 @@
 
 import os
 import json
+import asyncio
 from pathlib import Path
 from telethon import events
-from telethon.types import Message
+from telethon.types import Message, Channel
+from telethon.errors import ChatAdminRequiredError
 from utils.utils import CipherElite
 from utils.decorators import rishabh
 from plugins.bot import add_handler
@@ -44,19 +46,22 @@ def init(client_instance):
     ]
     description = (
         "Auto-post content between Telegram channels\n\n"
+        "**Requirements:**\n"
+        "- Bot must be admin in both channels\n"
+        "- Bot needs 'Post Messages' permission\n\n"
         "**Examples:**\n" + "\n".join(examples)
     )
-    add_handler("autopost", commands, description)
+    add_handler("autoforword", commands, description)
 
 def load_autopost_db():
     """Load autopost data from JSON file"""
     try:
-        DB_FOLDER.mkdir(exist_ok=True)
+        DB_FOLDER.mkdir(exist_ok=True, parents=True)
         if DB_FILE.exists():
             with open(DB_FILE, 'r') as f:
                 return json.load(f)
     except Exception as e:
-        print(f"Error loading autopost DB: {e}")
+        print(f"❌ Error loading autopost DB: {e}")
     return {}
 
 def save_autopost_db(data):
@@ -66,7 +71,16 @@ def save_autopost_db(data):
             json.dump(data, f, indent=4)
         return True
     except Exception as e:
-        print(f"Error saving autopost DB: {e}")
+        print(f"❌ Error saving autopost DB: {e}")
+        return False
+
+async def check_channel_permissions(client, chat_id):
+    """Verify bot has admin rights in channel"""
+    try:
+        perms = await client.get_permissions(chat_id, 'me')
+        return perms.is_admin and perms.post_messages
+    except Exception as e:
+        print(f"❌ Permission check failed for {chat_id}: {e}")
         return False
 
 async def register_commands():
@@ -81,18 +95,32 @@ async def register_commands():
         # Get source entity
         try:
             source_entity = await event.client.get_entity(source_chat)
-            if not source_entity:
-                return await event.reply("`Invalid source channel specified.`")
-        except:
-            return await event.reply("`Invalid source channel specified.`")
+            if not isinstance(source_entity, Channel):
+                return await event.reply("`Source must be a channel!`")
+        except Exception as e:
+            return await event.reply(f"`❌ Invalid source channel: {e}`")
         
         # Get target entity
         try:
             target_entity = await event.client.get_entity(target_chat)
-            if not target_entity:
-                return await event.reply("`Invalid target channel specified.`")
-        except:
-            return await event.reply("`Invalid target channel specified.`")
+            if not isinstance(target_entity, Channel):
+                return await event.reply("`Target must be a channel!`")
+        except Exception as e:
+            return await event.reply(f"`❌ Invalid target channel: {e}`")
+        
+        # Check permissions in source channel
+        if not await check_channel_permissions(event.client, source_entity.id):
+            return await event.reply(
+                f"`❌ Bot needs admin rights with post permission in source channel:`\n"
+                f"{source_entity.title} ({source_entity.id})"
+            )
+        
+        # Check permissions in target channel
+        if not await check_channel_permissions(event.client, target_entity.id):
+            return await event.reply(
+                f"`❌ Bot needs admin rights with post permission in target channel:`\n"
+                f"{target_entity.title} ({target_entity.id})"
+            )
         
         key = f"{source_entity.id}|{target_entity.id}"
         
@@ -113,9 +141,9 @@ async def register_commands():
         if save_autopost_db(autopost_db):
             await event.reply(
                 f"**✅ Autopost enabled!**\n"
-                f"From: `{source_entity.title}`\n"
-                f"To: `{target_entity.title}`\n\n"
-                f"**Note:** Bot must be admin in both channels!"
+                f"From: `{source_entity.title}` ({source_entity.id})\n"
+                f"To: `{target_entity.title}` ({target_entity.id})\n\n"
+                f"**Note:** All new messages will be forwarded automatically!"
             )
         else:
             await event.reply("`Failed to save autopost configuration. Please check logs.`")
@@ -128,17 +156,13 @@ async def register_commands():
         
         try:
             source_entity = await event.client.get_entity(source_chat)
-            if not source_entity:
-                return await event.reply("`Invalid source channel specified.`")
-        except:
-            return await event.reply("`Invalid source channel specified.`")
+        except Exception as e:
+            return await event.reply(f"`❌ Invalid source channel: {e}`")
         
         try:
             target_entity = await event.client.get_entity(target_chat)
-            if not target_entity:
-                return await event.reply("`Invalid target channel specified.`")
-        except:
-            return await event.reply("`Invalid target channel specified.`")
+        except Exception as e:
+            return await event.reply(f"`❌ Invalid target channel: {e}`")
         
         key = f"{source_entity.id}|{target_entity.id}"
         
@@ -174,18 +198,37 @@ async def register_commands():
         
         await event.reply(message)
 
-    @CipherElite.on(events.NewMessage())
+    @CipherElite.on(events.NewMessage(incoming=True))
     async def handle_autopost(event: Message):
-        if event.is_private:
+        # Ignore private chats and messages from bots
+        if event.is_private or event.sender.bot:
             return
         
         current_chat = event.chat_id
+        
+        # Find matching autoposts
+        matches = []
         for key, data in autopost_db.items():
             if current_chat == data["source"]:
-                try:
-                    await event.client.send_message(
-                        data["target"],
-                        event.message
-                    )
-                except Exception as e:
-                    print(f"Autopost error from {data['source']} to {data['target']}: {e}")
+                matches.append(data)
+        
+        if not matches:
+            return
+        
+        print(f"📨 Processing autopost from {current_chat}")
+        
+        # Process each match
+        for data in matches:
+            target_id = data["target"]
+            try:
+                # Forward the message
+                await event.client.send_message(
+                    entity=target_id,
+                    message=event.message,
+                    silent=True
+                )
+                print(f"✅ Forwarded to {target_id}")
+            except ChatAdminRequiredError:
+                print(f"❌ Bot not admin in target channel: {target_id}")
+            except Exception as e:
+                print(f"❌ Autopost error ({current_chat}→{target_id}): {e}")
