@@ -20,6 +20,7 @@
 import os
 import time
 import zipfile
+import shutil  # Added for directory removal
 
 from telethon import events
 from telethon.types import Message
@@ -86,16 +87,26 @@ async def register_commands():
         
         await elite.edit("`Unzipped Successfully. Uploading files...`")
         uploaded = 0
+        
+        # Recursively process all files in all subdirectories
         for root, _, files in os.walk(unzip_dir):
             for file in files:
                 file_path = os.path.join(root, file)
-                await event.reply(
-                    f"**Unzipped {file}**",
-                    file=file_path
-                )
-                uploaded += 1
-                os.remove(file_path)
+                try:
+                    await event.reply(
+                        f"**Unzipped {file}**",
+                        file=file_path
+                    )
+                    uploaded += 1
+                except Exception as e:
+                    print(f"Error uploading {file}: {e}")
+                finally:
+                    # Ensure file is removed even if upload fails
+                    if os.path.exists(file_path):
+                        os.remove(file_path)
         
         await elite.edit(f"**Successfully uploaded {uploaded} files!**")
-        os.rmdir(unzip_dir)
+        
+        # Remove the directory and all its contents
+        shutil.rmtree(unzip_dir, ignore_errors=True)
         os.remove(download_path)
