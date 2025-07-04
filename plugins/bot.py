@@ -61,7 +61,7 @@ async def init_bot():
             # First page buttons in 3x3 grid
             row = []
             for i, plugin in enumerate(plugin_names[:PLUGINS_PER_PAGE]):
-                row.append(Button.inline(f"🔹 {plugin.title()}", f"help_plugin_{plugin}"))
+                row.append(Button.inline(f"{plugin.title()}", f"help_plugin_{plugin}"))
                 # Start new row every 3 buttons
                 if (i + 1) % PLUGINS_PER_ROW == 0:
                     buttons.append(row)
@@ -136,7 +136,7 @@ async def init_bot():
             
             row = []
             for i, plugin in enumerate(current_plugins):
-                row.append(Button.inline(f"🔹 {plugin.title()}", f"help_plugin_{plugin}"))
+                row.append(Button.inline(f"{plugin.title()}", f"help_plugin_{plugin}"))
                 # Start new row every 3 buttons
                 if (i + 1) % PLUGINS_PER_ROW == 0:
                     buttons.append(row)
@@ -178,7 +178,7 @@ async def init_bot():
             buttons = []
             row = []
             for i, plugin in enumerate(plugin_names[:PLUGINS_PER_PAGE]):
-                row.append(Button.inline(f"✘{plugin.title()}✘", f"help_plugin_{plugin}"))
+                row.append(Button.inline(f"{plugin.title()}", f"help_plugin_{plugin}"))
                 # Start new row every 3 buttons
                 if (i + 1) % PLUGINS_PER_ROW == 0:
                     buttons.append(row)
