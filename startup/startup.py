@@ -83,27 +83,34 @@ async def configure_bot_via_botfather(user_client, bot_username):
         "🛡️ Advanced Automation & Management\n\n"
         "🔗 Support: @thanosprosss"
     )
-    
-    bot_about = (
-        f"🤖 Assistant for {user_first_name} | Cipher Elite | @thanosprosss"
-    )    
+    bot_about = f"🤖 Assistant for {user_first_name} | Cipher Elite | @thanosprosss"
+
+    # Check current bot configuration
+    try:
+        bot_entity = await user_client.get_entity(bot_username)
+        current_name = bot_entity.first_name
+        current_bio = getattr(bot_entity.bot, 'description', '') if bot_entity.bot else ''
+        current_about = bot_entity.about or ''
+
+        name_match = current_name == bot_name
+        bio_match = current_bio.strip() == bot_bio.strip()
+        about_match = current_about.strip() == bot_about.strip()
+
+        if name_match and bio_match and about_match:
+            print("\033[1;32m✅ Bot already configured properly - Skipping BotFather setup\033[0m")
+            return True
+    except Exception as e:
+        print(f"\033[1;33m⚠️ Couldn't verify bot config: {e}\033[0m")
+
     print(f"\033[1;33mConfiguring bot @{bot_username} via BotFather...\033[0m")
     
     try:
-        # Start conversation with BotFather using username instead of ID
-        await user_client.send_message('BotFather', "/start")
-        await asyncio.sleep(2)
-        
-        # Wait for BotFather's response to ensure conversation is established
         async with user_client.conversation('BotFather') as conv:
-            # Send messages directly to BotFather
+            # Set bot commands
             await conv.send_message("/setcommands")
             await asyncio.sleep(1)
-            
             await conv.send_message(f"@{bot_username}")
             await asyncio.sleep(1)
-            
-            # Set bot commands
             commands = [
                 "start - Start the bot",
                 "help - Show help information",
@@ -113,29 +120,32 @@ async def configure_bot_via_botfather(user_client, bot_username):
             await conv.send_message("\n".join(commands))
             await asyncio.sleep(2)
             
-            # Set bot name
-            await conv.send_message("/setname")
-            await asyncio.sleep(1)
-            await conv.send_message(f"@{bot_username}")
-            await asyncio.sleep(1)
-            await conv.send_message(bot_name)
-            await asyncio.sleep(2)
+            # Set bot name if needed
+            if not name_match:
+                await conv.send_message("/setname")
+                await asyncio.sleep(1)
+                await conv.send_message(f"@{bot_username}")
+                await asyncio.sleep(1)
+                await conv.send_message(bot_name)
+                await asyncio.sleep(2)
             
-            # Set bot description
-            await conv.send_message("/setdescription")
-            await asyncio.sleep(1)
-            await conv.send_message(f"@{bot_username}")
-            await asyncio.sleep(1)
-            await conv.send_message(bot_bio)
-            await asyncio.sleep(2)
+            # Set bot description if needed
+            if not bio_match:
+                await conv.send_message("/setdescription")
+                await asyncio.sleep(1)
+                await conv.send_message(f"@{bot_username}")
+                await asyncio.sleep(1)
+                await conv.send_message(bot_bio)
+                await asyncio.sleep(2)
             
-            # Set bot about text
-            await conv.send_message("/setabouttext")
-            await asyncio.sleep(1)
-            await conv.send_message(f"@{bot_username}")
-            await asyncio.sleep(1)
-            await conv.send_message(bot_about)
-            await asyncio.sleep(2)
+            # Set bot about text if needed
+            if not about_match:
+                await conv.send_message("/setabouttext")
+                await asyncio.sleep(1)
+                await conv.send_message(f"@{bot_username}")
+                await asyncio.sleep(1)
+                await conv.send_message(bot_about)
+                await asyncio.sleep(2)
             
         print("\033[1;32m✅ Bot successfully configured via BotFather\033[0m")
         return True
@@ -145,7 +155,7 @@ async def configure_bot_via_botfather(user_client, bot_username):
         print("\033[1;33m⚠️ Please configure bot manually through @BotFather:\n"
               f"1. Use /setname to change bot name to '{bot_name}'\n"
               f"2. Use /setdescription to set bio to:\n{bot_bio}\n"
-              f"3. Use /setabouttext to set about text to:\n{bot_bio}\033[0m")
+              f"3. Use /setabouttext to set about text to:\n{bot_about}\033[0m")
         return False
 
 async def update_bot_profile_picture(bot_client, user_client):
