@@ -53,7 +53,7 @@ async def init_bot():
                 f"📂 <b>Commands:</b> <code>{sum(len(data['commands']) for data in CMD_LIST.values()}</code>\n\n"
                 "<i>Select a plugin to view its commands</i>\n"
                 "━━━━━━━━━━━━━━━━━━━━━━"
-                  )
+                   )
             
             # Create buttons in 3x3 grid
             buttons = []
