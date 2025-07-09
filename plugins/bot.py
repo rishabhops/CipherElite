@@ -45,15 +45,19 @@ async def init_bot():
     async def inline_handler(event):
         builder = event.builder
         if event.text == "help":
+            # Precompute values before building the string
+            total_plugins = len(CMD_LIST)
+            total_commands = sum(len(data['commands']) for data in CMD_LIST.values())
+            
             # Create beautiful help menu
             text = (
                 "✨ <b>CIPHER ELITE USERBOT</b> ✨\n"
                 "━━━━━━━━━━━━━━━━━━━━━━\n"
-                f"⚡ <b>Loaded Plugins:</b> <code>{len(CMD_LIST)}</code>\n"
-                f"📂 <b>Commands:</b> <code>{sum(len(data['commands']) for data in CMD_LIST.values()}</code>\n\n"
+                f"⚡ <b>Loaded Plugins:</b> <code>{total_plugins}</code>\n"
+                f"📂 <b>Commands:</b> <code>{total_commands}</code>\n\n"
                 "<i>Select a plugin to view its commands</i>\n"
                 "━━━━━━━━━━━━━━━━━━━━━━"
-                   )
+            )
             
             # Create buttons in 3x3 grid
             buttons = []
