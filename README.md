@@ -91,6 +91,8 @@ Detailed deployment guide coming soon...
 - `BOT_TOKEN` - Get from @BotFather
 - `ELITE_BOT_USERNAME` - Your Bot Username
 - `ELITE_SESSION` - Generate using session generator
+- `LOG_CHAT_ID` - Your Log Group id
+- `SUDO_USERS`  - Owner id
 
 ---
 
