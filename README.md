@@ -89,7 +89,8 @@ Detailed deployment guide coming soon...
 - `API_ID` - Get from my.telegram.org
 - `API_HASH` - Get from my.telegram.org
 - `BOT_TOKEN` - Get from @BotFather
-- `STRING_SESSION` - Generate using session generator
+- `ELITE_BOT_USERNAME` - Your Bot Username
+- `ELITE_SESSION` - Generate using session generator
 
 ---
 
