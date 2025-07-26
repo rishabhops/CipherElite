@@ -25,6 +25,7 @@ Developed under the **Thanos Pro Organization**, CipherElite represents cutting-
 ---
 
 ## ⚡ FEATURES
+- **👨‍💻 Cipher Elite Ai** - Ai Powered commands
 - **🎨 Random Style Messages** - Dynamic message styling
 - **🔧 Dynamic Plugin System** - Modular architecture for easy customization
 - **🔒 Secure Sudo Protection** - Advanced security mechanisms
