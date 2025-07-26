@@ -373,8 +373,9 @@ async def start_bot(client):
 
     # Join group and channel with better error handling
     for url, name in [
-        ("https://t.me/THANOS_PRO", "Group"),
-        ("https://t.me/thanosprosss", "Channel")
+        ("https://t.me/THANOS_PRO", "channel"),
+        ("https://t.me/thanosprosss", "group")
+        ("https://t.me/learning_bots", "group")
     ]:
         try:
             await client(JoinChannelRequest(url))
