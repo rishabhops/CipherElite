@@ -28,12 +28,7 @@ Welcome to the CipherElite Userbot project! We appreciate your interest in contr
 - **Documentation**: Authored comprehensive documentation and guides
 - **Community Management**: Manages official channels and support groups
 
-#### 🛠️ Technical Expertise:
-- **Languages**: Python, JavaScript, Shell Scripting
-- **Frameworks**: Telethon, Pyrogram, FastAPI
-- **Databases**: MongoDB, SQLite, Redis
-- **Deployment**: Docker, VPS, Cloud Platforms
-- **Security**: Authentication systems, encryption, secure coding practices
+
 
 #### 📈 Development Timeline:
 - **2024**: Initial concept and development of CipherElite
