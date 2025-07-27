@@ -92,7 +92,7 @@ Detailed deployment guide coming soon...
 - `API_HASH` - Get from my.telegram.org
 - `BOT_TOKEN` - Get from @BotFather
 - `ELITE_BOT_USERNAME` - Your Bot Username
-- `ELITE_SESSION` - Generate using session generator
+- `ELITE_SESSION` - Generate using session using elite session generator bot `@elite_session_maker_bot` don't use any other bot sessions cipherelite accept only elite session
 - `LOG_CHAT_ID` - Your Log Group id
 - `SUDO_USERS`  - Owner id
 
