@@ -1,7 +1,7 @@
 # =============================================================================
 #  CipherElite Userbot Plugin
 #
-#  Plugin Name:    tools
+#  Plugin Name:    toolkit
 #  Author:         CipherElite Dev (@rishabhops)
 #  Repository:     https://github.com/rishabhops/CipherElite
 #
@@ -42,7 +42,7 @@ def init(client_instance):
         ".calendar [month/year] - Generate calendar image for specified month/year"
     ]
     description = "🔧 Cipher Elite Tools - Advanced utility tools for encoding, calculations, file operations and calendar generation"
-    add_handler("tools", commands, description)
+    add_handler("toolkit", commands, description)
 
 async def register_commands():
     """
