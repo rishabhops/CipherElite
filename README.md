@@ -101,7 +101,7 @@ Detailed deployment guide coming soon...
 ## 📈 PROJECT STATS
 
 <p align="center">
-  <img src="https://github-readme-stats.vercel.app/api/pin/?username=rishabhops&repo=CipherElite&theme=radical">
+  <img src="https://github-readme-stats.vercel.app/api/pin/?username=rishabhops&repo=CipherElite&theme=radical&cache_seconds=60">
 </p>
 
 ---
