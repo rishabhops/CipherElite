@@ -42,7 +42,6 @@ Developed under the **Thanos Pro Organization**, CipherElite represents cutting-
 
 <p align="center">
   <a href="https://sevalla.com"><img src="https://img.shields.io/badge/Deploy%20on-Sevalla-orange?style=for-the-badge&logo=vercel"></a>
-  <a href="#"><img src="https://img.shields.io/badge/Deploy%20on-VPS-green?style=for-the-badge&logo=linux"></a>
 </p>
 
 > ✅ You can easily deploy this userbot on **[Sevalla](https://sevalla.com)** – A powerful and beginner-friendly hosting platform.
