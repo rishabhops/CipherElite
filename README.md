@@ -47,9 +47,9 @@ Developed under the **Thanos Pro Organization**, CipherElite represents cutting-
 
 > ✅ You can easily deploy this userbot on **[Sevalla](https://sevalla.com)** – A powerful and beginner-friendly hosting platform.
 
-### Quick Deploy Steps:
-1. **Fork** this repository
-2. **Generate** your STRING_SESSION
+### VPS Deploy Steps:
+1. **git clone https://github.com/rishabhops/CipherElite && cd CipherElite**
+2. **pip3 install -U -r requirements.txt** installing requarmnets. 
 3. **Configure** environment variables
 4. **Deploy** on your preferred platform
 
