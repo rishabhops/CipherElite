@@ -1,129 +1,102 @@
-# CipherElite Bot Plugin Development Guide
+```markdown
+# 🎭 CipherElite Plugin Development Guide
 
-## Plugin Structure
-Every CipherElite plugin should follow this basic structure:
+## Basic Plugin Structure
 
-```python
+```
 from telethon import events
 from utils.utils import CipherElite
 from utils.decorators import rishabh
 from plugins.bot import add_handler
 
 def init(client_instance):
-    """
-    Required initialization function that registers commands and descriptions
-    """
     commands = [
-        ".command1 - Description of command1",
-        ".command2 - Description of command2"
+        ".command <param> - Description of command"
     ]
-    description = "Plugin description"
+    description = "🎭 Plugin Name - Brief description"
     add_handler("plugin_name", commands, description)
 
 async def register_commands():
-    """
-    Main function where command handlers are defined
-    """
-    @CipherElite.on(events.NewMessage(pattern=r"\.yourcommand"))
-    @rishabh()
-    async def your_command_handler(event):
-        # Command implementation
-        pass
-```
-
-## Essential Components
-
-### 1. Imports
-```python
-from telethon import events  # For event handling
-from utils.utils import CipherElite  # Main bot client
-from utils.decorators import rishabh  # Command decorator
-from plugins.bot import add_handler  # Register commands
-```
-
-### 2. Initialization Function
-Every plugin must have an `init()` function:
-```python
-def init(client_instance):
-    commands = [
-        ".command - Description"
-    ]
-    description = "Plugin description"
-    add_handler("plugin_name", commands, description)
-```
-
-### 3. Command Registration
-Commands are registered using the `register_commands()` function:
-```python
-async def register_commands():
-    @CipherElite.on(events.NewMessage(pattern=r"\.command"))
+    @CipherElite.on(events.NewMessage(pattern=r"\.command\s+(.+)"))
     @rishabh()
     async def command_handler(event):
-        # Command implementation
-        pass
+        try:
+            param = event.pattern_match.group(1).strip()
+            await event.reply("✅ **Success!**")
+        except Exception as e:
+            await event.reply(f"❌ **Error:** {str(e)}")
 ```
 
-## Event Handling
+## Required Components
 
-### Event Patterns
-Commands are triggered using regex patterns:
-```python
-@CipherElite.on(events.NewMessage(pattern=r"\.yourcommand"))
+### 1. Imports
+```
+from telethon import events
+from utils.utils import CipherElite
+from utils.decorators import rishabh
+from plugins.bot import add_handler
 ```
 
-### Event Object
-The event object provides access to:
-- `event.reply_to_msg_id` - ID of replied message
-- `event.pattern_match` - Regex match object
-- `event.client` - Bot client instance
-- `event.chat_id` - Chat ID where command was used
-
-## Helper Functions
-
-### User Resolution
-To get user information:
-```python
-async def get_user_from_event(event):
-    try:
-        if event.reply_to_msg_id:
-            reply_message = await event.get_reply_message()
-            user = await event.client.get_entity(reply_message.sender_id)
-        else:
-            user_input = event.pattern_match.group(1)
-            if user_input:
-                user = await event.client.get_entity(user_input)
-        return user
-    except Exception as e:
-        await event.reply(f"Error: {e}")
-        return None
+### 2. Init Function
+```
+def init(client_instance):
+    commands = [
+        ".cmd <param> - Description"  # Full syntax with parameters
+    ]
+    description = "🎭 Plugin - What it does"
+    add_handler("short_name", commands, description)  # Keep name short
 ```
 
-## Best Practices
-
-1. **Error Handling**
-```python
-try:
-    # Your code
-except Exception as e:
-    await event.reply(f"Error: {str(e)}")
+### 3. Command Handler
+```
+async def register_commands():
+    @CipherElite.on(events.NewMessage(pattern=r"\.cmd\s+(.+)"))
+    @rishabh()
+    async def handler(event):
+        try:
+            # Your logic here
+            await event.reply("🎭 **Cipher Elite Result**\n\n✅ Success")
+        except Exception as e:
+            await event.reply(f"❌ **Error:** {str(e)}")
 ```
 
-2. **Resource Cleanup**
-```python
-if os.path.exists(temp_file):
-    os.remove(temp_file)
+## Pattern Examples
+
+```
+# Basic command
+pattern=r"\.command"
+
+# Required parameter
+pattern=r"\.command\s+(.+)"
+
+# Optional parameter
+pattern=r"\.command\s*(.*)"
+
+# Multiple parameters
+pattern=r"\.command\s+(\w+)\s*(.*)"
 ```
 
-3. **Command Response**
-```python
-await event.reply("✅ Operation successful!")
+## Message Formatting
+
+```
+# Success message
+await event.reply("🎭 **Cipher Elite Success**\n\n"
+                 "✅ **Result:** Your result here\n"
+                 "🤖 **Powered by Cipher Elite**")
+
+# Error message
+await event.reply(f"🎭 **Cipher Elite Error**\n\n"
+                 f"❌ **Error:** {str(e)}\n"
+                 f"💡 **Try again with correct parameters**")
+
+# Status updates
+status = await event.reply("🔄 **Processing...**")
+await status.edit("✅ **Complete!**")
 ```
 
-## Example Plugin
+## Complete Example
 
-Here's a simple plugin template:
-
-```python
+```
 from telethon import events
 from utils.utils import CipherElite
 from utils.decorators import rishabh
@@ -131,41 +104,61 @@ from plugins.bot import add_handler
 
 def init(client_instance):
     commands = [
-        ".hello - Sends a greeting",
-        ".bye - Sends goodbye"
+        ".reverse <text> - Reverse text with Cipher Elite",
+        ".upper <text> - Convert text to uppercase"
     ]
-    description = "Basic greeting plugin"
-    add_handler("greetings", commands, description)
+    description = "🎭 Text Tools - Basic text manipulation"
+    add_handler("texttools", commands, description)
 
 async def register_commands():
-    @CipherElite.on(events.NewMessage(pattern=r"\.hello"))
+    @CipherElite.on(events.NewMessage(pattern=r"\.reverse\s+(.+)"))
     @rishabh()
-    async def hello_handler(event):
+    async def reverse_text(event):
         try:
-            await event.reply("👋 Hello!")
+            text = event.pattern_match.group(1).strip()
+            result = text[::-1]
+            
+            await event.reply("🎭 **Cipher Elite Text Reverser**\n\n"
+                            f"📝 **Original:** `{text}`\n"
+                            f"🔄 **Reversed:** `{result}`\n"
+                            f"✅ **Success!**")
         except Exception as e:
-            await event.reply(f"Error: {str(e)}")
-
-    @CipherElite.on(events.NewMessage(pattern=r"\.bye"))
+            await event.reply(f"❌ **Error:** {str(e)}")
+    
+    @CipherElite.on(events.NewMessage(pattern=r"\.upper\s+(.+)"))
     @rishabh()
-    async def bye_handler(event):
+    async def upper_text(event):
         try:
-            await event.reply("👋 Goodbye!")
+            text = event.pattern_match.group(1).strip()
+            result = text.upper()
+            
+            await event.reply(f"🎭 **Uppercase Result**\n\n`{result}`")
         except Exception as e:
-            await event.reply(f"Error: {str(e)}")
+            await event.reply(f"❌ **Error:** {str(e)}")
 ```
 
-## Important Notes
+## Quick Checklist
 
-1. Always use the `@rishabh()` decorator for command handlers
-2. Handle exceptions appropriately
-3. Clean up temporary files and resources
-4. Use meaningful command patterns and descriptions
-5. Follow the plugin structure consistently
+### ✅ Must Have
+- [ ] `init()` function with commands list
+- [ ] `register_commands()` async function
+- [ ] `@rishabh()` decorator on commands
+- [ ] Try/except error handling
+- [ ] Command syntax with `<required>` `[optional]` parameters
 
-## Available Utilities
+### ✅ Best Practices
+- [ ] Short plugin name for help menu button
+- [ ] Cipher Elite branding in messages
+- [ ] Clear parameter descriptions
+- [ ] Input validation
 
-- `CipherElite` - Main bot client instance
-- `rishabh()` - Command handler decorator
-- `add_handler()` - Register commands and descriptions
-- Telethon's event system for command handling
+## Quick Start
+
+1. **Create file:** `plugins/myplugin.py`
+2. **Copy template above**
+3. **Replace:** plugin name, commands, logic
+4. **Test:** Restart bot, use `.help myplugin`
+5. **Deploy:** Commands work automatically
+
+Your plugin will appear in `.help` menu and support direct access via `.help myplugin`!
+```
