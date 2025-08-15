@@ -31,16 +31,16 @@ DEFAULTUSER = "Elite User"
 def init(client):
     """Initialize the fun_animations plugin"""
     commands = [
-        ".mind         — Animated brain cleanup sequence",
-        ".explode      — Explosive animation with a bang",
-        ".dial         — Simulate a call to a VIP",
-        ".zap          — Zap someone with a fun animation",
-        ".huh          — A confused 'huh?' animation",
-        ".pingpong    — Bouncing ball animation",
-        ".spiral       — Hypnotic spiral animation",
-        ".sweets       — Rotating candy emojis",
-        ".badass       — Show off your badass vibe",
-        ".charge       — Charge up a device animation"
+        ".mind         - Animated brain cleanup sequence",
+        ".explode      - Explosive animation with a bang",
+        ".dial         - Simulate a call to a VIP",
+        ".zap          - Zap someone with a fun animation",
+        ".huh          - A confused 'huh?' animation",
+        ".pingpong     - Bouncing ball animation",
+        ".spiral       - Hypnotic spiral animation",
+        ".sweets       - Rotating candy emojis",
+        ".badass       - Show off your badass vibe",
+        ".charge       - Charge up a device animation"
     ]
     description = "Fun and unique animations for chats"
     add_handler("fun_animations", commands, description)
