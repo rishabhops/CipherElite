@@ -38,8 +38,8 @@ from plugins.bot import add_handler
 # ─────────────────────────────────────────────────────────────────────────────
 def init(client_instance):
     commands = [
-        ".info <username / user_id / reply>   → Show detailed Telegram user profile",
-        ".chatinfo <chat_username / chat_id>  → Show detailed group or channel info"
+        ".info <username / user_id / reply>   - Show detailed Telegram user profile",
+        ".chatinfo <chat_username / chat_id>  - Show detailed group or channel info"
     ]
     description = (
         "Advanced Telegram information commands.\n\n"
@@ -199,3 +199,4 @@ async def chatinfo_command(event):
         text += f"\n\n📝 <b>Description</b>\n{safe(full.full_chat.about)}"
 
     await event.respond(text, parse_mode='html')
+
