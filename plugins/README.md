@@ -1,4 +1,4 @@
-```markdown
+
 # 🎭 CipherElite Plugin Development Guide
 
 ## Basic Plugin Structure
