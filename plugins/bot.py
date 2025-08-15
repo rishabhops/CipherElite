@@ -69,13 +69,22 @@ async def init_bot():
             # Create buttons in 3x3 grid
             buttons = []
             plugin_names = list(CMD_LIST.keys())
+            
+            # Sort plugins: quickhelp first, then alphabetically
+            plugin_names.sort(key=lambda x: (x != 'quickhelp', x))
+            
             total_pages = math.ceil(len(plugin_names) / PLUGINS_PER_PAGE)
             
             # First page buttons in 3x3 grid
             row = []
             for i, plugin in enumerate(plugin_names[:PLUGINS_PER_PAGE]):
-                # Shorten long plugin names
-                display_name = plugin.title()[:10] + ".." if len(plugin) > 12 else plugin.title()
+                # Special formatting for quickhelp
+                if plugin == 'quickhelp':
+                    display_name = "⚡Help Guide"
+                else:
+                    # Shorten long plugin names
+                    display_name = plugin.title()[:10] + ".." if len(plugin) > 12 else plugin.title()
+                
                 row.append(Button.inline(display_name, f"help_plugin_{plugin}"))
                 # Start new row every 3 buttons
                 if (i + 1) % PLUGINS_PER_ROW == 0:
@@ -106,36 +115,77 @@ async def init_bot():
         if data.startswith("plugin_"):
             plugin_name = data.replace("plugin_", "")
             if plugin_name in CMD_LIST:
-                # Create beautiful plugin details view
-                text = (
-                    f"🔹 <b>{plugin_name.title()} Plugin</b>\n"
-                    "━━━━━━━━━━━━━━━━━━━━━━\n"
-                    f"<i>{CMD_LIST[plugin_name]['description']}</i>\n\n"
-                    "<b>Available Commands:</b>\n"
-                )
                 
-                # ENHANCED ROBUST COMMAND PARSING
-                for cmd in CMD_LIST[plugin_name]["commands"]:
-                    print(f"🔍 Debug - Processing command: '{cmd}'")  # Debug log
+                # Special handling for quickhelp plugin
+                if plugin_name == "quickhelp":
+                    # Show comprehensive help guide
+                    text = (
+                        f"⚡ <b>Cipher Elite Quick Help Guide</b>\n"
+                        f"━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                        f"🎯 <b>Basic Help Commands:</b>\n"
+                        f"• <code>.help</code> - Full interactive help menu\n"
+                        f"• <code>.help spam</code> - Direct help for spam plugin\n"
+                        f"• <code>.help broadcast</code> - Direct help for broadcast plugin\n"
+                        f"• <code>.help actions</code> - Direct help for actions plugin\n\n"
+                        f"🔍 <b>Discovery Commands:</b>\n"
+                        f"• <code>.plugins</code> - List all loaded plugins with stats\n"
+                        f"• <code>.findplugin tool</code> - Find plugins containing 'tool'\n"
+                        f"• <code>.helpstats</code> - Detailed help system statistics\n\n"
+                        f"💡 <b>Pro Tips:</b>\n"
+                        f"• Use <code>.help &lt;plugin&gt;</code> for instant access\n"
+                        f"• Search partial names: <code>.findplugin spa</code> finds spam\n"
+                        f"• All help commands work in any chat\n"
+                        f"• Commands are case-insensitive\n"
+                        f"• Direct access is 50% faster than menu navigation\n\n"
+                        f"🎲 <b>Quick Examples:</b>\n"
+                    )
                     
-                    if isinstance(cmd, str) and cmd.strip():
-                        # Handle "command - description" format
-                        if " - " in cmd:
-                            cmd_part, desc_part = cmd.split(" - ", 1)
-                            # Ensure we keep the FULL command syntax
-                            full_command = cmd_part.strip()
-                            description = desc_part.strip()
-                            
-                            print(f"🔍 Debug - Split into: '{full_command}' and '{description}'")  # Debug log
-                            
-                            text += f"• <code>{full_command}</code>\n"
-                            text += f"  <i>{description}</i>\n\n"
+                    # Add examples from available plugins (excluding quickhelp)
+                    available_plugins = [p for p in CMD_LIST.keys() if p != 'quickhelp']
+                    if available_plugins:
+                        import random
+                        sample_plugins = random.sample(available_plugins, min(3, len(available_plugins)))
+                        for plugin in sample_plugins:
+                            text += f"• <code>.help {plugin}</code>\n"
+                        text += "\n"
+                    
+                    text += f"📋 <b>Available in Both:</b>\n"
+                    text += f"• Command: <code>.quickhelp</code>\n"
+                    text += f"• Button: Click ⚡Help Guide in help menu\n\n"
+                    text += f"🤖 <b>Powered by Cipher Elite</b>"
+                    
+                else:
+                    # Regular plugin details view
+                    text = (
+                        f"🔹 <b>{plugin_name.title()} Plugin</b>\n"
+                        "━━━━━━━━━━━━━━━━━━━━━━\n"
+                        f"<i>{CMD_LIST[plugin_name]['description']}</i>\n\n"
+                        "<b>Available Commands:</b>\n"
+                    )
+                    
+                    # ENHANCED ROBUST COMMAND PARSING WITH HTML ESCAPING
+                    for cmd in CMD_LIST[plugin_name]["commands"]:
+                        print(f"🔍 Debug - Processing command: '{cmd}'")  # Debug log
+                        
+                        if isinstance(cmd, str) and cmd.strip():
+                            if " - " in cmd:
+                                cmd_part, desc_part = cmd.split(" - ", 1)
+                                full_command = cmd_part.strip()
+                                description = desc_part.strip()
+                                
+                                print(f"🔍 Debug - Split into: '{full_command}' and '{description}'")  # Debug log
+                                
+                                # ESCAPE HTML CHARACTERS IN COMMAND SYNTAX
+                                escaped_command = full_command.replace('<', '&lt;').replace('>', '&gt;')
+                                
+                                text += f"• <code>{escaped_command}</code>\n"
+                                text += f"  <i>{description}</i>\n\n"
+                            else:
+                                escaped_cmd = cmd.strip().replace('<', '&lt;').replace('>', '&gt;')
+                                text += f"• <code>{escaped_cmd}</code>\n\n"
                         else:
-                            # Command without description separator
-                            text += f"• <code>{cmd.strip()}</code>\n\n"
-                    else:
-                        # Fallback
-                        text += f"• <code>{str(cmd)}</code>\n\n"
+                            escaped_fallback = str(cmd).replace('<', '&lt;').replace('>', '&gt;')
+                            text += f"• <code>{escaped_fallback}</code>\n\n"
                 
                 # Add back button
                 buttons = [[Button.inline("← Back to Menu", "help_page_0")]]
@@ -146,6 +196,10 @@ async def init_bot():
         if data.startswith("page_"):
             page = int(data.replace("page_", ""))
             plugin_names = list(CMD_LIST.keys())
+            
+            # Sort plugins: quickhelp first, then alphabetically
+            plugin_names.sort(key=lambda x: (x != 'quickhelp', x))
+            
             total_pages = math.ceil(len(plugin_names) / PLUGINS_PER_PAGE)
             
             # Create beautiful main menu
@@ -166,8 +220,13 @@ async def init_bot():
             
             row = []
             for i, plugin in enumerate(current_plugins):
-                # Shorten long plugin names
-                display_name = plugin.title()[:10] + ".." if len(plugin) > 12 else plugin.title()
+                # Special formatting for quickhelp
+                if plugin == 'quickhelp':
+                    display_name = "⚡Help Guide"
+                else:
+                    # Shorten long plugin names
+                    display_name = plugin.title()[:10] + ".." if len(plugin) > 12 else plugin.title()
+                
                 row.append(Button.inline(display_name, f"help_plugin_{plugin}"))
                 # Start new row every 3 buttons
                 if (i + 1) % PLUGINS_PER_ROW == 0:
@@ -195,30 +254,30 @@ async def init_bot():
     @rishabh_help()
     async def debug_commands(event):
         try:
-            debug_msg = "🔍 **Debug: Stored Commands**\n\n"
+            debug_msg = "🔍 <b>Debug: Stored Commands</b>\n\n"
             
             if not CMD_LIST:
-                debug_msg += "❌ **No commands registered yet!**"
+                debug_msg += "❌ <b>No commands registered yet!</b>"
             else:
                 for plugin_name, plugin_data in CMD_LIST.items():
-                    debug_msg += f"**🎭 {plugin_name}:**\n"
-                    debug_msg += f"📝 **Description:** {plugin_data.get('description', 'No description')}\n"
-                    debug_msg += f"📊 **Commands ({len(plugin_data['commands'])}):**\n"
+                    debug_msg += f"<b>🎭 {plugin_name}:</b>\n"
+                    debug_msg += f"📝 <b>Description:</b> {plugin_data.get('description', 'No description')}\n"
+                    debug_msg += f"📊 <b>Commands ({len(plugin_data['commands'])}):</b>\n"
                     
                     for i, cmd in enumerate(plugin_data['commands']):
-                        debug_msg += f"  `{i+1}.` {repr(cmd)}\n"
+                        debug_msg += f"  <code>{i+1}.</code> {repr(cmd)}\n"
                     debug_msg += "\n"
             
             # Split message if too long
             if len(debug_msg) > 4000:
                 parts = [debug_msg[i:i+4000] for i in range(0, len(debug_msg), 4000)]
                 for part in parts:
-                    await event.reply(part)
+                    await event.reply(part, parse_mode='html')
             else:
-                await event.reply(debug_msg)
+                await event.reply(debug_msg, parse_mode='html')
                 
         except Exception as e:
-            await event.reply(f"🔍 **Debug error:** {e}")
+            await event.reply(f"🔍 <b>Debug error:</b> {e}", parse_mode='html')
     
     return bot
 
