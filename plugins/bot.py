@@ -114,19 +114,27 @@ async def init_bot():
                     "<b>Available Commands:</b>\n"
                 )
                 
-                # Enhanced command formatting with full syntax preservation
+                # ENHANCED ROBUST COMMAND PARSING
                 for cmd in CMD_LIST[plugin_name]["commands"]:
-                    # Ensure full command syntax is displayed
-                    if isinstance(cmd, str):
-                        # Split command and description if formatted as "command - description"
+                    print(f"🔍 Debug - Processing command: '{cmd}'")  # Debug log
+                    
+                    if isinstance(cmd, str) and cmd.strip():
+                        # Handle "command - description" format
                         if " - " in cmd:
                             cmd_part, desc_part = cmd.split(" - ", 1)
-                            text += f"• <code>{cmd_part}</code>\n  <i>{desc_part}</i>\n\n"
+                            # Ensure we keep the FULL command syntax
+                            full_command = cmd_part.strip()
+                            description = desc_part.strip()
+                            
+                            print(f"🔍 Debug - Split into: '{full_command}' and '{description}'")  # Debug log
+                            
+                            text += f"• <code>{full_command}</code>\n"
+                            text += f"  <i>{description}</i>\n\n"
                         else:
-                            # Just the command without description
-                            text += f"• <code>{cmd}</code>\n\n"
+                            # Command without description separator
+                            text += f"• <code>{cmd.strip()}</code>\n\n"
                     else:
-                        # Fallback for any other format
+                        # Fallback
                         text += f"• <code>{str(cmd)}</code>\n\n"
                 
                 # Add back button
@@ -181,6 +189,36 @@ async def init_bot():
             
             await event.edit(text, buttons=buttons, parse_mode='html')
             return
+    
+    # Debug command to check stored commands
+    @bot.on(events.NewMessage(pattern=r"\.debugcmds"))
+    @rishabh_help()
+    async def debug_commands(event):
+        try:
+            debug_msg = "🔍 **Debug: Stored Commands**\n\n"
+            
+            if not CMD_LIST:
+                debug_msg += "❌ **No commands registered yet!**"
+            else:
+                for plugin_name, plugin_data in CMD_LIST.items():
+                    debug_msg += f"**🎭 {plugin_name}:**\n"
+                    debug_msg += f"📝 **Description:** {plugin_data.get('description', 'No description')}\n"
+                    debug_msg += f"📊 **Commands ({len(plugin_data['commands'])}):**\n"
+                    
+                    for i, cmd in enumerate(plugin_data['commands']):
+                        debug_msg += f"  `{i+1}.` {repr(cmd)}\n"
+                    debug_msg += "\n"
+            
+            # Split message if too long
+            if len(debug_msg) > 4000:
+                parts = [debug_msg[i:i+4000] for i in range(0, len(debug_msg), 4000)]
+                for part in parts:
+                    await event.reply(part)
+            else:
+                await event.reply(debug_msg)
+                
+        except Exception as e:
+            await event.reply(f"🔍 **Debug error:** {e}")
     
     return bot
 
