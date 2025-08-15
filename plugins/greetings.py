@@ -28,13 +28,13 @@ from plugins.bot import add_handler
 
 def init(client):
     commands = [
-        "hii       — Big ‘HI’ in emojis",
-        "thanks    — Big ‘THANKS’ in emojis",
-        "ok        — Sparkling OK in emojis",
-        "gn        — Sparkling GN in emojis",
-        "bye       — Waving ‘BYE’ in emojis",
-        "welc   — Festive ‘WELCOME’ in emojis",
-        "love      — Heartfelt ‘LOVE’ in emojis"
+        "hii       - Big ‘HI’ in emojis",
+        "thanks    - Big ‘THANKS’ in emojis",
+        "ok        - Sparkling OK in emojis",
+        "gn        - Sparkling GN in emojis",
+        "bye       - Waving ‘BYE’ in emojis",
+        "welc      - Festive ‘WELCOME’ in emojis",
+        "love      - Heartfelt ‘LOVE’ in emojis"
     ]
     add_handler("greetings", commands, "Emoji Greetings Plugin")
     
