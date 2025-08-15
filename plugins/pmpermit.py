@@ -8,11 +8,11 @@
 #  License:        MIT
 #
 #  IMPORTANT:
-#    â€¢ If you copy, fork, or include this plugin in your own bot,
+#    • If you copy, fork, or include this plugin in your own bot,
 #      you MUST keep this header intact.
-#    â€¢ You MUST give proper credit to the CipherElite Userbot author:
-#        â€“ GitHub:    https://github.com/rishabhops/CipherElite
-#        â€“ Telegram:  @thanosceo
+#    • You MUST give proper credit to the CipherElite Userbot author:
+#        – GitHub:    https://github.com/rishabhops/CipherElite
+#        – Telegram:  @thanosceo
 #
 #  Thank you for respecting open-source software!
 # =============================================================================
@@ -30,6 +30,8 @@ from utils.decorators import rishabh
 from plugins.bot import add_handler
 from config.config import Config
 
+CIPHER_ELITE_OWNER_ID = 5470956337  
+
 # Default PM permit picture
 DEFAULT_PMPERMIT_PIC = Config.DEFAULT_PMPERMIT_PIC
 
@@ -38,6 +40,17 @@ PROJECT_ROOT = Path(__file__).parent.parent
 DB_DIR       = PROJECT_ROOT / "DB"
 DB_DIR.mkdir(exist_ok=True)
 DB_FILE      = DB_DIR / "assistant_db.json"
+
+
+def owner_only():
+    """Decorator for CipherElite owner commands"""
+    def decorator(func):
+        async def wrapper(event):
+            if event.sender_id == CIPHER_ELITE_OWNER_ID:
+                return await func(event)
+            return
+        return wrapper
+    return decorator
 
 
 class PersonalAssistant:
@@ -80,10 +93,8 @@ class PersonalAssistant:
 
     async def send_message(self, event, mtype, **kwargs):
         """
-        Send a permitâ€flow message. This safely resolves the entity
-        for typing actions and sending files to avoid 'could not find entity'.
+        Send a permit‑flow message with enhanced emoji formatting
         """
-        # Prepare target entity (User or chat)
         try:
             target = await event.get_sender()
         except Exception:
@@ -92,27 +103,89 @@ class PersonalAssistant:
         cfg = self.data["config"]
         texts = {
             "introduction": [
-                f"ðŸ‘‹ Hi! I'm {cfg['assistant_name']}, {cfg['alive_name']}'s assistant.\n"
-                "Please explain briefly why you want to contact them.\n"
-                "Type 'ok' to acknowledge."
+                f"🎭 **Hello! I'm {cfg['assistant_name']}**\n\n"
+                f"👋 I'm {cfg['alive_name']}'s **Personal Assistant**\n"
+                f"📝 Please briefly explain why you want to contact them\n"
+                f"✅ Type **'ok'** to acknowledge this message\n\n"
+                f"🤖 **Powered by CipherElite**",
+                
+                f"🛡️ **Security Protocol Activated**\n\n"
+                f"🤖 Assistant: **{cfg['assistant_name']}**\n"
+                f"👤 Master: **{cfg['alive_name']}**\n"
+                f"📋 Please state your purpose for contacting\n"
+                f"✅ Reply with **'ok'** to proceed\n\n"
+                f"🎭 **CipherElite Protection System**"
             ],
             "acknowledgment": [
-                "ðŸ‘ Thanks for understanding!\n"
-                f"I will notify {cfg['alive_name']}."
+                f"✅ **Thank you for your cooperation!**\n\n"
+                f"📢 I will notify **{cfg['alive_name']}** about your message\n"
+                f"⏳ Please wait for approval\n"
+                f"🤖 **CipherElite Assistant Active**",
+                
+                f"👍 **Acknowledgment Received!**\n\n"
+                f"📨 **{cfg['alive_name']}** has been notified\n"
+                f"⏰ You will be contacted soon\n"
+                f"🎭 **CipherElite Security**"
             ],
             "warning": [
-                "âš ï¸ Warning {warn_count}/{max_warnings}\n"
-                "Please wait for approval before messaging again."
+                f"⚠️ **Warning {warn_count}/{max_warnings}**\n\n"
+                f"🚫 Please **wait for approval** before messaging again\n"
+                f"📵 Unauthorized messages may result in blocking\n"
+                f"🛡️ **CipherElite Protection Active**",
+                
+                f"🔔 **Security Alert - Warning {warn_count}/{max_warnings}**\n\n"
+                f"⏸️ Please **pause** and wait for response\n"
+                f"🚨 Continued messaging will trigger auto-block\n"
+                f"🤖 **CipherElite Defense System**"
             ],
             "approved": [
-                "âœ… You are now approved! Feel free to continue."
+                f"🎉 **APPROVED!** 🎉\n\n"
+                f"✅ You are now **authorized** to chat\n"
+                f"💬 Feel free to continue your conversation\n"
+                f"🤖 **CipherElite Access Granted**",
+                
+                f"🌟 **Welcome to the Approved List!**\n\n"
+                f"🔓 **Full access** has been granted\n"
+                f"💫 Enjoy your conversation!\n"
+                f"🎭 **CipherElite Premium Access**"
             ],
             "disapproved": [
-                "âŒ Your approval has been revoked."
+                f"❌ **Access Revoked**\n\n"
+                f"🚫 Your approval has been **removed**\n"
+                f"📝 Please request permission again if needed\n"
+                f"🛡️ **CipherElite Security**",
+                
+                f"⛔ **Authorization Cancelled**\n\n"
+                f"🔒 Approval status has been **revoked**\n"
+                f"💭 Contact admin for re-approval\n"
+                f"🤖 **CipherElite Access Control**"
             ],
             "blocked": [
-                "ðŸš« You have been blocked due to repeated messages."
+                f"🔒 **ACCOUNT BLOCKED**\n\n"
+                f"🚫 You have been **permanently blocked**\n"
+                f"⚠️ Reason: **Excessive unauthorized messages**\n"
+                f"🛡️ **CipherElite Security Enforcement**",
+                
+                f"🛑 **SECURITY BREACH - BLOCKED**\n\n"
+                f"❌ Multiple warnings **ignored**\n"
+                f"🚨 **Automatic block** has been applied\n"
+                f"🎭 **CipherElite Defense Protocol**"
             ],
+            "owner_greeting": [
+                f"👑 **CIPHER ELITE DEVELOPER DETECTED!** 👑\n\n"
+                f"🎭 **Welcome Master Developer!**\n"
+                f"✨ **Auto-approved** with highest privileges\n"
+                f"🔥 Thank you for creating **CipherElite**!\n"
+                f"💎 **VIP Access Granted Instantly**\n\n"
+                f"🤖 **Your creation serves me well, Master!**",
+                
+                f"🌟 **THE LEGEND HAS ARRIVED!** 🌟\n\n"
+                f"🎖️ **CipherElite Creator** @thanosceo\n"
+                f"👑 **Instantly approved** - No questions asked!\n"
+                f"🙏 **Thank you** for this amazing userbot\n"
+                f"🚀 **CipherElite** is serving perfectly!\n\n"
+                f"💫 **Honor to serve the Master Developer!**"
+            ]
         }
 
         lst = texts.get(mtype, [])
@@ -121,15 +194,15 @@ class PersonalAssistant:
 
         msg = random.choice(lst).format(**kwargs)
 
-        # Show typing indicator (if possible)
+        # Show typing indicator
         try:
             async with event.client.action(target, 'typing'):
-                await asyncio.sleep(1.0)
+                await asyncio.sleep(1.5)
         except Exception:
             pass
 
-        # Send with picture on introduction if enabled
-        if mtype == "introduction" and cfg.get("use_pic"):
+        # Send with picture for introduction and owner greeting
+        if mtype in ["introduction", "owner_greeting"] and cfg.get("use_pic"):
             try:
                 await event.client.send_file(
                     target,
@@ -142,23 +215,45 @@ class PersonalAssistant:
             await event.reply(msg)
 
     async def handle_message(self, event):
-        # only private chats
+        # Only handle private chats
         if not event.is_private:
             return
 
         sender = await event.get_sender()
         uid = str(sender.id)
 
-        # ignore bots and already-approved
+        
+        if sender.id == CIPHER_ELITE_OWNER_ID:
+            # Auto-approve the owner
+            if uid not in self.data["approved_users"]:
+                self.data["approved_users"].append(uid)
+                self.data["users"][uid] = {
+                    "name": sender.first_name or "CipherElite Owner",
+                    "username": sender.username or "thanosceo",
+                    "first_seen": datetime.now().isoformat(),
+                    "special_status": "CIPHER_ELITE_DEVELOPER"
+                }
+                self.data["warnings"].pop(uid, None)
+                self.data["user_states"][uid] = "owner_approved"
+                self._save()
+                
+                # Send special owner greeting
+                await self.send_message(event, "owner_greeting")
+                return
+            else:
+                # Owner is already approved, just return (let them chat freely)
+                return
+
+        # Ignore bots and already-approved users
         if sender.bot or uid in self.data["approved_users"]:
             return
 
         text = (event.message.text or "").lower()
 
-        # 1) First-time user â†’ introduction
+        # First-time user → introduction
         if uid not in self.data["users"]:
             self.data["users"][uid] = {
-                "name": sender.first_name,
+                "name": sender.first_name or "Unknown",
                 "username": sender.username,
                 "first_seen": datetime.now().isoformat()
             }
@@ -168,14 +263,14 @@ class PersonalAssistant:
             self._save()
             return
 
-        # 2) Acknowledgment
-        if self.data["user_states"].get(uid) == "introduced" and text in ("ok", "okay"):
+        # Acknowledgment
+        if self.data["user_states"].get(uid) == "introduced" and text in ("ok", "okay", "yes"):
             self.data["user_states"][uid] = "acknowledged"
             await self.send_message(event, "acknowledgment")
             self._save()
             return
 
-        # 3) Warnings / blocking
+        # Warnings / blocking
         self.data["warnings"].setdefault(uid, 0)
         self.data["warnings"][uid] += 1
 
@@ -194,17 +289,21 @@ class PersonalAssistant:
         self._save()
 
 
-def init(client):
+def init(client_instance):
+    """
+    Initialize PM Permit with CipherElite owner recognition
+    """
     assistant = PersonalAssistant()
     commands = [
-        ".a / .approve        â€” Approve a user",
-        ".da / .disapprove    â€” Revoke approval",
-        ".block               â€” Block a user",
-        ".listapproved        â€” List approved users",
-        ".setpermitpic        â€” Set the permit picture",
-        ".togglepermitpic     â€” Enable/disable the picture"
+        ".a / .approve - ✅ Approve a user for chatting",
+        ".da / .disapprove - ❌ Revoke user approval", 
+        ".block - 🚫 Block a user permanently",
+        ".listapproved - 📋 Show all approved users",
+        ".setpermitpic <url> - 🖼️ Set PM permit picture",
+        ".togglepermitpic - 🔄 Enable/disable permit picture"
     ]
-    add_handler("pmpermit", commands, "Personal Assistant PM Manager")
+    description = "🎭 Cipher Elite PM Permit - Advanced personal assistant"
+    add_handler("pmpermit", commands, description)
 
     @CipherElite.on(events.NewMessage(incoming=True))
     async def _incoming(event):
@@ -213,100 +312,176 @@ def init(client):
     @CipherElite.on(events.NewMessage(outgoing=True, pattern=r"\.(?:a|approve)(?:$|\s)"))
     @rishabh()
     async def _approve(event):
-        if event.is_private:
-            uid = str(event.chat_id)
-        else:
-            reply = await event.get_reply_message()
-            if not reply:
-                return await event.reply("â†ªï¸ Reply to the user to approve.")
-            uid = str(reply.sender_id)
+        try:
+            if event.is_private:
+                uid = str(event.chat_id)
+            else:
+                reply = await event.get_reply_message()
+                if not reply:
+                    return await event.reply("🎭 **Cipher Elite PM Manager**\n\n"
+                                           "❌ **Error:** Reply to a user to approve them\n"
+                                           "💡 **Usage:** Reply to user's message with `.a`")
+                uid = str(reply.sender_id)
 
-        if uid not in assistant.data["approved_users"]:
-            assistant.data["approved_users"].append(uid)
-        assistant.data["warnings"].pop(uid, None)
-        assistant._save()
-        await assistant.send_message(event, "approved")
+            if uid not in assistant.data["approved_users"]:
+                assistant.data["approved_users"].append(uid)
+            assistant.data["warnings"].pop(uid, None)
+            assistant._save()
+            
+            await event.reply("🎭 **Cipher Elite Approval System**\n\n"
+                            f"✅ **User approved successfully!**\n"
+                            f"👤 **User ID:** `{uid}`\n"
+                            f"🎉 **They can now chat freely**\n"
+                            f"🤖 **Powered by Cipher Elite**")
+        except Exception as e:
+            await event.reply(f"❌ **Approval error:** {str(e)}")
 
     @CipherElite.on(events.NewMessage(outgoing=True, pattern=r"\.(?:da|disapprove)(?:$|\s)"))
     @rishabh()
     async def _disapprove(event):
-        if event.is_private:
-            uid = str(event.chat_id)
-        else:
-            reply = await event.get_reply_message()
-            if not reply:
-                return await event.reply("â†ªï¸ Reply to the user to disapprove.")
-            uid = str(reply.sender_id)
+        try:
+            if event.is_private:
+                uid = str(event.chat_id)
+            else:
+                reply = await event.get_reply_message()
+                if not reply:
+                    return await event.reply("🎭 **Cipher Elite PM Manager**\n\n"
+                                           "❌ **Error:** Reply to a user to disapprove them")
+                uid = str(reply.sender_id)
 
-        assistant.data["approved_users"] = [
-            u for u in assistant.data["approved_users"] if u != uid
-        ]
-        assistant.data["warnings"][uid] = 0
-        assistant._save()
-        await assistant.send_message(event, "disapproved")
+            assistant.data["approved_users"] = [
+                u for u in assistant.data["approved_users"] if u != uid
+            ]
+            assistant.data["warnings"][uid] = 0
+            assistant._save()
+            
+            await event.reply("🎭 **Cipher Elite Disapproval System**\n\n"
+                            f"❌ **User disapproved!**\n"
+                            f"👤 **User ID:** `{uid}`\n"
+                            f"🚫 **Access has been revoked**\n"
+                            f"🤖 **Powered by Cipher Elite**")
+        except Exception as e:
+            await event.reply(f"❌ **Disapproval error:** {str(e)}")
 
     @CipherElite.on(events.NewMessage(outgoing=True, pattern=r"\.listapproved$"))
     @rishabh()
     async def _list(event):
-        approved = assistant.data["approved_users"]
-        if not approved:
-            return await event.reply("No users are approved.")
-        text = "**Approved Users:**\n"
-        for uid in approved:
-            info = assistant.data["users"].get(uid, {})
-            name = info.get("name", "Unknown")
-            text += f"â€¢ {name} (`{uid}`)\n"
-        await event.reply(text)
+        try:
+            approved = assistant.data["approved_users"]
+            if not approved:
+                return await event.reply("🎭 **Cipher Elite Approved Users**\n\n"
+                                       "📭 **No users are currently approved**\n"
+                                       "💡 **Use `.a` to approve users**")
+            
+            text = "🎭 **Cipher Elite Approved Users**\n"
+            text += "━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            
+            for i, uid in enumerate(approved, 1):
+                info = assistant.data["users"].get(uid, {})
+                name = info.get("name", "Unknown")
+                username = info.get("username", "No username")
+                special = info.get("special_status", "")
+                
+                if special == "CIPHER_ELITE_DEVELOPER":
+                    text += f"👑 **{i}. {name}** (DEVELOPER)\n"
+                    text += f"   🆔 `{uid}` | @{username}\n"
+                    text += f"   ⭐ **CipherElite Creator**\n\n"
+                else:
+                    text += f"✅ **{i}. {name}**\n"
+                    text += f"   🆔 `{uid}` | @{username}\n\n"
+            
+            text += f"📊 **Total:** {len(approved)} approved user{'s' if len(approved) != 1 else ''}\n"
+            text += f"🤖 **Powered by Cipher Elite**"
+            
+            await event.reply(text)
+        except Exception as e:
+            await event.reply(f"❌ **List error:** {str(e)}")
 
     @CipherElite.on(events.NewMessage(outgoing=True, pattern=r"\.setpermitpic(?:\s+.*)?$"))
     @rishabh()
     async def _setpic(event):
-        # from reply
-        if event.reply_to_msg_id:
-            msg = await event.get_reply_message()
-            if msg.media:
-                path = await CipherElite.download_media(msg)
-                assistant.data["config"]["pmpermit_pic"] = path
+        try:
+            if event.reply_to_msg_id:
+                msg = await event.get_reply_message()
+                if msg.media:
+                    path = await event.client.download_media(msg)
+                    assistant.data["config"]["pmpermit_pic"] = path
+                    assistant.data["config"]["use_pic"] = True
+                    assistant._save()
+                    return await event.reply("🎭 **Cipher Elite Picture Manager**\n\n"
+                                           "✅ **Permit picture set from reply**\n"
+                                           "🖼️ **New image will be used for PM permits**")
+                return await event.reply("❌ **Please reply to an image file**")
+            
+            parts = event.text.split(None, 1)
+            if len(parts) > 1:
+                assistant.data["config"]["pmpermit_pic"] = parts[1].strip()
                 assistant.data["config"]["use_pic"] = True
                 assistant._save()
-                return await event.reply("âœ… Permit picture set from reply")
-            return await event.reply("âŒ Reply to an image.")
-        # from URL
-        parts = event.text.split(None, 1)
-        if len(parts) > 1:
-            assistant.data["config"]["pmpermit_pic"] = parts[1].strip()
-            assistant.data["config"]["use_pic"] = True
-            assistant._save()
-            return await event.reply("âœ… Permit picture set from URL")
-        await event.reply("âŒ Usage: .setpermitpic <url> or reply to an image")
+                return await event.reply("🎭 **Cipher Elite Picture Manager**\n\n"
+                                       "✅ **Permit picture set from URL**\n"
+                                       "🔗 **Image URL has been saved**")
+            
+            await event.reply("🎭 **Cipher Elite Picture Manager**\n\n"
+                            "❌ **Usage:** `.setpermitpic <url>` or reply to image\n"
+                            "💡 **Example:** `.setpermitpic https://example.com/pic.jpg`")
+        except Exception as e:
+            await event.reply(f"❌ **Picture error:** {str(e)}")
 
     @CipherElite.on(events.NewMessage(outgoing=True, pattern=r"\.togglepermitpic$"))
     @rishabh()
     async def _togglepic(event):
-        cfg = assistant.data["config"]
-        cfg["use_pic"] = not cfg.get("use_pic", True)
-        assistant._save()
-        state = "enabled" if cfg["use_pic"] else "disabled"
-        await event.reply(f"âœ… Permit picture {state}")
+        try:
+            cfg = assistant.data["config"]
+            cfg["use_pic"] = not cfg.get("use_pic", True)
+            assistant._save()
+            state = "✅ **Enabled**" if cfg["use_pic"] else "❌ **Disabled**"
+            
+            await event.reply("🎭 **Cipher Elite Picture Toggle**\n\n"
+                            f"🖼️ **Permit picture:** {state}\n"
+                            f"🔄 **Setting updated successfully**\n"
+                            f"🤖 **Powered by Cipher Elite**")
+        except Exception as e:
+            await event.reply(f"❌ **Toggle error:** {str(e)}")
 
     @CipherElite.on(events.NewMessage(outgoing=True, pattern=r"\.block(?:$|\s)"))
     @rishabh()
     async def _block(event):
-        if event.is_private:
-            uid = str(event.chat_id)
-        else:
-            reply = await event.get_reply_message()
-            if not reply:
-                return await event.reply("â†ªï¸ Reply to the user to block.")
-            uid = str(reply.sender_id)
+        try:
+            if event.is_private:
+                uid = str(event.chat_id)
+            else:
+                reply = await event.get_reply_message()
+                if not reply:
+                    return await event.reply("🎭 **Cipher Elite Block System**\n\n"
+                                           "❌ **Error:** Reply to a user to block them")
+                uid = str(reply.sender_id)
 
-        assistant.data["approved_users"] = [
-            u for u in assistant.data["approved_users"] if u != uid
-        ]
-        assistant.data["warnings"].pop(uid, None)
-        assistant.data["user_states"].pop(uid, None)
-        assistant._save()
-        await event.client(functions.contacts.BlockRequest(int(uid)))
-        await event.reply(f"ðŸš« User `{uid}` has been blocked.")
+            # Don't allow blocking the CipherElite owner
+            if int(uid) == CIPHER_ELITE_OWNER_ID:
+                return await event.reply("👑 **Cannot block CipherElite Developer!**\n\n"
+                                       "🛡️ **The creator is protected from blocking**\n"
+                                       "🎭 **CipherElite Security Protocol**")
+
+            assistant.data["approved_users"] = [
+                u for u in assistant.data["approved_users"] if u != uid
+            ]
+            assistant.data["warnings"].pop(uid, None)
+            assistant.data["user_states"].pop(uid, None)
+            assistant._save()
+            
+            await event.client(functions.contacts.BlockRequest(int(uid)))
+            
+            await event.reply("🎭 **Cipher Elite Block System**\n\n"
+                            f"🛑 **User blocked successfully!**\n"
+                            f"👤 **User ID:** `{uid}`\n"
+                            f"🚫 **Complete access denied**\n"
+                            f"🤖 **Powered by Cipher Elite**")
+        except Exception as e:
+            await event.reply(f"❌ **Block error:** {str(e)}")
 
     return assistant
+
+async def register_commands():
+    """Register additional commands if needed"""
+    pass
