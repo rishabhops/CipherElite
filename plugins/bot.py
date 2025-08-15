@@ -31,11 +31,18 @@ def init(client_instance):
     pass
 
 def add_handler(plugin_name, commands, description=""):
+    """Enhanced command handler with full syntax preservation"""
     if plugin_name not in CMD_LIST:
+        # Ensure commands are stored exactly as provided
         CMD_LIST[plugin_name] = {
-            "commands": commands,
+            "commands": commands.copy() if isinstance(commands, list) else [commands],
             "description": description
         }
+        
+        # Debug logging to check what's being stored
+        print(f"🎭 Cipher Elite: Registered plugin '{plugin_name}' with {len(CMD_LIST[plugin_name]['commands'])} commands")
+        for i, cmd in enumerate(CMD_LIST[plugin_name]['commands']):
+            print(f"   Command {i+1}: {cmd}")
 
 async def init_bot():
     await bot.start(bot_token=Config.BOT_TOKEN)
@@ -107,9 +114,20 @@ async def init_bot():
                     "<b>Available Commands:</b>\n"
                 )
                 
-                # Add commands with consistent formatting
+                # Enhanced command formatting with full syntax preservation
                 for cmd in CMD_LIST[plugin_name]["commands"]:
-                    text += f"• <code>{cmd}</code>\n"
+                    # Ensure full command syntax is displayed
+                    if isinstance(cmd, str):
+                        # Split command and description if formatted as "command - description"
+                        if " - " in cmd:
+                            cmd_part, desc_part = cmd.split(" - ", 1)
+                            text += f"• <code>{cmd_part}</code>\n  <i>{desc_part}</i>\n\n"
+                        else:
+                            # Just the command without description
+                            text += f"• <code>{cmd}</code>\n\n"
+                    else:
+                        # Fallback for any other format
+                        text += f"• <code>{str(cmd)}</code>\n\n"
                 
                 # Add back button
                 buttons = [[Button.inline("← Back to Menu", "help_page_0")]]
