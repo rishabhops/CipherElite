@@ -5,14 +5,10 @@ from utils.decorators import rishabh
 from plugins.bot import add_handler
 
 def init(client_instance):
-    """
-    Required initialization function that registers commands and descriptions
-    """
-    # EXPLICIT COMMAND DEFINITIONS - PRESERVING FULL SYNTAX
     commands = [
-        ".spam <count> <message> - Spam message multiple times with Cipher Elite power",
-        ".dspam <count> <delay> <message> - Spam with custom delay between messages",
-        ".mspam <count> <reply to media> - Spam media/files multiple times", 
+        ".spam [count] [message] - Spam message multiple times with Cipher Elite power",
+        ".dspam [count] [delay] [message] - Spam with custom delay between messages",
+        ".mspam [count] [reply to media] - Spam media/files multiple times", 
         ".stopspam - Stop all active spam tasks in current chat",
         ".listspam - Show all active spam operations across chats"
     ]
