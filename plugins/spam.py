@@ -8,14 +8,22 @@ def init(client_instance):
     """
     Required initialization function that registers commands and descriptions
     """
+    # EXPLICIT COMMAND DEFINITIONS - PRESERVING FULL SYNTAX
     commands = [
         ".spam <count> <message> - Spam message multiple times with Cipher Elite power",
         ".dspam <count> <delay> <message> - Spam with custom delay between messages",
-        ".mspam <count> <reply to media> - Spam media/files multiple times",
+        ".mspam <count> <reply to media> - Spam media/files multiple times", 
         ".stopspam - Stop all active spam tasks in current chat",
         ".listspam - Show all active spam operations across chats"
     ]
+    
     description = "💥 Cipher Elite Spam Engine - Advanced message spamming with military precision"
+    
+    # Debug: Print what we're registering
+    print("🎭 REGISTERING SPAM COMMANDS:")
+    for i, cmd in enumerate(commands):
+        print(f"  {i+1}: {cmd}")
+    
     add_handler("spam", commands, description)
 
 async def register_commands():
