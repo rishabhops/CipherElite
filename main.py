@@ -12,9 +12,9 @@ logging.basicConfig(
 )
 
 # Initialize Telegram client
-eliteses = thanos_protect(Config.STRING_SESSION)
+# main.py
 client = TelegramClient(
-    StringSession(eliteses),
+    StringSession(Config.STRING_SESSION),  # REMOVE thanos_protect!
     Config.API_ID,
     Config.API_HASH
 )
