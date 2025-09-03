@@ -3,7 +3,6 @@ import logging
 from telethon import TelegramClient
 from telethon.sessions import StringSession
 from config.config import Config
-from utils.thanos import thanos_protect
 from startup.startup import start_bot
 
 logging.basicConfig(
