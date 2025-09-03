@@ -8,7 +8,7 @@ load_dotenv()
 API_ID = int(os.getenv("API_ID", "10248430"))  
 API_HASH = os.getenv("API_HASH", "42396a6ff14a569b9d59931643897d0d")  
 #Please generate a session using @elite_session_maker_bot else your session not working 
-ELITE_SESSION = os.getenv("ELITE_SESSION", "INVALID_SESSION")  
+TELETHON_SESSION = os.getenv("TELETHON_SESSION", "INVALID_SESSION")  
 # Bot Settings
 ELITE_BOT_PREFIX = os.getenv("ELITE_BOT_PREFIX", ".")
 BOT_TOKEN = os.getenv("BOT_TOKEN", "INVALID_BOT_TOKEN")
