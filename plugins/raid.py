@@ -23,6 +23,7 @@ from plugins.bot import add_handler
 import asyncio
 import random
 import time
+import re
 
 CIPHER_ELITE_OWNER = 5470956337
 
@@ -162,12 +163,48 @@ ACTIVATION_MESSAGE = """
 
 def init(client_instance):
     commands = [
-        ".replyraid [hindi/english] - 🎭 Activate raid with language selection",
+        ".replyraid [hindi/english] [username/userid] - 🎭 Activate raid (reply or use username/ID)",
         ".dreplyraid - ❌ Deactivate active raid system", 
         ".raidinfo - 📊 Display raid statistics and data"
     ]
-    description = "🎭 Cipher Elite Raid System - Advanced bilingual raiding with intelligent targeting"
+    description = "🎭 Cipher Elite Raid System - Advanced bilingual raiding with flexible targeting"
     add_handler("raid", commands, description)
+
+async def parse_user_target(event, args):
+    """Parse and retrieve user entity from reply, username, or ID"""
+    user = None
+    
+    # Check if replying to a message
+    if event.reply_to_msg_id:
+        reply = await event.get_reply_message()
+        user = await event.client.get_entity(reply.sender_id)
+        return user
+    
+    # Extract username or ID from arguments
+    # Remove language keywords first
+    target_str = args.replace('hindi', '').replace('english', '').strip()
+    
+    if not target_str:
+        return None
+    
+    try:
+        # Check if it's a numeric ID
+        if target_str.isdigit():
+            user_id = int(target_str)
+            user = await event.client.get_entity(user_id)
+        # Check if it's a username (with or without @)
+        else:
+            # Remove @ if present
+            username = target_str.lstrip('@')
+            user = await event.client.get_entity(username)
+            
+    except ValueError as e:
+        # Entity not found
+        raise ValueError(f"Could not find user: {target_str}")
+    except Exception as e:
+        raise Exception(f"Error getting user entity: {str(e)}")
+    
+    return user
 
 @CipherElite.on(events.NewMessage)
 async def handle_all_messages(event):
@@ -194,106 +231,153 @@ async def handle_all_messages(event):
             active_raids["stats"][event.sender_id] += 1
 
 async def register_commands():
-    @CipherElite.on(events.NewMessage(pattern=r"\.replyraid(?: |$)(.*)"))
+    @CipherElite.on(events.NewMessage(pattern=r".replyraid(?: |$)(.*)"))
     @rishabh()
     async def activate_raid(event):
         try:
             args = event.pattern_match.group(1).lower()
             lang = "hindi" if "hindi" in args else "english"
             
-            if event.reply_to_msg_id:
-                reply = await event.get_reply_message()
-                user = await event.client.get_entity(reply.sender_id)
-                
-                if user.id == CIPHER_ELITE_OWNER:
-                    await event.reply("🎭 **Cipher Elite Security Protocol**\n\n"
-                                    "🛡️ **Access Denied:**You Cannot target my devloper Rishabh\n"
-                                    "🔒 **Security Level:** Maximum Protection Active\n"
-                                    "⚠️ **Status:** Operation Blocked by Elite Shield")
-                    return
-                
-                active_raids["users"][user.id] = True
-                active_raids["stats"][user.id] = 0
-                active_raids["start_time"][user.id] = time.time()
-                active_raids["language"][user.id] = lang
-                
-                user_mention = f"[{utils.get_display_name(user)}](tg://user?id={user.id})"
-                
-                activation_msg = RAID_BANNER + ACTIVATION_MESSAGE.format(
-                    user_mention,
-                    user.id,
-                    lang.upper()
-                )
-                
-                await event.reply(activation_msg)
-            else:
-                await event.reply("🎭 **Cipher Elite Raid System**\n\n"
-                                "❌ **Error:** Please reply to a user to activate raid!\n"
-                                "💡 **Usage:** Reply to target's message with `.replyraid`\n"
-                                "🗣️ **Language Options:** `hindi` or `english`")
+            # Try to get user from reply or arguments
+            user = await parse_user_target(event, args)
+            
+            if not user:
+                await event.reply("🎭 **Cipher Elite Raid System**"
+                                "❌ **Error:** No target specified!"
+                                "💡 **Usage Options:**"
+                                "• Reply to user's message: `.replyraid hindi`"
+                                "• Use username: `.replyraid hindi @username`"
+                                "• Use user ID: `.replyraid english 123456789`"
+                                "🗣️ **Languages:** `hindi` or `english` (default: english)")
+                return
+            
+            # Check if target is the bot owner
+            if user.id == CIPHER_ELITE_OWNER:
+                await event.reply("🎭 **Cipher Elite Security Protocol**"
+                                "🛡️ **Access Denied:** You Cannot target my developer Rishabh"
+                                "🔒 **Security Level:** Maximum Protection Active"
+                                "⚠️ **Status:** Operation Blocked by Elite Shield")
+                return
+            
+            # Check if already raiding this user
+            if user.id in active_raids["users"]:
+                await event.reply("🎭 **Cipher Elite Raid System**"
+                                f"⚠️ **Already raiding:** {utils.get_display_name(user)}"
+                                f"💡 **Tip:** Use `.dreplyraid` to stop the current raid first")
+                return
+            
+            # Activate raid
+            active_raids["users"][user.id] = True
+            active_raids["stats"][user.id] = 0
+            active_raids["start_time"][user.id] = time.time()
+            active_raids["language"][user.id] = lang
+            
+            user_mention = f"[{utils.get_display_name(user)}](tg://user?id={user.id})"
+            
+            activation_msg = RAID_BANNER + ACTIVATION_MESSAGE.format(
+                user_mention,
+                user.id,
+                lang.upper()
+            )
+            
+            await event.reply(activation_msg)
+            
+        except ValueError as e:
+            await event.reply(f"🎭 **Cipher Elite System Error**"
+                            f"❌ **Error:** {str(e)}"
+                            f"💡 **Tip:** Make sure the username/ID exists and is accessible")
         except Exception as e:
-            await event.reply(f"🎭 **Cipher Elite System Error**\n\n❌ **Error:** {str(e)}")
+            await event.reply(f"🎭 **Cipher Elite System Error**"
+                            f"❌ **Error:** {str(e)}")
 
-    @CipherElite.on(events.NewMessage(pattern=r"\.raidinfo"))
+    @CipherElite.on(events.NewMessage(pattern=r".raidinfo"))
     @rishabh()
     async def raid_info(event):
         try:
-            info = f"{RAID_BANNER}\n🎭 **ACTIVE RAID STATISTICS**\n\n"
+            info = f"{RAID_BANNER}🎭 **ACTIVE RAID STATISTICS**"
             
             if not active_raids["users"]:
-                return await event.reply("🎭 **Cipher Elite Raid Monitor**\n\n"
-                                       "❌ **No active raids detected**\n"
-                                       "💡 **Use `.replyraid` to start raiding**\n"
+                return await event.reply("🎭 **Cipher Elite Raid Monitor**"
+                                       "❌ **No active raids detected**"
+                                       "💡 **Use `.replyraid` to start raiding**"
                                        "📊 **All systems are idle**")
                 
             for user_id in active_raids["users"]:
-                user = await event.client.get_entity(user_id)
-                duration = time.time() - active_raids["start_time"][user_id]
-                hits = active_raids["stats"][user_id]
-                lang = active_raids["language"][user_id]
-                
-                info += f"🎯 **Target:** {utils.get_display_name(user)}\n"
-                info += f"🗣️ **Language:** {lang.upper()}\n"
-                info += f"💥 **Hits Delivered:** {hits}\n"
-                info += f"⏱️ **Duration:** {int(duration)}s\n"
-                info += f"🆔 **User ID:** `{user_id}`\n"
-                info += f"🔥 **Status:** Active Raid\n\n"
+                try:
+                    user = await event.client.get_entity(user_id)
+                    duration = time.time() - active_raids["start_time"][user_id]
+                    hits = active_raids["stats"][user_id]
+                    lang = active_raids["language"][user_id]
+                    
+                    info += f"🎯 **Target:** {utils.get_display_name(user)}"
+                    info += f"🗣️ **Language:** {lang.upper()}"
+                    info += f"💥 **Hits Delivered:** {hits}"
+                    info += f"⏱️ **Duration:** {int(duration)}s"
+                    info += f"🆔 **User ID:** `{user_id}`"
+                    info += f"🔥 **Status:** Active Raid"
+                except Exception:
+                    info += f"🎯 **Target ID:** `{user_id}`"
+                    info += f"⚠️ **Status:** Entity unavailable"
                 
             info += f"🤖 **Powered by CipherElite Raid System**"
             await event.reply(info)
         except Exception as e:
             await event.reply(f"🎭 **Raid Info Error:** {str(e)}")
 
-    @CipherElite.on(events.NewMessage(pattern=r"\.dreplyraid"))
+    @CipherElite.on(events.NewMessage(pattern=r".dreplyraid(?: |$)(.*)"))
     @rishabh()
     async def deactivate_raid(event):
         try:
+            args = event.pattern_match.group(1).strip()
+            user_id = None
+            
+            # Check if replying to a message
             if event.reply_to_msg_id:
                 reply = await event.get_reply_message()
                 user_id = reply.sender_id
+            # Check if username/ID provided
+            elif args:
+                try:
+                    if args.isdigit():
+                        user_id = int(args)
+                    else:
+                        username = args.lstrip('@')
+                        user = await event.client.get_entity(username)
+                        user_id = user.id
+                except Exception:
+                    await event.reply("🎭 **Cipher Elite Raid System**"
+                                    "❌ **Error:** Could not find specified user"
+                                    "💡 **Check username/ID and try again**")
+                    return
+            
+            if not user_id:
+                await event.reply("🎭 **Cipher Elite Raid Deactivation**"
+                                "❌ **Error:** No target specified!"
+                                "💡 **Usage Options:**"
+                                "• Reply to user's message: `.dreplyraid`"
+                                "• Use username: `.dreplyraid @username`"
+                                "• Use user ID: `.dreplyraid 123456789`")
+                return
+            
+            if user_id in active_raids["users"]:
+                final_hits = active_raids["stats"][user_id]
+                duration = int(time.time() - active_raids["start_time"][user_id])
                 
-                if user_id in active_raids["users"]:
-                    final_hits = active_raids["stats"][user_id]
-                    duration = int(time.time() - active_raids["start_time"][user_id])
-                    
-                    del active_raids["users"][user_id]
-                    del active_raids["stats"][user_id]
-                    del active_raids["start_time"][user_id]
-                    del active_raids["language"][user_id]
-                    
-                    await event.reply("🎭 **CIPHER ELITE RAID DEACTIVATED** 🎭\n\n"
-                                    f"✅ **Successfully Stopped**\n"
-                                    f"💥 **Total Hits:** {final_hits}\n"
-                                    f"⏱️ **Duration:** {duration}s\n"
-                                    f"🛡️ **Elite Shield:** Restored\n\n"
-                                    f"🤖 **Powered by CipherElite**")
-                else:
-                    await event.reply("🎭 **Cipher Elite Raid System**\n\n"
-                                    "❌ **No active raid found for this user**\n"
-                                    "💡 **Target is not currently being raided**")
+                del active_raids["users"][user_id]
+                del active_raids["stats"][user_id]
+                del active_raids["start_time"][user_id]
+                del active_raids["language"][user_id]
+                
+                await event.reply("🎭 **CIPHER ELITE RAID DEACTIVATED** 🎭"
+                                f"✅ **Successfully Stopped**"
+                                f"💥 **Total Hits:** {final_hits}"
+                                f"⏱️ **Duration:** {duration}s"
+                                f"🛡️ **Elite Shield:** Restored"
+                                f"🤖 **Powered by CipherElite**")
             else:
-                await event.reply("🎭 **Cipher Elite Raid Deactivation**\n\n"
-                                "❌ **Error:** Reply to a user to deactivate raid!\n"
-                                "💡 **Usage:** Reply to target's message with `.dreplyraid`")
+                await event.reply("🎭 **Cipher Elite Raid System**"
+                                "❌ **No active raid found for this user**"
+                                "💡 **Target is not currently being raided**")
+                                
         except Exception as e:
             await event.reply(f"🎭 **Deactivation Error:** {str(e)}")
