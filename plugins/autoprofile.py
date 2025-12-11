@@ -6,12 +6,11 @@
 
 import asyncio
 import os
-import random
 import urllib.request
 from datetime import datetime, timedelta
 from PIL import Image, ImageDraw, ImageFont
 from telethon import functions, events
-from telethon.errors import FloodWaitError
+from telethon.errors import FloodWaitError, RPCError
 from utils.utils import CipherElite
 from utils.decorators import rishabh
 from plugins.bot import add_handler
@@ -58,6 +57,13 @@ def download_file(url, filename):
         print(f"⚠️ Download Failed: {e}")
         return False
 
+async def notify_user(client, message):
+    """Sends a log message to Saved Messages (Me)."""
+    try:
+        await client.send_message("me", message)
+    except:
+        pass
+
 def generate_time_pfp():
     """Generates a PFP with the current IST time."""
     # Ensure assets exist
@@ -89,8 +95,6 @@ def generate_time_pfp():
         small_font = ImageFont.load_default()
 
     # Draw Text (Centered) - Neon Green Color
-    # Adjust coordinates to center the text based on 1024x1024 image
-    # Note: orbitron font is wide, so we adjust x=180 approx
     draw.text((220, 380), time_str, font=font, fill="#00ffcc")
     
     # Add "Cipher Elite" watermark
@@ -110,9 +114,11 @@ async def loop_autoname(client):
             new_name = f"⚡ {time_str} | Cipher Elite"
             await client(functions.account.UpdateProfileRequest(first_name=new_name))
         except FloodWaitError as e:
+            await notify_user(client, f"⏳ **FloodWait in AutoName:** Sleeping for {e.seconds}s.")
             await asyncio.sleep(e.seconds)
-        except Exception:
-            pass
+        except Exception as e:
+            await notify_user(client, f"❌ **AutoName Error:** {str(e)}\nStopping task.")
+            RUNNING_TASKS["autoname"] = False
         await asyncio.sleep(60)
 
 async def loop_autobio(client, custom_bio):
@@ -125,9 +131,11 @@ async def loop_autobio(client, custom_bio):
             new_bio = f"📅 {date_str} | {custom_bio} | ⌚ {time_str} (IST)"
             await client(functions.account.UpdateProfileRequest(about=new_bio))
         except FloodWaitError as e:
+            await notify_user(client, f"⏳ **FloodWait in AutoBio:** Sleeping for {e.seconds}s.")
             await asyncio.sleep(e.seconds)
-        except Exception:
-            pass
+        except Exception as e:
+            await notify_user(client, f"❌ **AutoBio Error:** {str(e)}\nStopping task.")
+            RUNNING_TASKS["autobio"] = False
         await asyncio.sleep(60)
 
 async def loop_digitalpfp(client):
@@ -138,18 +146,32 @@ async def loop_digitalpfp(client):
             
             if os.path.exists(pfp_file):
                 file = await client.upload_file(pfp_file)
-                await client(functions.photos.UploadProfilePhotoRequest(file))
+                # Explicitly calling UploadProfilePhotoRequest
+                await client(functions.photos.UploadProfilePhotoRequest(
+                    file=file,
+                    # video=None,
+                    # video_start_ts=None
+                ))
                 
                 # Cleanup
                 os.remove(pfp_file)
             else:
-                print("⚠️ Error: PFP file was not generated.")
+                await notify_user(client, "⚠️ **Digital PFP Error:** Generated image file not found.")
                 
         except FloodWaitError as e:
-            await asyncio.sleep(e.seconds)
+            RUNNING_TASKS["digitalpfp"] = False
+            await notify_user(client, f"🛑 **Digital PFP Stopped:** FloodWait detected ({e.seconds}s). Too many updates!")
+            break # Stop loop to prevent ban
+            
+        except RPCError as e:
+            await notify_user(client, f"❌ **Telegram API Error:** {str(e)}\nTask stopped.")
+            RUNNING_TASKS["digitalpfp"] = False
+            break
+            
         except Exception as e:
-            print(f"Error in DigitalPFP: {e}")
-        
+            await notify_user(client, f"❌ **Digital PFP Crash:** {str(e)}")
+            # We don't break here, might be a temporary network glitch
+            
         await asyncio.sleep(60)
 
 # --- Plugin Init ---
@@ -205,18 +227,26 @@ async def register_commands():
         if RUNNING_TASKS["digitalpfp"]:
             return await event.reply("⚠️ **DigitalPFP is already running!**")
         
-        # Trigger an initial check to download assets and test
-        status = await event.reply("🔄 **Starting Digital PFP (IST)...**\nDownloading assets & generating first image...")
+        # Trigger an initial check
+        status = await event.reply("🔄 **Starting Digital PFP (IST)...**")
         
         try:
-            # Run generation once immediately to ensure it works
+            # 1. Test Generation
             test_path = generate_time_pfp()
             if not os.path.exists(test_path):
-                return await status.edit("❌ **Error:** Could not generate image. Check logs.")
+                return await status.edit("❌ **Error:** Image generation failed. Check permissions.")
             
+            # 2. Test Upload (Initial Run)
+            file = await event.client.upload_file(test_path)
+            await event.client(functions.photos.UploadProfilePhotoRequest(file=file))
+            
+            # 3. Start Loop
             RUNNING_TASKS["digitalpfp"] = True
             CipherElite.loop.create_task(loop_digitalpfp(event.client))
-            await status.edit("🎭 **Cipher Elite: Digital PFP Enabled.**\nProfile picture will update every minute with Cyberpunk style.")
+            await status.edit("🎭 **Cipher Elite: Digital PFP Active.**\nProfile updated successfully. Loop started.")
+            
+        except FloodWaitError as e:
+            await status.edit(f"❌ **FloodWait:** You are changing PFP too fast. Wait {e.seconds} seconds.")
         except Exception as e:
             await status.edit(f"❌ **Error starting PFP:** {str(e)}")
 
