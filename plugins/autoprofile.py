@@ -6,11 +6,9 @@
 
 import asyncio
 import os
-import time
 import random
-import shutil
 import urllib.request
-from datetime import datetime
+from datetime import datetime, timedelta
 from PIL import Image, ImageDraw, ImageFont
 from telethon import functions, events
 from telethon.errors import FloodWaitError
@@ -29,8 +27,9 @@ DEFAULT_BG = "https://raw.githubusercontent.com/rishabhops/CipherElite/elite/ima
 FONT_URL = "https://github.com/google/fonts/raw/main/ofl/orbitron/Orbitron-Bold.ttf"
 FONT_PATH = os.path.join(ASSETS_DIR, "digital.ttf")
 PFP_PATH = os.path.join(ASSETS_DIR, "current_pfp.jpg")
+BG_PATH = os.path.join(ASSETS_DIR, "bg.jpg")
 
-# --- Global State (Controls the loops) ---
+# --- Global State ---
 RUNNING_TASKS = {
     "autoname": False,
     "autobio": False,
@@ -39,39 +38,63 @@ RUNNING_TASKS = {
 
 # --- Helper Functions ---
 
-def ensure_assets():
-    """Downloads necessary fonts and images if missing."""
-    if not os.path.exists(FONT_PATH):
-        urllib.request.urlretrieve(FONT_URL, FONT_PATH)
+def get_ist_time():
+    """Returns the current time in Indian Standard Time (UTC+5:30)."""
+    utc_now = datetime.utcnow()
+    ist_now = utc_now + timedelta(hours=5, minutes=30)
+    return ist_now
+
+def download_file(url, filename):
+    """Downloads file with User-Agent to prevent 403 errors."""
+    try:
+        if os.path.exists(filename):
+            return True
+        opener = urllib.request.build_opener()
+        opener.addheaders = [('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)')]
+        urllib.request.install_opener(opener)
+        urllib.request.urlretrieve(url, filename)
+        return True
+    except Exception as e:
+        print(f"⚠️ Download Failed: {e}")
+        return False
 
 def generate_time_pfp():
-    """Generates a PFP with the current time overlaid on a cyberpunk bg."""
-    ensure_assets()
+    """Generates a PFP with the current IST time."""
+    # Ensure assets exist
+    download_file(FONT_URL, FONT_PATH)
+    download_file(DEFAULT_BG, BG_PATH)
     
-    # Download BG if not exists or reuse
-    bg_path = os.path.join(ASSETS_DIR, "bg.jpg")
-    if not os.path.exists(bg_path):
-        urllib.request.urlretrieve(DEFAULT_BG, bg_path)
-    
-    img = Image.open(bg_path).convert("RGBA").resize((1024, 1024)) # High quality
+    # Load Background (Create black fallback if download failed)
+    if os.path.exists(BG_PATH):
+        img = Image.open(BG_PATH).convert("RGBA").resize((1024, 1024))
+    else:
+        img = Image.new("RGBA", (1024, 1024), (0, 0, 0, 255))
+        
     draw = ImageDraw.Draw(img)
     
-    # Calculate Time
-    current_time = datetime.now().strftime("%H:%M")
+    # Calculate Time (IST)
+    ist_now = get_ist_time()
+    time_str = ist_now.strftime("%H:%M")
     
     # Load Font
     try:
-        font = ImageFont.truetype(FONT_PATH, 220)
+        if os.path.exists(FONT_PATH):
+            font = ImageFont.truetype(FONT_PATH, 220)
+            small_font = ImageFont.truetype(FONT_PATH, 50)
+        else:
+            font = ImageFont.load_default()
+            small_font = ImageFont.load_default()
     except:
         font = ImageFont.load_default()
+        small_font = ImageFont.load_default()
 
     # Draw Text (Centered) - Neon Green Color
-    # Coordinates tailored for 1024x1024
-    draw.text((220, 400), current_time, font=font, fill="#00ffcc")
+    # Adjust coordinates to center the text based on 1024x1024 image
+    # Note: orbitron font is wide, so we adjust x=180 approx
+    draw.text((220, 380), time_str, font=font, fill="#00ffcc")
     
     # Add "Cipher Elite" watermark
-    small_font = ImageFont.truetype(FONT_PATH, 50)
-    draw.text((360, 650), "CIPHER ELITE", font=small_font, fill="#ffffff")
+    draw.text((340, 650), "CIPHER ELITE", font=small_font, fill="#ffffff")
 
     img.convert("RGB").save(PFP_PATH)
     return PFP_PATH
@@ -79,11 +102,11 @@ def generate_time_pfp():
 # --- Async Loops ---
 
 async def loop_autoname(client):
-    """Updates name every minute."""
+    """Updates name every minute (IST)."""
     while RUNNING_TASKS["autoname"]:
         try:
-            time_str = datetime.now().strftime("%H:%M")
-            # You can customize the name format here
+            ist_now = get_ist_time()
+            time_str = ist_now.strftime("%H:%M")
             new_name = f"⚡ {time_str} | Cipher Elite"
             await client(functions.account.UpdateProfileRequest(first_name=new_name))
         except FloodWaitError as e:
@@ -93,13 +116,13 @@ async def loop_autoname(client):
         await asyncio.sleep(60)
 
 async def loop_autobio(client, custom_bio):
-    """Updates bio every minute."""
+    """Updates bio every minute (IST)."""
     while RUNNING_TASKS["autobio"]:
         try:
-            time_str = datetime.now().strftime("%H:%M")
-            date_str = datetime.now().strftime("%d-%b")
-            # Format: 📅 Date | Bio | ⌚ Time
-            new_bio = f"📅 {date_str} | {custom_bio} | ⌚ {time_str}"
+            ist_now = get_ist_time()
+            time_str = ist_now.strftime("%H:%M")
+            date_str = ist_now.strftime("%d-%b")
+            new_bio = f"📅 {date_str} | {custom_bio} | ⌚ {time_str} (IST)"
             await client(functions.account.UpdateProfileRequest(about=new_bio))
         except FloodWaitError as e:
             await asyncio.sleep(e.seconds)
@@ -108,22 +131,19 @@ async def loop_autobio(client, custom_bio):
         await asyncio.sleep(60)
 
 async def loop_digitalpfp(client):
-    """Updates PFP every minute."""
+    """Updates PFP every minute (IST)."""
     while RUNNING_TASKS["digitalpfp"]:
         try:
             pfp_file = generate_time_pfp()
-            file = await client.upload_file(pfp_file)
             
-            # Delete old photos to prevent clutter (keep current)
-            # await client(functions.photos.DeletePhotosRequest(
-            #     await client.get_profile_photos("me", limit=1)
-            # ))
-            
-            await client(functions.photos.UploadProfilePhotoRequest(file))
-            
-            # Clean up local file
             if os.path.exists(pfp_file):
+                file = await client.upload_file(pfp_file)
+                await client(functions.photos.UploadProfilePhotoRequest(file))
+                
+                # Cleanup
                 os.remove(pfp_file)
+            else:
+                print("⚠️ Error: PFP file was not generated.")
                 
         except FloodWaitError as e:
             await asyncio.sleep(e.seconds)
@@ -136,10 +156,10 @@ async def loop_digitalpfp(client):
 
 def init(client_instance):
     commands = [
-        ".autoname - Start Time in Name",
-        ".autobio <text> - Start Time in Bio",
-        ".digitalpfp - Start Cyberpunk Time PFP",
-        ".end <task> - Stop a task (autoname, autobio, digitalpfp)"
+        ".autoname - Start Time in Name (IST)",
+        ".autobio <text> - Start Time in Bio (IST)",
+        ".digitalpfp - Start Cyberpunk Time PFP (IST)",
+        ".end <task> - Stop a task"
     ]
     description = "🎭 Profile Tools - Automate your profile identity"
     add_handler("autoprofile", commands, description)
@@ -157,7 +177,7 @@ async def register_commands():
         
         RUNNING_TASKS["autoname"] = True
         CipherElite.loop.create_task(loop_autoname(event.client))
-        await event.reply("🎭 **Cipher Elite: AutoName Enabled.**\nName will update every minute.")
+        await event.reply("🎭 **Cipher Elite: AutoName Enabled (IST).**\nName will update every minute.")
 
     # -------------------------------------------------------------------------
     # 2. AUTO BIO
@@ -167,17 +187,17 @@ async def register_commands():
     async def enable_autobio(event):
         bio_text = event.pattern_match.group(1)
         if not bio_text:
-            bio_text = "Cipher Elite User" # Default
+            bio_text = "Cipher Elite User"
             
         if RUNNING_TASKS["autobio"]:
             return await event.reply("⚠️ **AutoBio is already running!** Stop it first to change text.")
         
         RUNNING_TASKS["autobio"] = True
         CipherElite.loop.create_task(loop_autobio(event.client, bio_text))
-        await event.reply(f"🎭 **Cipher Elite: AutoBio Enabled.**\nBio set to: `{bio_text}`")
+        await event.reply(f"🎭 **Cipher Elite: AutoBio Enabled (IST).**\nBio set to: `{bio_text}`")
 
     # -------------------------------------------------------------------------
-    # 3. DIGITAL PFP (The Visual One)
+    # 3. DIGITAL PFP
     # -------------------------------------------------------------------------
     @CipherElite.on(events.NewMessage(pattern=r"\.digitalpfp$"))
     @rishabh()
@@ -185,9 +205,20 @@ async def register_commands():
         if RUNNING_TASKS["digitalpfp"]:
             return await event.reply("⚠️ **DigitalPFP is already running!**")
         
-        RUNNING_TASKS["digitalpfp"] = True
-        CipherElite.loop.create_task(loop_digitalpfp(event.client))
-        await event.reply("🎭 **Cipher Elite: Digital PFP Enabled.**\nProfile picture will update every minute with Cyberpunk style.")
+        # Trigger an initial check to download assets and test
+        status = await event.reply("🔄 **Starting Digital PFP (IST)...**\nDownloading assets & generating first image...")
+        
+        try:
+            # Run generation once immediately to ensure it works
+            test_path = generate_time_pfp()
+            if not os.path.exists(test_path):
+                return await status.edit("❌ **Error:** Could not generate image. Check logs.")
+            
+            RUNNING_TASKS["digitalpfp"] = True
+            CipherElite.loop.create_task(loop_digitalpfp(event.client))
+            await status.edit("🎭 **Cipher Elite: Digital PFP Enabled.**\nProfile picture will update every minute with Cyberpunk style.")
+        except Exception as e:
+            await status.edit(f"❌ **Error starting PFP:** {str(e)}")
 
     # -------------------------------------------------------------------------
     # 4. END TASKS
