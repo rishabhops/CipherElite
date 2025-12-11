@@ -70,8 +70,9 @@ def generate_time_pfp():
     download_file(FONT_URL, FONT_PATH)
     download_file(DEFAULT_BG, BG_PATH)
     
-    # Load Background (Create black fallback if download failed)
+    # Load Background
     if os.path.exists(BG_PATH):
+        # Resize to square 1024x1024 for PFP
         img = Image.open(BG_PATH).convert("RGBA").resize((1024, 1024))
     else:
         img = Image.new("RGBA", (1024, 1024), (0, 0, 0, 255))
@@ -82,11 +83,11 @@ def generate_time_pfp():
     ist_now = get_ist_time()
     time_str = ist_now.strftime("%H:%M")
     
-    # Load Font
+    # Load Font - SIZE INCREASED TO 350
     try:
         if os.path.exists(FONT_PATH):
-            font = ImageFont.truetype(FONT_PATH, 220)
-            small_font = ImageFont.truetype(FONT_PATH, 50)
+            font = ImageFont.truetype(FONT_PATH, 350)
+            small_font = ImageFont.truetype(FONT_PATH, 70)
         else:
             font = ImageFont.load_default()
             small_font = ImageFont.load_default()
@@ -94,11 +95,15 @@ def generate_time_pfp():
         font = ImageFont.load_default()
         small_font = ImageFont.load_default()
 
-    # Draw Text (Centered) - Neon Green Color
-    draw.text((220, 380), time_str, font=font, fill="#00ffcc")
+    # Draw Text - CENTERED
+    # anchor="mm" puts the text exactly in the Middle-Middle of the coordinates
+    # 512, 512 is the exact center of a 1024x1024 image
     
-    # Add "Cipher Elite" watermark
-    draw.text((340, 650), "CIPHER ELITE", font=small_font, fill="#ffffff")
+    # Draw Time (Neon Green)
+    draw.text((512, 512), time_str, font=font, fill="#00ffcc", anchor="mm")
+    
+    # Draw Watermark (White) - Lower down at Y=850
+    draw.text((512, 850), "CIPHER ELITE", font=small_font, fill="#ffffff", anchor="mm")
 
     img.convert("RGB").save(PFP_PATH)
     return PFP_PATH
@@ -146,12 +151,7 @@ async def loop_digitalpfp(client):
             
             if os.path.exists(pfp_file):
                 file = await client.upload_file(pfp_file)
-                # Explicitly calling UploadProfilePhotoRequest
-                await client(functions.photos.UploadProfilePhotoRequest(
-                    file=file,
-                    # video=None,
-                    # video_start_ts=None
-                ))
+                await client(functions.photos.UploadProfilePhotoRequest(file=file))
                 
                 # Cleanup
                 os.remove(pfp_file)
@@ -161,7 +161,7 @@ async def loop_digitalpfp(client):
         except FloodWaitError as e:
             RUNNING_TASKS["digitalpfp"] = False
             await notify_user(client, f"🛑 **Digital PFP Stopped:** FloodWait detected ({e.seconds}s). Too many updates!")
-            break # Stop loop to prevent ban
+            break 
             
         except RPCError as e:
             await notify_user(client, f"❌ **Telegram API Error:** {str(e)}\nTask stopped.")
@@ -170,7 +170,6 @@ async def loop_digitalpfp(client):
             
         except Exception as e:
             await notify_user(client, f"❌ **Digital PFP Crash:** {str(e)}")
-            # We don't break here, might be a temporary network glitch
             
         await asyncio.sleep(60)
 
@@ -227,7 +226,6 @@ async def register_commands():
         if RUNNING_TASKS["digitalpfp"]:
             return await event.reply("⚠️ **DigitalPFP is already running!**")
         
-        # Trigger an initial check
         status = await event.reply("🔄 **Starting Digital PFP (IST)...**")
         
         try:
@@ -243,7 +241,7 @@ async def register_commands():
             # 3. Start Loop
             RUNNING_TASKS["digitalpfp"] = True
             CipherElite.loop.create_task(loop_digitalpfp(event.client))
-            await status.edit("🎭 **Cipher Elite: Digital PFP Active.**\nProfile updated successfully. Loop started.")
+            await status.edit("🎭 **Cipher Elite: Digital PFP Active.**\nTime is now HUGE and Centered.")
             
         except FloodWaitError as e:
             await status.edit(f"❌ **FloodWait:** You are changing PFP too fast. Wait {e.seconds} seconds.")
