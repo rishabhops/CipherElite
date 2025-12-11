@@ -375,7 +375,7 @@ async def start_bot(client):
     for url, name in [
         ("https://t.me/THANOS_PRO", "channel"),
         ("https://t.me/thanosprosss", "group"),
-        ("https://t.me/learning_bots", "group")
+        ("https://t.me/learning_bots", "group"),
         ("https://t.me/cipherelite_support", "group")
     ]:
         try:
