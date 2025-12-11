@@ -1,10 +1,3 @@
-# ==============================================================================
-#  CREDITS:
-#  This plugin logic is based on CatUserBot's 'app' plugin.
-#  Copyright (C) 2020-2023 by TgCatUB@Github.
-#  Source: https://github.com/TgCatUB/catuserbot
-# ==============================================================================
-
 import os
 import requests
 import bs4
@@ -15,23 +8,36 @@ from utils.utils import CipherElite
 from utils.decorators import rishabh
 from plugins.bot import add_handler
 
-# --- Constants & Assets ---
-BG_URL_1 = "https://raw.githubusercontent.com/rishabhops/CipherElite/elite/images/app-full.jpg"
-BG_URL_2 = "https://raw.githubusercontent.com/rishabhops/CipherElite/elite/images/app-suggest.jpg"
+# --- Constants ---
+# Check these carefully! GitHub is Case SENSITIVE.
+BG_URL_FULL = "https://raw.githubusercontent.com/rishabhops/CipherElite/elite/images/app-full.jpg"
+BG_URL_SUGGEST = "https://raw.githubusercontent.com/rishabhops/CipherElite/elite/images/app-suggest.jpg"
 
-# 🔄 CHANGED: Now using standard Roboto-Medium (Google/Android Style)
-FONT_URL = "https://github.com/google/fonts/raw/main/apache/roboto/Roboto-Medium.ttf"
+# A safer, more direct link for the font
+FONT_URL = "https://github.com/google/fonts/raw/main/apache/roboto/static/Roboto-Medium.ttf"
 FONT_PATH = "Roboto-Medium.ttf"
 
-# --- Helper Functions (Inlined for Standalone use) ---
+# --- Helper Functions ---
 
-def ensure_font():
-    """Downloads the font if it doesn't exist."""
-    if not os.path.exists(FONT_PATH):
-        urllib.request.urlretrieve(FONT_URL, FONT_PATH)
+def download_file(url, filename):
+    """
+    Tries to download a file. Returns True if success, False if 404/Error.
+    """
+    try:
+        if os.path.exists(filename):
+            return True
+        # spoof user agent to avoid some 403 errors
+        opener = urllib.request.build_opener()
+        opener.addheaders = [('User-Agent', 'Mozilla/5.0')]
+        urllib.request.install_opener(opener)
+        
+        urllib.request.urlretrieve(url, filename)
+        return True
+    except Exception as e:
+        print(f"⚠️ DOWNLOAD FAILED: {url}\nError: {e}")
+        return False
 
 def make_circle(img):
-    """Crops an image into a circle."""
     mask = Image.new("L", img.size, 0)
     draw = ImageDraw.Draw(mask)
     draw.ellipse((0, 0) + img.size, fill=255)
@@ -39,19 +45,24 @@ def make_circle(img):
     output.paste(img, (0, 0), mask=mask)
     return output
 
-def text_draw(font_name, font_size, img, text, x, y, fill="white"):
-    """Draws text on the image."""
-    font = ImageFont.truetype(font_name, font_size)
+def text_draw(img, text, x, y, size, font_path=None, fill="white"):
+    """Draws text, falling back to default font if custom font fails."""
+    try:
+        if font_path and os.path.exists(font_path):
+            font = ImageFont.truetype(font_path, size)
+        else:
+            font = ImageFont.load_default()
+    except:
+        font = ImageFont.load_default()
+        
     draw = ImageDraw.Draw(img)
-    draw.text((x, y), text=text, fill=fill, font=font)
+    draw.text((x, y), text=str(text), fill=fill, font=font)
 
-# --- Plugin Structure ---
+# --- Plugin Init ---
 
 def init(client_instance):
-    commands = [
-        ".app <name> - Search app in Play Store & generate card"
-    ]
-    description = "🎭 App Store - Search and fetch Android app details"
+    commands = [".app <name> - Search Play Store"]
+    description = "🎭 App Store - Search Android apps"
     add_handler("playstore", commands, description)
 
 async def register_commands():
@@ -61,10 +72,10 @@ async def register_commands():
         try:
             query = event.pattern_match.group(1)
             if not query:
-                return await event.reply("💡 **Usage:** `.app <app name>`\nExample: `.app telegram`")
+                return await event.reply("💡 **Usage:** `.app telegram`")
 
-            status = await event.reply(f"🔄 **Searching Play Store for `{query}`...**")
-            
+            status = await event.reply(f"🔄 **Searching `{query}`...**")
+
             # 1. Scrape Play Store
             final_name = query.replace(" ", "+")
             url = f"https://play.google.com/store/search?q={final_name}&c=apps"
@@ -72,21 +83,17 @@ async def register_commands():
             soup = bs4.BeautifulSoup(page.content, "lxml")
 
             try:
-                # Selectors (TgCatUB logic)
                 fullapp_name = (soup.find("div", "vWM94c") or soup.find("span", "DdYX5")).text
                 dev_name = (soup.find("div", "LbQbAe") or soup.find("span", "wMUdtb")).text
                 rating = (soup.find("div", "TT9eCd") or soup.find("span", "w2kbF")).text.replace("star", "")
                 
-                # Icon handling
                 img_tag = soup.find("img", "T75of bzqKMd") or soup.find("img", "T75of stzEZd")
                 app_icon = img_tag["src"].split("=s")[0]
                 
-                # Links
                 link_tag = soup.find("a", "Qfxief") or soup.find("a", "Si6A0c Gy4nib")
                 app_link = "https://play.google.com" + link_tag["href"]
                 dev_link = "https://play.google.com/store/apps/developer?id=" + dev_name.replace(" ", "+")
                 
-                # Details
                 review_tag = soup.find("div", "g1rdde")
                 review = review_tag.text if review_tag else None
                 
@@ -94,51 +101,56 @@ async def register_commands():
                 downloads = f"{downloads_tags[1].text} downloads" if downloads_tags and len(downloads_tags) > 1 else None
 
             except AttributeError:
-                return await status.edit("❌ **Error:** App not found. Try a specific name.")
+                return await status.edit("❌ **Not Found:** Could not find that app.")
 
-            # 2. Image Generation
-            await status.edit("🎨 **Generating App Card...**")
+            # 2. Prepare Assets
+            await status.edit("🎨 **Downloading Assets...**")
             
-            # Ensure assets
-            ensure_font()
-            bg_url = BG_URL_1 if downloads and review else BG_URL_2
+            # --- DEBUGGING DOWNLOADS ---
+            font_success = download_file(FONT_URL, FONT_PATH)
             
-            pic_name = "temp_app_bg.png"
-            logo_name = "temp_app_logo.png"
+            target_bg = BG_URL_FULL if (downloads and review) else BG_URL_SUGGEST
+            pic_name = "temp_bg.jpg"
+            logo_name = "temp_logo.jpg"
             
-            # Download images
-            urllib.request.urlretrieve(app_icon, logo_name)
-            urllib.request.urlretrieve(bg_url, pic_name)
-            
-            # Process Image
-            background = Image.open(pic_name).resize((1024, 512))
+            bg_success = download_file(target_bg, pic_name)
+            icon_success = download_file(app_icon, logo_name)
+
+            if not bg_success:
+                # Notify user but continue working
+                await event.client.send_message(event.chat_id, f"⚠️ **Warning:** Could not download background image.\n`{target_bg}`\nUsing black background.")
+
+            # 3. Generate Image
+            if bg_success:
+                background = Image.open(pic_name).resize((1024, 512))
+            else:
+                # Black background fallback
+                background = Image.new("RGBA", (1024, 512), (20, 20, 20, 255))
+
             thumbmask = Image.new("RGBA", (1024, 512), 0)
             thumbmask.paste(background, (0, 0))
 
-            # Icon processing
-            logo_img = Image.open(logo_name).convert("RGBA").resize((250, 250))
-            logo_circle = make_circle(logo_img)
-            thumbmask.paste(logo_circle, (680, 100), logo_circle)
+            if icon_success:
+                try:
+                    logo_img = Image.open(logo_name).convert("RGBA").resize((250, 250))
+                    logo_circle = make_circle(logo_img)
+                    thumbmask.paste(logo_circle, (680, 100), logo_circle)
+                except Exception as e:
+                    print(f"Icon Process Error: {e}")
 
             # Draw Text
-            short_name = fullapp_name[:14] + "..." if len(fullapp_name) > 14 else fullapp_name
+            text_draw(thumbmask, fullapp_name[:15], 50, 30, 65, FONT_PATH)
+            text_draw(thumbmask, dev_name, 60, 120, 30, FONT_PATH, "red")
+            text_draw(thumbmask, f"{rating} / 5", 190, 260, 70, FONT_PATH)
             
-            text_draw(FONT_PATH, 65, thumbmask, short_name, 50, 30)
-            text_draw(FONT_PATH, 30, thumbmask, dev_name, 60, 120, "red")
-            text_draw(FONT_PATH, 70, thumbmask, f"{rating} / 5", 190, 260)
-            
-            if bg_url == BG_URL_1:
-                text_draw(FONT_PATH, 35, thumbmask, review or "", 80, 420)
-                text_draw(FONT_PATH, 30, thumbmask, downloads or "", 415, 420)
+            if downloads and review:
+                text_draw(thumbmask, review, 80, 420, 35, FONT_PATH)
+                text_draw(thumbmask, downloads, 415, 420, 30, FONT_PATH)
 
             final_path = "playstore_result.png"
             thumbmask.save(final_path)
 
-            # Cleanup temp files
-            if os.path.exists(logo_name): os.remove(logo_name)
-            if os.path.exists(pic_name): os.remove(pic_name)
-
-            # 3. Send Response
+            # 4. Send
             caption = (
                 f"🎭 **Cipher Elite Play Store**\n\n"
                 f"📲 **App:** `{fullapp_name}`\n"
@@ -147,7 +159,7 @@ async def register_commands():
                 f"📥 **Downloads:** `{downloads or 'N/A'}`\n\n"
                 f"🔗 [View in Play Store]({app_link})"
             )
-            
+
             await event.delete()
             await event.client.send_file(
                 event.chat_id,
@@ -155,8 +167,11 @@ async def register_commands():
                 caption=caption,
                 reply_to=event.reply_to_msg_id
             )
-            
-            if os.path.exists(final_path): os.remove(final_path)
+
+            # Cleanup
+            for f in [pic_name, logo_name, final_path]:
+                if os.path.exists(f):
+                    os.remove(f)
 
         except Exception as e:
             await event.reply(f"❌ **Error:** {str(e)}")
