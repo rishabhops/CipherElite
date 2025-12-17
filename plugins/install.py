@@ -1,12 +1,12 @@
 # ==============================================================================
-#  🎭 Cipher Elite - Plugin Manager
-#  Safe Install & Uninstall for Developers
+#  🎭 Cipher Elite - Plugin install Manager
 # ==============================================================================
 
 import os
 import sys
 import ast
 import importlib
+import asyncio
 from pathlib import Path
 from telethon import events
 from utils.utils import CipherElite
@@ -19,14 +19,10 @@ PLUGIN_DIR = "plugins"
 # --- Helper Functions ---
 
 def validate_python_code(file_path):
-    """
-    Reads a file and checks for Syntax Errors using AST.
-    Returns (True, None) if valid, (False, error_message) if invalid.
-    """
+    """Checks for Syntax Errors before running."""
     try:
         with open(file_path, "r", encoding="utf-8") as f:
             source = f.read()
-        # Parse the code to check for syntax errors without executing it
         ast.parse(source)
         return True, None
     except SyntaxError as e:
@@ -38,77 +34,83 @@ def validate_python_code(file_path):
 
 def init(client_instance):
     commands = [
-        ".install - Reply to a .py file to install",
+        ".install - Reply to .py file to install & activate",
         ".uninstall <name> - Remove a plugin"
     ]
-    description = "🎭 Developer - Manage & Install Plugins safely"
+    description = "🎭 Developer - Manage Plugins (Hot-Load)"
     add_handler("developer", commands, description)
 
 async def register_commands():
 
     # -------------------------------------------------------------------------
-    # 1. INSTALL PLUGIN
+    # 1. INSTALL & ACTIVATE PLUGIN
     # -------------------------------------------------------------------------
     @CipherElite.on(events.NewMessage(pattern=r"\.install$"))
     @rishabh()
     async def install_handler(event):
         reply = await event.get_reply_message()
-        
-        # 1. Validation: Did user reply to a file?
         if not reply or not reply.file or not reply.file.name.endswith('.py'):
             return await event.reply("💡 **Usage:** Reply to a `.py` file with `.install`")
 
-        status = await event.reply("🔄 **Downloading & Verifying...**")
+        status = await event.reply("🔄 **Installing & Activating...**")
         
         file_name = reply.file.name
         file_path = Path(PLUGIN_DIR) / file_name
+        module_name = f"plugins.{file_name[:-3]}"
 
         try:
-            # 2. Download File
+            # 1. Download
             if os.path.exists(file_path):
-                await status.edit(f"⚠️ **Warning:** `{file_name}` already exists. Overwriting...")
+                # If it exists, remove old compiled python files to ensure fresh load
+                try:
+                    os.remove(file_path)
+                except: pass
             
             await reply.download_media(file=file_path)
 
-            # 3. SAFETY CHECK: Validate Code Structure
+            # 2. Syntax Check
             is_valid, error_msg = validate_python_code(file_path)
-
             if not is_valid:
-                # ❌ FAILED: Delete the file immediately
                 os.remove(file_path)
-                return await status.edit(
-                    f"🎭 **Cipher Elite Security**\n\n"
-                    f"❌ **Installation Failed!**\n"
-                    f"The file `{file_name}` contains errors and was **NOT** installed.\n\n"
-                    f"🔍 **Error:** `{error_msg}`"
-                )
+                return await status.edit(f"❌ **Install Failed:** Syntax Error.\n`{error_msg}`")
 
-            # 4. Success: Try to load it (Optional Hot-Load)
+            # 3. Import & Hot-Load
             try:
-                # We attempt to import it to catch Runtime Errors (like missing imports)
-                module_name = f"plugins.{file_name[:-3]}"
                 if module_name in sys.modules:
-                    importlib.reload(sys.modules[module_name])
+                    # Reload existing module
+                    module = importlib.reload(sys.modules[module_name])
                 else:
-                    importlib.import_module(module_name)
-                    
+                    # Import new module
+                    module = importlib.import_module(module_name)
+
+                # --- ⚠️ CRITICAL FIX: MANUALLY RUN THE FUNCTIONS ---
+                
+                # A) Run init() to add to Help Menu
+                if hasattr(module, "init"):
+                    module.init(event.client)
+                
+                # B) Run register_commands() to start the Command Listener
+                if hasattr(module, "register_commands"):
+                    # We must await it because it's async
+                    await module.register_commands()
+
                 await status.edit(
                     f"🎭 **Cipher Elite Installer**\n\n"
                     f"✅ **Installed:** `{file_name}`\n"
-                    f"📦 **Size:** `{reply.file.size} bytes`\n"
-                    f"✨ **Status:** Loaded Successfully!"
+                    f"🔄 **Activated:** Yes\n"
+                    f"✨ **Status:** Ready to use!"
                 )
                 
             except Exception as e:
-                # If Runtime Import fails, we usually keep the file but warn the user,
-                # OR we can be strict and delete it. Here we are STRICT as requested.
-                os.remove(file_path)
+                # If activation fails, delete file so bot doesn't crash on restart
+                if os.path.exists(file_path):
+                    os.remove(file_path)
+                
                 await status.edit(
-                    f"🎭 **Cipher Elite Installer**\n\n"
-                    f"❌ **Import Error!**\n"
-                    f"The code syntax is fine, but it crashed while loading.\n"
-                    f"🗑 **File Deleted.**\n\n"
-                    f"🔍 **Error:** `{str(e)}`"
+                    f"❌ **Activation Error!**\n"
+                    f"The code is valid Python, but it crashed during activation.\n"
+                    f"**Error:** `{str(e)}`\n"
+                    f"🗑 **Plugin Deleted.**"
                 )
 
         except Exception as e:
@@ -121,27 +123,30 @@ async def register_commands():
     @rishabh()
     async def uninstall_handler(event):
         plugin_name = event.pattern_match.group(1).strip()
-        
-        # Add .py if user forgot it
         if not plugin_name.endswith(".py"):
             file_name = f"{plugin_name}.py"
         else:
             file_name = plugin_name
 
         file_path = Path(PLUGIN_DIR) / file_name
+        module_name = f"plugins.{file_name[:-3]}"
 
         if not os.path.exists(file_path):
-            return await event.reply(f"❌ **Error:** Plugin `{file_name}` not found in `{PLUGIN_DIR}/`.")
+            return await event.reply(f"❌ **Error:** `{file_name}` not found.")
 
         try:
-            # Delete the file
             os.remove(file_path)
             
+            # Note: We can't easily "unload" the code from memory without restarting,
+            # but deleting the file ensures it won't load next time.
+            if module_name in sys.modules:
+                del sys.modules[module_name]
+
             await event.reply(
                 f"🎭 **Cipher Elite Uninstaller**\n\n"
-                f"🗑 **Removed:** `{file_name}`\n"
-                f"✅ **Success!** Restart bot to fully clear memory."
+                f"🗑 **Deleted:** `{file_name}`\n"
+                f"⚠️ **Note:** Functionality stops fully after restart."
             )
         except Exception as e:
             await event.reply(f"❌ **Error:** {str(e)}")
-          
+            
