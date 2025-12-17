@@ -1,12 +1,14 @@
 # ==============================================================================
-#  🎭 Cipher Elite - Plugin install Manager
+#  🎭 Cipher Elite - Advanced Plugin Manager
+# dev telegram @thanosceo
 # ==============================================================================
 
 import os
 import sys
 import ast
-import importlib
 import asyncio
+import importlib
+import importlib.util
 from pathlib import Path
 from telethon import events
 from utils.utils import CipherElite
@@ -16,34 +18,92 @@ from plugins.bot import add_handler
 # --- Configuration ---
 PLUGIN_DIR = "plugins"
 
+# 🧠 Smart Mapping: Import Name -> Pip Package Name
+# Some libraries have different names on Pip. We fix them here.
+PACKAGE_MAPPING = {
+    "PIL": "Pillow",
+    "bs4": "beautifulsoup4",
+    "cv2": "opencv-python",
+    "sklearn": "scikit-learn",
+    "yaml": "PyYAML",
+    "telegram": "Telethon",
+    "dateutil": "python-dateutil",
+    "qrcode": "qrcode[pil]"
+}
+
 # --- Helper Functions ---
 
+def get_imports(source_code):
+    """
+    Scans Python code and returns a list of all top-level imported module names.
+    """
+    tree = ast.parse(source_code)
+    imports = set()
+    
+    for node in ast.walk(tree):
+        # Handle 'import xyz'
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                # We only care about the top level package (e.g., 'os' from 'os.path')
+                name = alias.name.split('.')[0]
+                imports.add(name)
+        # Handle 'from xyz import abc'
+        elif isinstance(node, ast.ImportFrom):
+            if node.module:
+                name = node.module.split('.')[0]
+                imports.add(name)
+                
+    return list(imports)
+
+def is_installed(module_name):
+    """Checks if a module is currently installed."""
+    # check standard library or existing site-packages
+    if module_name in sys.builtin_module_names:
+        return True
+    
+    spec = importlib.util.find_spec(module_name)
+    return spec is not None
+
+async def install_package(package_name):
+    """Runs pip install asynchronously."""
+    # Check mapping (e.g., if code needs 'PIL', install 'Pillow')
+    pip_name = PACKAGE_MAPPING.get(package_name, package_name)
+    
+    process = await asyncio.create_subprocess_shell(
+        f"{sys.executable} -m pip install {pip_name}",
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE
+    )
+    stdout, stderr = await process.communicate()
+    
+    return process.returncode == 0, stderr.decode()
+
 def validate_python_code(file_path):
-    """Checks for Syntax Errors before running."""
+    """Checks for Syntax Errors."""
     try:
         with open(file_path, "r", encoding="utf-8") as f:
             source = f.read()
         ast.parse(source)
-        return True, None
+        return True, None, source
     except SyntaxError as e:
-        return False, f"Syntax Error at line {e.lineno}: {e.msg}"
+        return False, f"Syntax Error at line {e.lineno}: {e.msg}", None
     except Exception as e:
-        return False, str(e)
+        return False, str(e), None
 
 # --- Plugin Init ---
 
 def init(client_instance):
     commands = [
-        ".install - Reply to .py file to install & activate",
+        ".install - Reply to .py file (Auto-Installs Libs)",
         ".uninstall <name> - Remove a plugin"
     ]
-    description = "🎭 Developer - Manage Plugins (Hot-Load)"
+    description = "🎭 Developer - Smart Installer"
     add_handler("developer", commands, description)
 
 async def register_commands():
 
     # -------------------------------------------------------------------------
-    # 1. INSTALL & ACTIVATE PLUGIN
+    # 1. SMART INSTALLER
     # -------------------------------------------------------------------------
     @CipherElite.on(events.NewMessage(pattern=r"\.install$"))
     @rishabh()
@@ -52,72 +112,90 @@ async def register_commands():
         if not reply or not reply.file or not reply.file.name.endswith('.py'):
             return await event.reply("💡 **Usage:** Reply to a `.py` file with `.install`")
 
-        status = await event.reply("🔄 **Installing & Activating...**")
+        status = await event.reply("🔄 **Analyzing Plugin...**")
         
         file_name = reply.file.name
         file_path = Path(PLUGIN_DIR) / file_name
         module_name = f"plugins.{file_name[:-3]}"
 
         try:
-            # 1. Download
+            # 1. Download File
             if os.path.exists(file_path):
-                # If it exists, remove old compiled python files to ensure fresh load
-                try:
-                    os.remove(file_path)
+                try: os.remove(file_path)
                 except: pass
             
             await reply.download_media(file=file_path)
 
-            # 2. Syntax Check
-            is_valid, error_msg = validate_python_code(file_path)
+            # 2. Syntax Check & Source Code Reading
+            is_valid, error_msg, source_code = validate_python_code(file_path)
+            
             if not is_valid:
                 os.remove(file_path)
                 return await status.edit(f"❌ **Install Failed:** Syntax Error.\n`{error_msg}`")
 
-            # 3. Import & Hot-Load
+            # 3. 🧠 DEPENDENCY CHECKER
+            await status.edit("🔄 **Checking Requirements...**")
+            
+            required_modules = get_imports(source_code)
+            installed_count = 0
+            
+            for mod in required_modules:
+                # Skip local plugins folder imports
+                if mod == "plugins" or mod == "utils":
+                    continue
+                    
+                if not is_installed(mod):
+                    await status.edit(f"🛠 **Installing Requirement:** `{mod}`...\n\n_Please wait, this may take a moment._")
+                    
+                    success, error_log = await install_package(mod)
+                    
+                    if not success:
+                        os.remove(file_path)
+                        return await status.edit(
+                            f"❌ **Dependency Error!**\n"
+                            f"Failed to install library: `{mod}`\n"
+                            f"**Pip Error:**\n`{error_log[:100]}...`\n\n"
+                            f"🗑 **Plugin Deleted.**"
+                        )
+                    installed_count += 1
+
+            # 4. Activation (Hot-Load)
+            load_msg = "🔄 **Activating Plugin...**"
+            if installed_count > 0:
+                load_msg = f"✅ **Installed {installed_count} libraries.**\n" + load_msg
+                
+            await status.edit(load_msg)
+
             try:
                 if module_name in sys.modules:
-                    # Reload existing module
                     module = importlib.reload(sys.modules[module_name])
                 else:
-                    # Import new module
                     module = importlib.import_module(module_name)
 
-                # --- ⚠️ CRITICAL FIX: MANUALLY RUN THE FUNCTIONS ---
-                
-                # A) Run init() to add to Help Menu
+                # Auto-Run Init & Register
                 if hasattr(module, "init"):
                     module.init(event.client)
                 
-                # B) Run register_commands() to start the Command Listener
                 if hasattr(module, "register_commands"):
-                    # We must await it because it's async
                     await module.register_commands()
 
                 await status.edit(
                     f"🎭 **Cipher Elite Installer**\n\n"
                     f"✅ **Installed:** `{file_name}`\n"
-                    f"🔄 **Activated:** Yes\n"
-                    f"✨ **Status:** Ready to use!"
+                    f"📦 **Libs Added:** `{installed_count}`\n"
+                    f"✨ **Status:** Active & Ready!"
                 )
                 
             except Exception as e:
-                # If activation fails, delete file so bot doesn't crash on restart
                 if os.path.exists(file_path):
                     os.remove(file_path)
-                
-                await status.edit(
-                    f"❌ **Activation Error!**\n"
-                    f"The code is valid Python, but it crashed during activation.\n"
-                    f"**Error:** `{str(e)}`\n"
-                    f"🗑 **Plugin Deleted.**"
-                )
+                await status.edit(f"❌ **Activation Error:** `{str(e)}`\nPlugin deleted.")
 
         except Exception as e:
             await status.edit(f"❌ **Critical Error:** {str(e)}")
 
     # -------------------------------------------------------------------------
-    # 2. UNINSTALL PLUGIN
+    # 2. UNINSTALLER
     # -------------------------------------------------------------------------
     @CipherElite.on(events.NewMessage(pattern=r"\.uninstall\s+(.+)"))
     @rishabh()
@@ -136,16 +214,13 @@ async def register_commands():
 
         try:
             os.remove(file_path)
-            
-            # Note: We can't easily "unload" the code from memory without restarting,
-            # but deleting the file ensures it won't load next time.
             if module_name in sys.modules:
                 del sys.modules[module_name]
 
             await event.reply(
                 f"🎭 **Cipher Elite Uninstaller**\n\n"
                 f"🗑 **Deleted:** `{file_name}`\n"
-                f"⚠️ **Note:** Functionality stops fully after restart."
+                f"✅ **Success!**"
             )
         except Exception as e:
             await event.reply(f"❌ **Error:** {str(e)}")
