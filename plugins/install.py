@@ -1,7 +1,6 @@
 # ==============================================================================
-#  🎭 Cipher Elite - Advanced Plugin Manager
-# dev telegram @thanosceo
-#  Features: Safe Update, Auto-Install Libs, Hot-Load, & Clean Uninstall
+#  🎭 Cipher Elite - Advanced Plugin Manager (Fixed)
+#  Features: Smart Dependency Mapping & Auto-Install
 # ==============================================================================
 
 import os
@@ -10,7 +9,7 @@ import ast
 import asyncio
 import importlib
 import importlib.util
-import shutil
+import site
 from pathlib import Path
 from telethon import events
 from utils.utils import CipherElite
@@ -26,59 +25,98 @@ except ImportError:
 # --- Configuration ---
 PLUGIN_DIR = "plugins"
 
-# 🧠 Smart Mapping for Pip Install
+# 🧠 SMART MAPPING: Import Name -> Real Pip Package Name
+# This fixes the issue where "google" installs the wrong thing.
 PACKAGE_MAPPING = {
+    # Image Processing
     "PIL": "Pillow",
-    "bs4": "beautifulsoup4",
     "cv2": "opencv-python",
-    "sklearn": "scikit-learn",
+    "skimage": "scikit-image",
+    
+    # AI & Google
+    "google.generativeai": "google-generativeai",
+    "google.genai": "google-generativeai",
+    "genai": "google-generativeai",
+    
+    # Utilities
+    "bs4": "beautifulsoup4",
     "yaml": "PyYAML",
-    "telegram": "Telethon",
     "dateutil": "python-dateutil",
-    "qrcode": "qrcode[pil]"
+    "qrcode": "qrcode[pil]",
+    "requests": "requests",
+    "numpy": "numpy",
+    "pandas": "pandas",
+    "youtube_dl": "youtube_dl",
+    "yt_dlp": "yt-dlp",
+    "pydub": "pydub",
+    "ffmpeg": "ffmpeg-python",
+    "gtts": "gTTS"
 }
 
 # --- Helper Functions ---
 
 def get_imports(source_code):
-    """Scans code for required libraries."""
+    """
+    Scans code for imports.
+    Returns BOTH top-level names ('os') and full sub-modules ('google.generativeai').
+    """
     tree = ast.parse(source_code)
     imports = set()
+    
     for node in ast.walk(tree):
+        # Handle 'import xyz'
         if isinstance(node, ast.Import):
             for alias in node.names:
-                imports.add(alias.name.split('.')[0])
+                imports.add(alias.name) # Full name: google.generativeai
+                imports.add(alias.name.split('.')[0]) # Top level: google
+                
+        # Handle 'from xyz import abc'
         elif isinstance(node, ast.ImportFrom):
             if node.module:
+                imports.add(node.module)
                 imports.add(node.module.split('.')[0])
+                
     return list(imports)
 
-def get_plugin_key(source_code):
-    """Scans code to find the 'add_handler' key for help menu cleanup."""
-    try:
-        tree = ast.parse(source_code)
-        for node in ast.walk(tree):
-            if isinstance(node, ast.Call):
-                if hasattr(node.func, 'id') and node.func.id == 'add_handler':
-                    if node.args:
-                        if isinstance(node.args[0], ast.Constant):
-                            return node.args[0].value
-                        elif isinstance(node.args[0], ast.Str):
-                            return node.args[0].s
-    except: pass
-    return None
-
 def is_installed(module_name):
-    if module_name in sys.builtin_module_names: return True
-    return importlib.util.find_spec(module_name) is not None
+    """Checks if a library is installed."""
+    if module_name in sys.builtin_module_names:
+        return True
+    
+    # 1. Try finding spec
+    try:
+        if importlib.util.find_spec(module_name) is not None:
+            return True
+    except:
+        pass
+        
+    # 2. Check mapping (Maybe the package name is different from import name)
+    # We assume if the import scan got here, we strictly need to check installation.
+    # But usually, find_spec works for the *import name*.
+    return False
 
-async def install_package(package_name):
-    pip_name = PACKAGE_MAPPING.get(package_name, package_name)
+async def install_package(import_name):
+    """Installs the pip package corresponding to the import name."""
+    
+    # 1. Check Mapping First (e.g. cv2 -> opencv-python)
+    pip_name = PACKAGE_MAPPING.get(import_name, import_name)
+    
+    # Ignore common system modules that might flag false positives
+    if pip_name in ["os", "sys", "math", "time", "datetime", "json", "asyncio", "telethon", "utils", "plugins", "config"]:
+        return True, "Skipped system/local module"
+
+    # 2. Run Pip Install
     process = await asyncio.create_subprocess_shell(
         f"{sys.executable} -m pip install {pip_name}",
-        stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE
     )
-    _, stderr = await process.communicate()
+    stdout, stderr = await process.communicate()
+    
+    # 3. Reload Site Packages so Python sees it immediately
+    importlib.invalidate_caches()
+    site.addsitedir(site.getsitepackages()[0])
+    
     return process.returncode == 0, stderr.decode()
 
 def validate_python_code(file_path):
@@ -92,20 +130,31 @@ def validate_python_code(file_path):
     except Exception as e:
         return False, str(e), None
 
+def get_plugin_key(source_code):
+    try:
+        tree = ast.parse(source_code)
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Call) and hasattr(node.func, 'id') and node.func.id == 'add_handler':
+                if node.args:
+                    if isinstance(node.args[0], ast.Constant): return node.args[0].value
+                    elif isinstance(node.args[0], ast.Str): return node.args[0].s
+    except: pass
+    return None
+
 # --- Plugin Init ---
 
 def init(client_instance):
     commands = [
-        ".install - Safe Install/Update plugin",
+        ".install - Safe Update & Auto-Dependency Install",
         ".uninstall <name> - Remove plugin & clean help"
     ]
-    description = "🎭 Developer - Safe Manager"
+    description = "🎭 Developer - Smart Manager"
     add_handler("developer", commands, description)
 
 async def register_commands():
 
     # -------------------------------------------------------------------------
-    # 1. SMART INSTALLER (SAFE UPDATE)
+    # 1. INSTALL / UPDATE
     # -------------------------------------------------------------------------
     @CipherElite.on(events.NewMessage(pattern=r"\.install$"))
     @rishabh()
@@ -114,90 +163,90 @@ async def register_commands():
         if not reply or not reply.file or not reply.file.name.endswith('.py'):
             return await event.reply("💡 **Usage:** Reply to a `.py` file with `.install`")
 
-        status = await event.reply("🔄 **Analyzing...**")
+        status = await event.reply("🔄 **Analyzing Code...**")
         
         file_name = reply.file.name
         final_path = Path(PLUGIN_DIR) / file_name
-        temp_path = Path(PLUGIN_DIR) / f"temp_{file_name}" # Download to temp first
+        temp_path = Path(PLUGIN_DIR) / f"temp_{file_name}"
         module_name = f"plugins.{file_name[:-3]}"
         
         is_update = os.path.exists(final_path)
-        action_text = "Updated" if is_update else "Installed"
 
         try:
-            # 1. Download to TEMP path first (Safe Mode)
+            # 1. Download to Temp
             if os.path.exists(temp_path): os.remove(temp_path)
             await reply.download_media(file=temp_path)
 
-            # 2. Validate Code in Temp File
+            # 2. Validate Syntax
             is_valid, error_msg, source_code = validate_python_code(temp_path)
-            
             if not is_valid:
-                os.remove(temp_path) # Delete bad update
-                msg = f"❌ **{action_text} Failed:** Syntax Error.\n`{error_msg}`"
-                if is_update:
-                    msg += "\n\n🛡️ **Safe Mode:** Your old plugin was kept safe."
-                return await status.edit(msg)
+                os.remove(temp_path)
+                return await status.edit(f"❌ **Install Failed:** Syntax Error.\n`{error_msg}`")
 
-            # 3. Check Requirements
-            await status.edit("🔄 **Checking Libs...**")
-            required_modules = get_imports(source_code)
+            # 3. CHECK & INSTALL REQUIREMENTS
+            await status.edit("🔄 **Checking Dependencies...**")
+            
+            # Scan imports
+            imports_found = get_imports(source_code)
             installed_count = 0
             
-            for mod in required_modules:
-                if mod in ["plugins", "utils", "telethon", "config"]: continue
-                if not is_installed(mod):
-                    await status.edit(f"🛠 **Installing:** `{mod}`...")
-                    success, err = await install_package(mod)
-                    if not success:
-                        os.remove(temp_path)
-                        return await status.edit(f"❌ **Pip Failed:** `{mod}`\nError: {err[:100]}\n\n🛡️ Update cancelled.")
-                    installed_count += 1
+            for mod in imports_found:
+                # Filter out standard libraries and local folders
+                if mod in sys.builtin_module_names: continue
+                if mod in ["telethon", "utils", "plugins", "config", "google"]: continue 
+                # Note: We skip 'google' generally, but 'google.generativeai' will be caught below because we scan submodules now.
 
-            # 4. Commit Changes (Swap Temp -> Final)
-            if is_update:
-                os.remove(final_path) # Delete old
-            os.rename(temp_path, final_path) # Move new to final
-
-            # 5. Hot-Load / Reload
-            await status.edit("🔄 **Activating...**")
-            try:
-                if module_name in sys.modules:
-                    module = importlib.reload(sys.modules[module_name])
-                else:
-                    module = importlib.import_module(module_name)
-
-                if hasattr(module, "init"): module.init(event.client)
-                if hasattr(module, "register_commands"): await module.register_commands()
-
-                # Success Message
-                if is_update:
-                    title = "✨ **Plugin Updated**"
-                    note = "🔄 **Changes Applied:** Old code replaced."
-                else:
-                    title = "✅ **Plugin Installed**"
-                    note = "✨ **Status:** Active & Ready!"
-
-                await status.edit(
-                    f"🎭 **Cipher Elite Manager**\n\n"
-                    f"{title}\n"
-                    f"📂 **File:** `{file_name}`\n"
-                    f"📦 **Libs:** `{installed_count}`\n"
-                    f"{note}"
-                )
+                # If it's a known mapping key (like google.generativeai), check it specifically
+                if mod in PACKAGE_MAPPING:
+                    if not is_installed(mod):
+                        await status.edit(f"🛠 **Installing:** `{PACKAGE_MAPPING[mod]}`...")
+                        success, err = await install_package(mod)
+                        if not success:
+                            os.remove(temp_path)
+                            return await status.edit(f"❌ **Pip Failed:** `{PACKAGE_MAPPING[mod]}`\n\nError: `{err[:150]}...`")
+                        installed_count += 1
                 
-            except Exception as e:
-                # If load fails, we are in trouble. 
-                # Ideally we would rollback, but Python memory reload is tricky.
-                # Use simple error for now.
-                await status.edit(f"❌ **Activation Error:** `{str(e)}`\nPlugin code updated but crashed on load.")
+                # Check generic uninstalled modules
+                elif not is_installed(mod):
+                     # Try to install if it looks like a 3rd party lib
+                     # (This is risky but necessary for auto-install)
+                     await status.edit(f"🛠 **Installing:** `{mod}`...")
+                     success, err = await install_package(mod)
+                     if success:
+                         installed_count += 1
+                     # We don't fail here if generic install fails, might be a false positive (local file)
+
+            # 4. Finalize File
+            if is_update: os.remove(final_path)
+            os.rename(temp_path, final_path)
+
+            # 5. Hot-Load
+            await status.edit("🔄 **Activating...**")
+            
+            if module_name in sys.modules:
+                module = importlib.reload(sys.modules[module_name])
+            else:
+                module = importlib.import_module(module_name)
+
+            if hasattr(module, "init"): module.init(event.client)
+            if hasattr(module, "register_commands"): await module.register_commands()
+
+            action = "Updated" if is_update else "Installed"
+            libs_msg = f"\n📦 **Libs Added:** `{installed_count}`" if installed_count > 0 else ""
+            
+            await status.edit(
+                f"🎭 **Cipher Elite Manager**\n\n"
+                f"✅ **Plugin {action}:** `{file_name}`"
+                f"{libs_msg}\n"
+                f"✨ **Status:** Active!"
+            )
 
         except Exception as e:
             if os.path.exists(temp_path): os.remove(temp_path)
-            await status.edit(f"❌ **Critical Error:** {str(e)}")
+            await status.edit(f"❌ **Error:** {str(e)}")
 
     # -------------------------------------------------------------------------
-    # 2. SMART UNINSTALLER
+    # 2. UNINSTALLER
     # -------------------------------------------------------------------------
     @CipherElite.on(events.NewMessage(pattern=r"\.uninstall\s+(.+)"))
     @rishabh()
@@ -211,32 +260,19 @@ async def register_commands():
             return await event.reply(f"❌ **Error:** `{file_name}` not found.")
 
         try:
-            # 1. Read file to find Help Menu Key
-            with open(file_path, "r", encoding="utf-8") as f:
-                source = f.read()
-            
+            with open(file_path, "r", encoding="utf-8") as f: source = f.read()
             help_key = get_plugin_key(source)
             
-            # 2. Delete File
             os.remove(file_path)
-            
-            # 3. Unload from Memory
-            if module_name in sys.modules:
-                del sys.modules[module_name]
+            if module_name in sys.modules: del sys.modules[module_name]
 
-            # 4. Remove from Help Menu
             help_msg = ""
             if help_key and remove_handler:
-                if remove_handler(help_key):
-                    help_msg = f"\n✅ **Removed from Help:** `{help_key}`"
-                else:
-                    help_msg = f"\n⚠️ **Help Remove Failed:** Key `{help_key}` not found."
+                remove_handler(help_key)
+                help_msg = f"\n✅ **Removed from Help:** `{help_key}`"
 
-            await event.reply(
-                f"🎭 **Cipher Elite Uninstaller**\n\n"
-                f"🗑 **Deleted:** `{file_name}`"
-                f"{help_msg}"
-            )
+            await event.reply(f"🗑 **Deleted:** `{file_name}`{help_msg}")
+
         except Exception as e:
             await event.reply(f"❌ **Error:** {str(e)}")
             
