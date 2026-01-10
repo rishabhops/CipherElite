@@ -1,7 +1,7 @@
 # 匚ɪᴘԋᴇʀ Ξʟɪᴛᴇ USERBOT
 
 <p align="center">
-  <img src="https://files.catbox.moe/tocisn.png" alt="Cipher Elite" width="300" height="300">
+  <img src="images/cipher.jpg" alt="Cipher Elite Logo" width="300" height="300">
 </p>
 
 <p align="center">
@@ -16,7 +16,7 @@
 </p>
 
 <p align="center">
-    <b>The Ultimate Open-Source Automation Tool for Telegram</b>
+    <b>The Ultimate Open-Source Telegram Userbot</b>
 </p>
 
 ---
