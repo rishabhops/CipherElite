@@ -1,7 +1,7 @@
 # 匚ɪᴘԋᴇʀ Ξʟɪᴛᴇ USERBOT
 
 <p align="center">
-  <img src="https://files.catbox.moe/tocisn.png" alt="Cipher Elite Logo" width="280" height="280">
+  <img src="https://files.catbox.moe/tocisn.png" alt="Cipher Elite" width="300" height="300">
 </p>
 
 <p align="center">
