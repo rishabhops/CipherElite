@@ -1,161 +1,155 @@
 # 匚ɪᴘԋᴇʀ Ξʟɪᴛᴇ USERBOT
 
 <p align="center">
-  <img src="https://files.catbox.moe/tocisn.png" alt="Cipher Elite" width="300" height="300">
+  <img src="https://files.catbox.moe/tocisn.png" alt="Cipher Elite Logo" width="280" height="280">
 </p>
 
 <p align="center">
-  <img src="https://readme-typing-svg.herokuapp.com?color=F77247&width=420&lines=A+Advanced+Powerful+Telegram+Userbot%E2%9D%A4%EF%B8%8F;Built+by+Thanos+Pro+Organization;Developed+by+Rishabh+Anand">
+  <img src="https://readme-typing-svg.herokuapp.com?color=F77247&width=450&lines=An+Advanced+Powerful+Telegram+Userbot;Built+by+Thanos+Pro+Organization;Developed+by+Rishabh+Anand;Open+Source+%7C+Secure+%7C+Fast" alt="Typing SVG">
 </p>
 
 <p align="center">
-    <a href="https://github.com/rishabhops/CipherElite/stargazers"><img src="https://img.shields.io/github/stars/rishabhops/CipherElite?label=Stars&style=flat-square&logo=github&color=F10070" alt="Stars" /></a>
-    <a href="https://github.com/rishabhops/CipherElite/forks"><img src="https://img.shields.io/github/forks/rishabhops/CipherElite?label=Forks&style=flat-square&logo=github&color=F10070" alt="Forks" /></a>
-    <a href="https://github.com/rishabhops/CipherElite/issues"><img src="https://img.shields.io/github/issues/rishabhops/CipherElite?label=Issues&style=flat-square&logo=github&color=F10070" alt="Issues" /></a>
+    <a href="https://github.com/rishabhops/CipherElite/stargazers"><img src="https://img.shields.io/github/stars/rishabhops/CipherElite?label=Stars&style=for-the-badge&logo=github&color=F10070" alt="Stars" /></a>
+    <a href="https://github.com/rishabhops/CipherElite/network/members"><img src="https://img.shields.io/github/forks/rishabhops/CipherElite?label=Forks&style=for-the-badge&logo=github&color=F10070" alt="Forks" /></a>
+    <a href="https://github.com/rishabhops/CipherElite/issues"><img src="https://img.shields.io/github/issues/rishabhops/CipherElite?label=Issues&style=for-the-badge&logo=github&color=F10070" alt="Issues" /></a>
+    <a href="https://github.com/rishabhops/CipherElite/blob/elite/LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue?style=for-the-badge&logo=github" alt="License" /></a>
 </p>
+
+<p align="center">
+    <b>The Ultimate Open-Source Automation Tool for Telegram</b>
+</p>
+
+---
+
+## 📑 TABLE OF CONTENTS
+- [About](#-about)
+- [Why Cipher Elite?](#-why-cipher-elite)
+- [Features](#-features)
+- [Deployment](#-deployment)
+- [Configuration](#-configuration-vars)
+- [Support & Community](#-support--updates)
+- [Credits](#-credits)
 
 ---
 
 ## 📖 ABOUT
 
-**CipherElite** is an advanced, feature-rich Telegram userbot designed to provide ultimate automation and customization for your Telegram experience. Built with modern Python architecture and powered by the Telethon library, it offers a seamless blend of functionality and security.
+**CipherElite** is a cutting-edge Telegram userbot built on the powerful **Telethon** library. It is designed to automate your daily interactions, manage groups, and enhance your Telegram experience with AI-powered capabilities.
 
-Developed under the **Thanos Pro Organization**, CipherElite represents cutting-edge userbot technology with emphasis on performance, security, and user experience.
+Proudly developed under the **Thanos Pro Organization** by **Rishabh Anand**, this project is 100% **Open Source**. We believe in transparency and community-driven development, ensuring that your account remains secure while you enjoy premium features.
+
+### 🛠 Tech Stack
+![Python](https://img.shields.io/badge/Python-3.9%2B-blue?style=flat&logo=python&logoColor=white)
+![Telethon](https://img.shields.io/badge/Library-Telethon-orange?style=flat&logo=telegram)
+![MongoDB](https://img.shields.io/badge/Database-MongoDB-green?style=flat&logo=mongodb)
 
 ---
 
 ## ⚡ FEATURES
-- **👨‍💻 Cipher Elite Ai** - Ai Powered commands
-- **🎨 Random Style Messages** - Dynamic message styling
-- **🔧 Dynamic Plugin System** - Modular architecture for easy customization
-- **🔒 Secure Sudo Protection** - Advanced security mechanisms
-- **📋 Beautiful Help Menu** - Intuitive command interface
-- **⚙️ Advanced Commands** - Comprehensive command library
-- **🔄 Real-time Updates** - Live bot updates without downtime
-- **🛡️ Enhanced Security** - Multi-layer protection system
-- **📊 Performance Monitoring** - Built-in performance analytics
-- **🌐 Multi-language Support** - International user base support
+
+| Feature | Description |
+| :--- | :--- |
+| **🤖 Cipher Elite AI** | Integrated AI commands for chat assistance and automation. |
+| **🛡️ Secure Sudo** | Advanced permission system to manage who controls your bot. |
+| **🎨 Dynamic Styling** | Random style messages and fonts to make your chats unique. |
+| **🔌 Plugin System** | Modular architecture—easily add or remove plugins. |
+| **🔋 24/7 Uptime** | Optimized for long-running processes on VPS or Heroku. |
+| **📊 Analytics** | Built-in performance monitoring and ping checks. |
+| **🔐 Privacy First** | No data collection. Your session stays on your server. |
 
 ---
 
 ## 🚀 DEPLOYMENT
 
-<p align="center">
-  <b>Deploy Cipher Elite for FREE using our Official Hosting Bot</b>
-</p>
+We provide an **Exclusive Hosting Bot** to deploy Cipher Elite for free without technical headaches.
 
 <p align="center">
   <a href="https://t.me/elitedeployerbot">
-    <img src="https://img.shields.io/badge/Deploy%20Via%20Telegram-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white" alt="Deploy on Telegram">
+    <img src="https://img.shields.io/badge/One%20Click%20Deploy-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white" alt="Deploy on Telegram">
   </a>
 </p>
 
-### 🛠 How to Deploy:
+### 📲 Method 1: Telegram Deployer (Recommended)
 
 1.  **Fork this Repository:**
-    Click the **Fork** button on the top right of this page to create your own copy of the repo.
-    *(Note: The bot will not accept the main repo link, you MUST fork it first).*
+    * Click the `Fork` button (top right) to save this repo to your GitHub account.
+    * *Critical:* You must use your forked link, not the main repository link.
 
-2.  **Generate Session:**
-    Use [@elite_session_maker_bot](https://t.me/elite_session_maker_bot) to generate your `ELITE_SESSION` string.
+2.  **Get Your Session:**
+    * Start [@elite_session_maker_bot](https://t.me/elite_session_maker_bot).
+    * Follow the steps to generate your `ELITE_SESSION` string.
 
-3.  **Start the Deployer:**
-    Go to **[@elitedeployerbot](https://t.me/elitedeployerbot)** and start the bot.
+3.  **Deploy:**
+    * Go to **[@elitedeployerbot](https://t.me/elitedeployerbot)**.
+    * Send the link to **your forked repository**.
+    * Enter the required variables when prompted.
 
-4.  **Send Forked Link:**
-    When asked, send the URL of the repository you just forked (e.g., `https://github.com/YourUsername/CipherElite`).
+> **✅ Why use Elite Deployer?**
+> * Free 24/7 Hosting
+> * Live Logs Dashboard
+> * Instant Restart/Variable Editing
 
-5.  **Configure:**
-    The bot will ask for your variables (API Keys, Session String, etc.). You can click "Skip" to use defaults or enter your own values interactively.
-
-> **✅ Features of Elite Deployer:**
-> * 100% Free 24/7 Hosting
-> * Live Logs Viewing
-> * Edit Variables anytime without redeploying
-> * Start/Stop/Restart your bot instantly
-
----
-
-### 🖥️ VPS / Local Deploy:
-*Detailed VPS deployment guide coming soon...*
+### 💻 Method 2: VPS / Terminal (Coming Soon)
+Detailed documentation for local deployment (Termux/VPS) will be added in the next release.
 
 ---
 
-### 🏢 Organization
-- **Founder & Owner**: Thanos Pro Organization
-- **Specialization**: Telegram Bots, Python Development, Automation
-- **Vision**: Creating powerful, secure, and user-friendly Telegram tools
+## ⚙️ CONFIGURATION VARS
 
----
+These values are required to run the bot.
 
-## 🌟 OWNER & CREATOR
-<p align="center">
-  <a href="https://t.me/thanosceo"><img src="https://img.shields.io/badge/RISHABH%20ANAND-blue?style=for-the-badge&logo=telegram"></a>
-  <a href="https://github.com/rishabhops"><img src="https://img.shields.io/badge/GitHub-rishabhops-black?style=for-the-badge&logo=github"></a>
-</p>
+| Variable | Description | How to get it |
+| :--- | :--- | :--- |
+| `API_ID` | Telegram Application ID | [my.telegram.org](https://my.telegram.org) |
+| `API_HASH` | Telegram Application Hash | [my.telegram.org](https://my.telegram.org) |
+| `BOT_TOKEN` | Bot Token for Inline queries | [@BotFather](https://t.me/BotFather) |
+| `ELITE_SESSION` | **String Session** (Required) | [@elite_session_maker_bot](https://t.me/elite_session_maker_bot) |
+| `LOG_CHAT_ID` | Channel/Group ID for Logs | Create a private group & get ID |
+| `SUDO_USERS` | User IDs of Admin users | Your Telegram ID |
+
+> ⚠️ **Note on Sessions:** Cipher Elite uses a custom session format for enhanced security. Please only use the official session maker bot linked above.
 
 ---
 
 ## 💫 SUPPORT & UPDATES
-<p align="center">
-  <a href="https://t.me/THANOS_PRO"><img src="https://img.shields.io/badge/UPDATES-CHANNEL-red?style=for-the-badge&logo=telegram"></a>
-  <a href="https://t.me/thanosprosss"><img src="https://img.shields.io/badge/SUPPORT-GROUP-blue?style=for-the-badge&logo=telegram"></a>
-  <a href="https://t.me/learning_bots"><img src="https://img.shields.io/badge/SUPPORT-GROUP2-blue?style=for-the-badge&logo=telegram"></a>
-</p>
 
-### 📞 Get Help
-- **Updates Channel**: [@THANOS_PRO](https://t.me/THANOS_PRO) - Latest updates and announcements
-- **Support Group**: [@thanosprosss](https://t.me/thanosprosss) - Community support and discussions
-- **Direct Contact**: [@thanosceo](https://t.me/thanosceo) - Developer contact
-
----
-
-## ⚙️ REQUIREMENTS
-- `API_ID` - Get from my.telegram.org
-- `API_HASH` - Get from my.telegram.org
-- `BOT_TOKEN` - Get from @BotFather
-- `ELITE_BOT_USERNAME` - Your Bot Username
-- `ELITE_SESSION` - Generate using session using elite session generator bot `@elite_session_maker_bot` don't use any other bot sessions cipherelite accept only elite session
-- `LOG_CHAT_ID` - Your Log Group id
-- `SUDO_USERS`  - Owner id
-
----
-
-## 📈 PROJECT STATS
+Join our growing community for help, feature requests, and updates.
 
 <p align="center">
-  <img src="https://github-readme-stats.vercel.app/api/pin/?username=rishabhops&repo=CipherElite&theme=radical&cache_seconds=60">
+  <a href="https://t.me/THANOS_PRO"><img src="https://img.shields.io/badge/📢_Updates_Channel-Join-red?style=for-the-badge&logo=telegram"></a>
+  <a href="https://t.me/thanosprosss"><img src="https://img.shields.io/badge/👥_Support_Group-Join-blue?style=for-the-badge&logo=telegram"></a>
 </p>
 
 ---
 
-## 🤝 CONTRIBUTING
+## 🌟 CREDITS & OWNER
 
-We welcome contributions from the community! Please see our [CONTRIBUTORS.md](./CONTRIBUTORS.md) file for detailed information about contributing to CipherElite.
+<p align="center">
+  <img src="https://github.com/rishabhops.png" width="100" height="100" style="border-radius: 50%;">
+</p>
+
+<h3 align="center">Rishabh Anand</h3>
+<p align="center">
+  <b>Lead Developer & Founder of Thanos Pro Organization</b>
+</p>
+
+<p align="center">
+  <a href="https://t.me/thanosceo"><img src="https://img.shields.io/badge/Contact-Telegram-blue?style=flat-square&logo=telegram"></a>
+  <a href="https://github.com/rishabhops"><img src="https://img.shields.io/badge/Follow-GitHub-black?style=flat-square&logo=github"></a>
+</p>
+
+**Acknowledgments:**
+* **Telethon:** For the foundational library.
+* **Open Source Community:** For the continuous inspiration and code contributions.
 
 ---
 
-## 📜 LICENSE
+## ⚖️ DISCLAIMER
 
-This project is licensed under the [MIT License](https://github.com/rishabhops/CipherElite/blob/elite/LICENSE).  
-© 2025 Rishabh Anand — Thanos Pro Organization  
-Feel free to use, modify, and distribute with proper credit.
-
----
-
-## 🙏 ACKNOWLEDGMENTS
-
-Special thanks to:
-- **Telethon Library** - For providing excellent Telegram client library
-- **Community Contributors** - For their valuable feedback and contributions
-- **Beta Testers** - For helping improve the userbot
+> This userbot is an **open-source educational project**. The developers (Rishabh Anand & Thanos Pro Org) are not responsible for any account bans or restrictions caused by improper usage of this tool. Please use Telegram userbots responsibly and adhere to Telegram's Terms of Service.
 
 ---
 
 <p align="center">
-  <b>⭐ Star this repository if you like 匚ɪᴘԋᴇʀ Ξʟɪᴛᴇ!</b>
+  <b>Enjoying Cipher Elite? Please drop a ⭐ Star on the repository!</b>
 </p>
-
-<h2 align="center">
-    Made with 💞 by <a href="https://github.com/rishabhops">Rishabh Anand</a> | <a href="https://t.me/THANOS_PRO">Thanos Pro Organization</a>
-</h2>
