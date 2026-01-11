@@ -114,12 +114,13 @@ sudo apt install python3-pip git tmux -y
 git clone [https://github.com/rishabhops/CipherElite](https://github.com/rishabhops/CipherElite)
 cd CipherElite
 
-# 3. Setup Configuration (Vars)
-# We copy sample.env to .env and edit it
+# 3. Setup Configuration
+# Copy the sample env file to a real .env file
 cp sample.env .env
+
+# Edit the file to add your API_ID, HASH, and SESSION
 nano .env
-# [Paste your vars: API_ID, HASH, SESSION here]
-# [Save: Ctrl+O -> Enter -> Ctrl+X]
+# (Press Ctrl+O to save, Enter to confirm, Ctrl+X to exit)
 
 # 4. Install Python Requirements
 pip3 install -r requirements.txt
