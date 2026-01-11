@@ -145,7 +145,7 @@ python3 main.py
 | `LOG_CHAT_ID` | Private Channel ID for Logs |
 | `SUDO_USERS` | Your User ID (for admin control) |
 
-> ����️ **SECURITY NOTICE:**
+🛡️ **SECURITY NOTICE:**
 > Cipher Elite uses a Locked Session Protocol. Standard StringSessions (from Ultroid/Cat) will NOT work.
 > This creates a security layer: Even if your session file is stolen, generic session stealers cannot access your account.
 
