@@ -9,13 +9,13 @@
 </p>
 
 <p align="center">
-  <img src="https://readme-typing-svg.herokuapp.com?color=F77247&width=450&lines=The+First+Anti-Hack+Userbot;Built+by+Thanos+Pro+Organization;Native+AI+%7C+Smart+Plugins+%7C+Secure;Deploy+Free+in+30+Seconds" alt="Typing SVG">
+  <img src="https://readme-typing-svg.herokuapp.com?color=F77247&width=450&lines=The+First+Anti-Hack+Userbot;Built+by+Thanos+Pro+Organization;Native+AI+%7C+Smart+Plugins+%7C+Secure;Deploy+Free+in+30+Seconds" alt="Typing SVG" />
 </p>
 
 <p align="center">
-    <a href="https://github.com/rishabhops/CipherElite/stargazers"><img src="https://img.shields.io/github/stars/rishabhops/CipherElite?label=Stars&style=for-the-badge&logo=github&color=F10070" alt="Stars" /></a>
-    <a href="https://github.com/rishabhops/CipherElite/network/members"><img src="https://img.shields.io/github/forks/rishabhops/CipherElite?label=Forks&style=for-the-badge&logo=github&color=F10070" alt="Forks" /></a>
-    <a href="https://github.com/rishabhops/CipherElite/issues"><img src="https://img.shields.io/github/issues/rishabhops/CipherElite?label=Issues&style=for-the-badge&logo=github&color=F10070" alt="Issues" /></a>
+    <a href="https://github.com/rishabhops/CipherElite/stargazers"><img src="https://img.shields.io/github/stars/rishabhops/CipherElite?label=Stars&style=for-the-badge&logo=github&color=F10070" alt="GitHub Stars"></a>
+    <a href="https://github.com/rishabhops/CipherElite/network/members"><img src="https://img.shields.io/github/forks/rishabhops/CipherElite?label=Forks&style=for-the-badge&logo=github&color=F10070" alt="GitHub Forks"></a>
+    <a href="https://github.com/rishabhops/CipherElite/issues"><img src="https://img.shields.io/github/issues/rishabhops/CipherElite?label=Issues&style=for-the-badge&logo=github&color=F10070" alt="GitHub Issues"></a>
     <a href="https://github.com/rishabhops/CipherElite/blob/elite/LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue?style=for-the-badge&logo=github" alt="License" /></a>
 </p>
 
@@ -37,7 +37,7 @@
 
 ## 📖 ABOUT
 
-**CipherElite** isn't just another userbot—it is a **Self-Healing Automation Suite**. 
+**CipherElite** isn't just another userbot—it is a **Self-Healing Automation Suite**.
 
 Built on **Telethon** by **Rishabh Anand**, it solves the biggest problems in Telegram automation:
 1.  **Security:** Our proprietary `ELITE_SESSION` prevents hackers from stealing your account.
@@ -111,7 +111,7 @@ sudo apt update && sudo apt upgrade -y
 sudo apt install python3-pip git tmux -y
 
 # 2. Clone the Repository
-git clone [https://github.com/rishabhops/CipherElite](https://github.com/rishabhops/CipherElite)
+git clone https://github.com/rishabhops/CipherElite
 cd CipherElite
 
 # 3. Setup Configuration
@@ -129,27 +129,40 @@ pip3 install -r requirements.txt
 tmux new -s cipher
 python3 main.py
 
-To check your bot later, type tmux attach -t cipher in your terminal.
-To exit the logs without stopping the bot, press Ctrl+B then D.
-⚙️ CONFIGURATION VARS
+# To check your bot later, type tmux attach -t cipher in your terminal.
+# To exit the logs without stopping the bot, press Ctrl+B then D.
+```
+
+---
+
+## ⚙️ CONFIGURATION VARS
+
 | Variable | Description |
 |---|---|
-| API_ID | Get from my.telegram.org |
-| API_HASH | Get from my.telegram.org |
-| ELITE_SESSION | Required. Get from @elite_session_maker_bot |
-| LOG_CHAT_ID | Private Channel ID for Logs |
-| SUDO_USERS | Your User ID (for admin control) |
-> 🛡️ SECURITY NOTICE:
+| `API_ID` | Get from my.telegram.org |
+| `API_HASH` | Get from my.telegram.org |
+| `ELITE_SESSION` | Required. Get from @elite_session_maker_bot |
+| `LOG_CHAT_ID` | Private Channel ID for Logs |
+| `SUDO_USERS` | Your User ID (for admin control) |
+
+> ����️ **SECURITY NOTICE:**
 > Cipher Elite uses a Locked Session Protocol. Standard StringSessions (from Ultroid/Cat) will NOT work.
 > This creates a security layer: Even if your session file is stolen, generic session stealers cannot access your account.
-> 
-💫 SUPPORT & UPDATES
+
+---
+
+## 💫 SUPPORT & UPDATES
+
 Join our growing community for plugins, help, and updates.
 <p align="center">
 <a href="https://t.me/THANOS_PRO"><img src="https://img.shields.io/badge/📢_Updates_Channel-Join-red?style=for-the-badge&logo=telegram"></a>
 <a href="https://t.me/thanosprosss"><img src="https://img.shields.io/badge/👥_Support_Group-Join-blue?style=for-the-badge&logo=telegram"></a>
 </p>
-🌟 CREDITS & OWNER
+
+---
+
+## 🌟 CREDITS & OWNER
+
 <p align="center">
 <img src="https://github.com/rishabhops.png" width="100" height="100" style="border-radius: 50%;">
 </p>
@@ -161,13 +174,19 @@ Join our growing community for plugins, help, and updates.
 <a href="https://t.me/thanosceo"><img src="https://img.shields.io/badge/Contact-Telegram-blue?style=flat-square&logo=telegram"></a>
 <a href="https://github.com/rishabhops"><img src="https://img.shields.io/badge/Follow-GitHub-black?style=flat-square&logo=github"></a>
 </p>
-Acknowledgments:
- * Telethon: For the foundational library.
- * Open Source Community: For the continuous inspiration.
-⚖️ DISCLAIMER
-> This userbot is an open-source educational project. The developers (Rishabh Anand & Thanos Pro Org) are not responsible for any account bans or restrictions caused by improper usage of this tool. Please use Telegram userbots responsibly.
-> 
+
+### **Acknowledgments:**
+* **Telethon:** For the foundational library.
+* **Open Source Community:** For the continuous inspiration.
+
+---
+
+## ⚖️ DISCLAIMER
+
+> This userbot is an open-source educational project. The developers (Rishabh Anand & Thanos Pro Org) are not responsible for any account bans or restrictions caused by improper usage of this tool.
+
+---
+
 <p align="center">
 <b>Enjoying Cipher Elite? Please drop a ⭐ Star on the repository!</b>
 </p>
-
