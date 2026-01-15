@@ -68,6 +68,14 @@ def get_stats():
         "total_replies": db["stats"]["total_replies"]
     }
 
+def get_bot_plugins_count():
+    """Get the number of bot plugins installed"""
+    bot_plugins_path = Path(__file__).parent
+    return len([
+        f for f in bot_plugins_path.glob("*.py")
+        if f.stem != "__init__"
+    ])
+
 def init_bot_plugin(bot, owner_id, owner_name):
     """Initialize the assistant bot plugin"""
     global bot_instance, owner_user_id, owner_display_name
@@ -93,13 +101,7 @@ def init_bot_plugin(bot, owner_id, owner_name):
             # Owner start menu
             db = load_database()
             bot_me = await bot.get_me()
-            
-            # Dynamically count bot plugins
-            bot_plugins_path = Path(__file__).parent
-            bot_plugins_count = len([
-                f for f in bot_plugins_path.glob("*.py")
-                if f.stem != "__init__"
-            ])
+            bot_plugins_count = get_bot_plugins_count()
             
             text = (
                 f"👑 <b>Welcome Master {owner_display_name}!</b>\n\n"
@@ -229,13 +231,7 @@ def init_bot_plugin(bot, owner_id, owner_name):
             # Back to main menu
             bot_me = await bot.get_me()
             stats = get_stats()
-            
-            # Dynamically count bot plugins
-            bot_plugins_path = Path(__file__).parent
-            bot_plugins_count = len([
-                f for f in bot_plugins_path.glob("*.py")
-                if f.stem != "__init__"
-            ])
+            bot_plugins_count = get_bot_plugins_count()
             
             text = (
                 f"👑 <b>Welcome Master {owner_display_name}!</b>\n\n"
@@ -368,7 +364,7 @@ def init_bot_plugin(bot, owner_id, owner_name):
     # -------------------------------------------------------------------------
     # 5. USER MESSAGE HANDLER (Forward to owner)
     # -------------------------------------------------------------------------
-    @bot.on(events.NewMessage(incoming=True, func=lambda e: e.is_private))
+    @bot.on(events.NewMessage(incoming=True, private=True))
     async def user_message_handler(event):
         # Ignore bot commands
         if event.text and event.text.startswith('/'):

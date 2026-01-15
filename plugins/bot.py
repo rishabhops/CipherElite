@@ -67,6 +67,12 @@ async def init_bot(user_client=None):
             
             # Load all bot plugins from bot_plugins directory
             bot_plugins_path = Path(__file__).parent.parent / "bot_plugins"
+            
+            # Check if bot_plugins directory exists
+            if not bot_plugins_path.exists():
+                print(f"\033[1;33m⚠️ Bot plugins directory not found: {bot_plugins_path}\033[0m")
+                return
+            
             bot_plugins = [
                 f"bot_plugins.{f.stem}"
                 for f in bot_plugins_path.glob("*.py")
