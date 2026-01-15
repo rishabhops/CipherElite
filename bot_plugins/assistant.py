@@ -364,7 +364,7 @@ def init_bot_plugin(bot, owner_id, owner_name):
     # -------------------------------------------------------------------------
     # 5. USER MESSAGE HANDLER (Forward to owner)
     # -------------------------------------------------------------------------
-    @bot.on(events.NewMessage(incoming=True, private=True))
+    @bot.on(events.NewMessage(incoming=True, func=lambda e: e.is_private))
     async def user_message_handler(event):
         # Ignore bot commands
         if event.text and event.text.startswith('/'):
