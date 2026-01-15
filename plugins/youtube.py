@@ -9,6 +9,7 @@
 # =============================================================================
 
 import os
+# import glob moved to top
 import asyncio
 from telethon import events
 from utils.utils import CipherElite
@@ -52,7 +53,7 @@ async def register_commands():
             await process.communicate()
             
             # Find the downloaded file
-            import glob
+            # import glob moved to top
             files = glob.glob("/tmp/yt_audio_*.mp3")
             
             if files:
@@ -101,7 +102,7 @@ async def register_commands():
             await process.communicate()
             
             # Find the downloaded file
-            import glob
+            # import glob moved to top
             files = glob.glob("/tmp/yt_video_*")
             
             if files:
@@ -158,7 +159,7 @@ async def register_commands():
             await process.communicate()
             
             # Find the downloaded file
-            import glob
+            # import glob moved to top
             files = glob.glob("/tmp/yt_audio_*.mp3")
             
             if files:
@@ -207,7 +208,7 @@ async def register_commands():
             await process.communicate()
             
             # Find the downloaded file
-            import glob
+            # import glob moved to top
             files = glob.glob("/tmp/yt_video_*")
             
             if files:

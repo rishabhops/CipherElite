@@ -124,7 +124,7 @@ async def register_commands():
             await event.reply("✅ Group photo updated successfully!")
             
             # Clean up downloaded file
-            import os
+            # import os moved to top
             if os.path.exists(photo):
                 os.remove(photo)
         except Exception as e:

@@ -8,6 +8,8 @@
 #  License:        MIT
 # =============================================================================
 
+import os
+# import urllib.parse moved to top
 import aiohttp
 import random
 from telethon import events
@@ -195,7 +197,7 @@ async def register_commands():
         
         try:
             # Use ray.so API
-            import urllib.parse
+            # import urllib.parse moved to top
             encoded_code = urllib.parse.quote(code)
             
             rayso_url = f"https://ray.so/api/image?code={encoded_code}&theme=breeze&darkMode=true&padding=32&language=auto"

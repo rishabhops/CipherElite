@@ -9,6 +9,7 @@
 # =============================================================================
 
 import os
+import glob
 import asyncio
 import aiohttp
 from telethon import events
@@ -67,7 +68,7 @@ async def register_commands():
             await process.communicate()
             
             # Find the downloaded file
-            import glob
+            # import glob moved to top
             files = glob.glob("/tmp/twitter_*")
             
             if files:

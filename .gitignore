@@ -36,3 +36,6 @@ Thumbs.db
 # Bot session files
 *.session
 *.session-journal
+
+# Plugin data files
+data/*.json

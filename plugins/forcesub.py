@@ -9,6 +9,7 @@
 # =============================================================================
 
 import json
+# import asyncio moved to top
 from pathlib import Path
 from telethon import events
 from telethon.tl.functions.channels import GetParticipantRequest
@@ -137,7 +138,7 @@ async def register_commands():
                 )
                 
                 # Delete warning after 10 seconds
-                import asyncio
+                # import asyncio moved to top
                 await asyncio.sleep(10)
                 await msg.delete()
             except:

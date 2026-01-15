@@ -9,7 +9,7 @@
 # =============================================================================
 
 import os
-from PIL import Image
+from PIL import Image, ImageDraw
 from telethon import events
 from telethon.tl.types import DocumentAttributeSticker, InputStickerSetShortName
 from utils.utils import CipherElite
@@ -170,7 +170,7 @@ async def register_commands():
             
             # Create circular mask
             mask = Image.new('L', (512, 512), 0)
-            from PIL import ImageDraw
+            # from PIL import ImageDraw moved to top
             draw = ImageDraw.Draw(mask)
             draw.ellipse((0, 0, 512, 512), fill=255)
             
