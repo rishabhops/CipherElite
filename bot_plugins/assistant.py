@@ -9,10 +9,8 @@
 # =============================================================================
 
 import json
-import os
 from pathlib import Path
 from telethon import events, Button
-from datetime import datetime
 
 # Database file path
 DB_PATH = Path(__file__).parent.parent / "DB" / "assistant_db.json"
@@ -94,7 +92,13 @@ def init_bot_plugin(bot, owner_id, owner_name):
             # Owner start menu
             db = load_database()
             bot_me = await bot.get_me()
-            bot_plugins_count = 1  # Currently only assistant plugin
+            
+            # Dynamically count bot plugins
+            bot_plugins_path = Path(__file__).parent
+            bot_plugins_count = len([
+                f for f in bot_plugins_path.glob("*.py")
+                if f.stem != "__init__"
+            ])
             
             text = (
                 f"👑 <b>Welcome Master {owner_display_name}!</b>\n\n"
@@ -224,7 +228,13 @@ def init_bot_plugin(bot, owner_id, owner_name):
             # Back to main menu
             bot_me = await bot.get_me()
             stats = get_stats()
-            bot_plugins_count = 1
+            
+            # Dynamically count bot plugins
+            bot_plugins_path = Path(__file__).parent
+            bot_plugins_count = len([
+                f for f in bot_plugins_path.glob("*.py")
+                if f.stem != "__init__"
+            ])
             
             text = (
                 f"👑 <b>Welcome Master {owner_display_name}!</b>\n\n"
@@ -357,7 +367,7 @@ def init_bot_plugin(bot, owner_id, owner_name):
     # -------------------------------------------------------------------------
     # 5. USER MESSAGE HANDLER (Forward to owner)
     # -------------------------------------------------------------------------
-    @bot.on(events.NewMessage(incoming=True))
+    @bot.on(events.NewMessage(incoming=True, func=lambda e: e.is_private))
     async def user_message_handler(event):
         # Ignore bot commands
         if event.text and event.text.startswith('/'):
@@ -455,9 +465,8 @@ def init_bot_plugin(bot, owner_id, owner_name):
                 # Confirm to owner
                 await event.reply("✅ <b>Reply sent to user!</b>", parse_mode='html')
                 
-                # Remove from mapping to keep it clean
-                # del db["user_message_map"][replied_msg_id]
-                # save_database(db)
+                # Note: We keep the message mapping for potential follow-up conversations
+                # A cleanup mechanism can be added later based on message age
         
         except Exception as e:
             print(f"Error handling owner reply: {e}")
