@@ -97,3 +97,4 @@ utils==1.0.2
 lxml
 webencodings==0.5.1
 yarl==1.18.3
+yt-dlp
