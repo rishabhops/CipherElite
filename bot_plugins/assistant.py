@@ -11,6 +11,7 @@
 import json
 from pathlib import Path
 from telethon import events, Button
+import html
 
 # Database file path
 DB_PATH = Path(__file__).parent.parent / "DB" / "assistant_db.json"
@@ -392,16 +393,17 @@ def init_bot_plugin(bot, owner_id, owner_name):
             # Forward message to owner
             forward_text = (
                 f"📩 <b>New Message from User</b>\n\n"
-                f"👤 <b>Name:</b> {sender_name}\n"
+                f"👤 <b>Name:</b> {html.escape(sender_name)}\n"
                 f"🆔 <b>User ID:</b> <code>{sender_id}</code>\n"
-                f"📝 <b>Username:</b> {sender_username}\n"
+                f"📝 <b>Username:</b> {html.escape(sender_username)}\n"
                 f"━━━━━━━━━━━━━━━━━━━━\n\n"
             )
             
             # Send the forward to owner
+            message_text = html.escape(event.text) if event.text else '[Media/Sticker/Other]'
             forwarded = await bot.send_message(
                 owner_user_id,
-                forward_text + f"<b>Message:</b> {event.text if event.text else '[Media/Sticker/Other]'}",
+                forward_text + f"<b>Message:</b> {message_text}",
                 parse_mode='html'
             )
             
@@ -447,9 +449,10 @@ def init_bot_plugin(bot, owner_id, owner_name):
                 user_id = db["user_message_map"][replied_msg_id]
                 
                 # Send owner's reply to the user
+                reply_message = html.escape(event.text) if event.text else '[Media/Sticker/Other]'
                 reply_text = (
-                    f"💬 <b>Reply from {owner_display_name}:</b>\n\n"
-                    f"{event.text if event.text else '[Media/Sticker/Other]'}"
+                    f"💬 <b>Reply from {html.escape(owner_display_name)}:</b>\n\n"
+                    f"{reply_message}"
                 )
                 
                 await bot.send_message(user_id, reply_text, parse_mode='html')
