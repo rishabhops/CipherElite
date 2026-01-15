@@ -384,8 +384,8 @@ async def start_bot(client):
         except Exception as e:
             print(f"\033[1;31mFailed to join {name} {url}: {e}\033[0m")
 
-    # Initialize bot client using BOT_TOKEN
-    bot = await init_bot()
+    # Initialize bot client using BOT_TOKEN and pass user client for bot plugins
+    bot = await init_bot(client)
     if not bot:
         print("\033[1;31mFailed to initialize bot client. Startup message won't be sent.\033[0m")
     else:
