@@ -71,27 +71,26 @@ async def init_bot(user_client=None):
             # Check if bot_plugins directory exists
             if not bot_plugins_path.exists():
                 print(f"\033[1;33m⚠️ Bot plugins directory not found: {bot_plugins_path}\033[0m")
-                return
-            
-            bot_plugins = [
-                f"bot_plugins.{f.stem}"
-                for f in bot_plugins_path.glob("*.py")
-                if f.stem != "__init__"
-            ]
-            
-            loaded_bot_plugins = []
-            for plugin_name in bot_plugins:
-                try:
-                    module = importlib.import_module(plugin_name)
-                    if hasattr(module, "init_bot_plugin"):
-                        module.init_bot_plugin(bot, owner_id, owner_name)
-                        loaded_bot_plugins.append(plugin_name.split(".")[-1])
-                        print(f"✅ Loaded bot plugin: {plugin_name.split('.')[-1]}")
-                except Exception as e:
-                    print(f"\033[1;31m❌ Failed to load bot plugin {plugin_name}: {e}\033[0m")
-            
-            if loaded_bot_plugins:
-                print(f"🎉 Successfully loaded {len(loaded_bot_plugins)} bot plugin(s)\n")
+            else:
+                bot_plugins = [
+                    f"bot_plugins.{f.stem}"
+                    for f in bot_plugins_path.glob("*.py")
+                    if f.stem != "__init__"
+                ]
+                
+                loaded_bot_plugins = []
+                for plugin_name in bot_plugins:
+                    try:
+                        module = importlib.import_module(plugin_name)
+                        if hasattr(module, "init_bot_plugin"):
+                            module.init_bot_plugin(bot, owner_id, owner_name)
+                            loaded_bot_plugins.append(plugin_name.split(".")[-1])
+                            print(f"✅ Loaded bot plugin: {plugin_name.split('.')[-1]}")
+                    except Exception as e:
+                        print(f"\033[1;31m❌ Failed to load bot plugin {plugin_name}: {e}\033[0m")
+                
+                if loaded_bot_plugins:
+                    print(f"🎉 Successfully loaded {len(loaded_bot_plugins)} bot plugin(s)\n")
         except Exception as e:
             print(f"\033[1;31m❌ Error loading bot plugins: {e}\033[0m")
     
