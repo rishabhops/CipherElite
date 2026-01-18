@@ -12,8 +12,12 @@ from telethon.errors import UserNotParticipantError, UserAlreadyParticipantError
 from telethon.tl.functions.bots import SetBotCommandsRequest
 from telethon.tl.functions.photos import UploadProfilePhotoRequest, DeletePhotosRequest
 from telethon.tl.functions.account import UpdateProfileRequest
+from telethon.tl.functions.users import GetFullUserRequest
+
+# Internal imports (ensure these exist in your project structure)
 from plugins.bot import init_bot
 from utils.utils import init_client
+from config.config import Config
 
 async def load_plugins(client):
     path = Path(__file__).parent.parent / "plugins"
@@ -69,9 +73,6 @@ Started : {system_info["uptime"]}
     print(banner)
     return system_info
 
-from telethon.tl.functions.users import GetFullUserRequest
-
-
 async def configure_bot_via_botfather(user_client, bot_username):
     """Automatically configure bot through BotFather using user account"""
     user = await user_client.get_me()
@@ -87,23 +88,15 @@ async def configure_bot_via_botfather(user_client, bot_username):
         "🔗 Support: @thanosprosss"
     )
     bot_about = f"🤖 Assistant for {user_first_name} | Cipher Elite | @thanosprosss"
-
-    # Check only the bot name
-    try:
-        bot_entity = await user_client.get_entity(bot_username)
-        current_name = bot_entity.first_name
-        
-        if current_name == bot_name:
-            print("\033[1;32m✅ Bot name already matches - Skipping BotFather setup\033[0m")
-            return True
-    except Exception as e:
-        print(f"\033[1;33m⚠️ Couldn't verify bot name: {e}\033[0m")
+    
+    # Placeholder text for inline queries
+    inline_placeholder = "Search..."
 
     print(f"\033[1;33mConfiguring bot @{bot_username} via BotFather...\033[0m")
     
     try:
         async with user_client.conversation('BotFather') as conv:
-            # Set bot commands
+            # 1. Set bot commands
             await conv.send_message("/setcommands")
             await asyncio.sleep(1)
             await conv.send_message(f"@{bot_username}")
@@ -117,7 +110,7 @@ async def configure_bot_via_botfather(user_client, bot_username):
             await conv.send_message("\n".join(commands))
             await asyncio.sleep(2)
             
-            # Set bot name
+            # 2. Set bot name
             await conv.send_message("/setname")
             await asyncio.sleep(1)
             await conv.send_message(f"@{bot_username}")
@@ -125,7 +118,7 @@ async def configure_bot_via_botfather(user_client, bot_username):
             await conv.send_message(bot_name)
             await asyncio.sleep(2)
             
-            # Set bot description
+            # 3. Set bot description
             await conv.send_message("/setdescription")
             await asyncio.sleep(1)
             await conv.send_message(f"@{bot_username}")
@@ -133,24 +126,31 @@ async def configure_bot_via_botfather(user_client, bot_username):
             await conv.send_message(bot_bio)
             await asyncio.sleep(2)
             
-            # Set bot about text
+            # 4. Set bot about text
             await conv.send_message("/setabouttext")
             await asyncio.sleep(1)
             await conv.send_message(f"@{bot_username}")
             await asyncio.sleep(1)
             await conv.send_message(bot_about)
             await asyncio.sleep(2)
+
+            # 5. Enable Inline Mode
+            print("\033[1;33m...Enabling Inline Mode...\033[0m")
+            await conv.send_message("/setinline")
+            await asyncio.sleep(1)
+            await conv.send_message(f"@{bot_username}")
+            await asyncio.sleep(1)
+            await conv.send_message(inline_placeholder)
+            await asyncio.sleep(2)
             
-        print("\033[1;32m✅ Bot successfully configured via BotFather\033[0m")
+        print("\033[1;32m✅ Bot successfully configured (including Inline Mode) via BotFather\033[0m")
         return True
         
     except Exception as e:
         print(f"\033[1;31m❌ Failed to configure bot via BotFather: {e}\033[0m")
-        print("\033[1;33m⚠️ Please configure bot manually through @BotFather:\n"
-              f"1. Use /setname to change bot name to '{bot_name}'\n"
-              f"2. Use /setdescription to set bio to:\n{bot_bio}\n"
-              f"3. Use /setabouttext to set about text to:\n{bot_about}\033[0m")
+        print("\033[1;33m⚠️ Please configure bot manually through @BotFather if needed.\033[0m")
         return False
+
 async def update_bot_profile_picture(bot_client, user_client):
     """Update bot profile picture using cipher.jpg from images folder"""
     try:
@@ -393,7 +393,7 @@ async def start_bot(client):
         bot_me = await bot.get_me()
         print(f"\033[1;32mBot client initialized: @{bot_me.username}\033[0m")
         
-        # Configure bot through BotFather using user account
+        # Configure bot through BotFather using user account (including Inline)
         print("\033[1;33m🔄 Configuring bot via BotFather...\033[0m")
         await configure_bot_via_botfather(client, bot_me.username)
         
@@ -406,7 +406,6 @@ async def start_bot(client):
 
     system_info = await display_startup_message(client, plugins)
     
-    from config.config import Config
     if bot:
         await send_startup_message(bot, client, plugins, system_info, Config)
     else:
