@@ -31,7 +31,7 @@ CONFIG_FILE = DB_DIR / "alive_config.json"
 # ---------------------------------------------------------------------------
 ALIVE_BUTTONS = [
     [
-        Button.url("💬 Support", "https://t.me/cipherelitesupport"),
+        Button.url("💬 Support", "https://t.me/cipherelite_support"),
         Button.url("📢 Channel", "https://t.me/THANOS_PRO"),
     ]
 ]
@@ -401,3 +401,4 @@ async def reset_ping(event):
     user_config.__init__()
     save_config()
     await event.reply("✅ Ping settings reset to default")
+
