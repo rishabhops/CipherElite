@@ -6,15 +6,6 @@
 #  Repository:     https://github.com/rishabhops/CipherElite
 #
 #  License:        MIT
-#
-#  IMPORTANT:
-#    • If you copy, fork, or include this plugin in your own bot,
-#      you MUST keep this header intact.
-#    • You MUST give proper credit to the CipherElite Userbot author:
-#        – GitHub:    https://github.com/rishabhops/CipherElite
-#        – Telegram:  @thanosceo
-#
-#  Thank you for respecting open-source software!
 # =============================================================================
 
 import asyncio
@@ -22,7 +13,7 @@ import json
 from datetime import datetime
 from pathlib import Path
 
-from telethon import events, version
+from telethon import events, version, Button  # Added Button
 from plugins.bot import add_handler, CMD_LIST
 from utils.utils import CipherElite
 from utils.decorators import rishabh
@@ -32,6 +23,14 @@ PROJECT_ROOT = Path(__file__).parent.parent
 DB_DIR = PROJECT_ROOT / "DB"
 DB_DIR.mkdir(exist_ok=True)
 CONFIG_FILE = DB_DIR / "alive_config.json"
+
+
+ALIVE_BUTTONS = [
+    [
+        Button.url("💬 Support", "https://t.me/cipherelitesupport"),
+        Button.url("📢 Channel", "https://t.me/THANOSPRO"),
+    ],
+]
 
 class UserConfig:
     def __init__(self):
@@ -106,6 +105,28 @@ def get_readable_time(seconds: float) -> str:
         time_list.append(f"{int(result)}{suffixes[count - 1]}")
     return ":".join(reversed(time_list))
 
+# --- HELPER: Convert Buttons to Markdown Links ---
+def format_buttons_to_text(buttons_list):
+    """Converts a list of Button.url into a markdown string [Text](Link) | [Text](Link)"""
+    if not buttons_list:
+        return ""
+        
+    lines = []
+    for row in buttons_list:
+        row_text = []
+        for button in row:
+            # Check if it's a URL button object
+            if hasattr(button, 'url'):
+                row_text.append(f"[{button.text}]({button.url})")
+            # Fallback if someone defined it as simple text
+            elif isinstance(button, str):
+                row_text.append(button)
+        if row_text:
+            lines.append(" | ".join(row_text)) 
+            
+    # Return with a newline prefix to separate from main text
+    return "\n\n" + "\n".join(lines)
+
 
 # Raw-string templates to preserve special characters and spacing
 ALIVE_STYLES = [
@@ -168,15 +189,22 @@ def init(client):
     add_handler("alive", commands, desc)
 
 
-async def send_plain(event, text: str, file=None):
+async def send_plain(event, text: str, file=None, add_buttons=False):
     """
-    Send as plain text, replacing spaces with NBSP so Telegram
-    preserves spacing without code blocks.
+    Send as plain text. 
+    If add_buttons is True, appends the formatted links to the bottom.
     """
+    # 1. Append buttons as links if requested
+    if add_buttons:
+        text += format_buttons_to_text(ALIVE_BUTTONS)
+
+    # 2. Handle NBSP for spacing
     lines = text.splitlines()
     nbsp_lines = [line.replace(" ", "\u00A0") for line in lines]
     payload = "\n".join(nbsp_lines)
-    await event.reply(payload, file=file)
+
+    # 3. Send (Link preview disabled to keep it clean)
+    await event.reply(payload, file=file, link_preview=False)
 
 
 @CipherElite.on(events.NewMessage(pattern=r"\.alive"))
@@ -194,10 +222,12 @@ async def alive(event):
         plugins=len(CMD_LIST),
         uptime=uptime
     )
+    
+    # We pass add_buttons=True here
     if user_config.use_pic_for_alive:
-        await send_plain(event, text, file=user_config.alive_pic)
+        await send_plain(event, text, file=user_config.alive_pic, add_buttons=True)
     else:
-        await send_plain(event, text)
+        await send_plain(event, text, add_buttons=True)
 
 
 @CipherElite.on(events.NewMessage(pattern=r"\.ping"))
@@ -213,10 +243,12 @@ async def ping(event):
         else PING_STYLES[user_config.ping_style_index]
     )
     text = template.format(speed=elapsed, uptime=uptime)
+    
+    # We pass add_buttons=True here as well
     if user_config.use_pic_for_ping:
-        await send_plain(msg, text, file=user_config.ping_pic)
+        await send_plain(msg, text, file=user_config.ping_pic, add_buttons=True)
     else:
-        await send_plain(msg, text)
+        await send_plain(msg, text, add_buttons=True)
 
 
 # -- HANDLERS THAT MODIFY CONFIG --------------------------------------------
@@ -236,7 +268,7 @@ async def set_alive(event):
             plugins=len(CMD_LIST),
             uptime=get_readable_time((datetime.now() - START_TIME).total_seconds())
         )
-        await send_plain(event, preview)
+        await send_plain(event, preview, add_buttons=True)
     else:
         await event.reply(f"❌ Invalid. Choose 1–{len(ALIVE_STYLES)}")
 
@@ -251,7 +283,7 @@ async def set_ping(event):
         save_config()
         await event.reply(f"✅ Ping style set to #{idx+1}")
         preview = PING_STYLES[idx].format(speed=100, uptime="1m")
-        await send_plain(event, preview)
+        await send_plain(event, preview, add_buttons=True)
     else:
         await event.reply(f"❌ Invalid. Choose 1–{len(PING_STYLES)}")
 
@@ -270,7 +302,7 @@ async def set_alive_text(event):
             uptime=get_readable_time((datetime.now() - START_TIME).total_seconds())
         )
         await event.reply("✅ Custom alive text set. Preview:")
-        await send_plain(event, preview)
+        await send_plain(event, preview, add_buttons=True)
     except Exception as e:
         await event.reply(f"⚠️ Template error: {e}")
 
@@ -284,7 +316,7 @@ async def set_ping_text(event):
     try:
         preview = tpl.format(speed=123, uptime="1m")
         await event.reply("✅ Custom ping text set. Preview:")
-        await send_plain(event, preview)
+        await send_plain(event, preview, add_buttons=True)
     except Exception as e:
         await event.reply(f"⚠️ Template error: {e}")
 
@@ -362,7 +394,7 @@ async def show_alive_styles(event):
     for i, style in enumerate(ALIVE_STYLES, 1):
         filled = style.format(name="Example", telethon="1.24.0", plugins=50, uptime="1m")
         await event.reply(f"Style #{i}:")
-        await send_plain(event, filled)
+        await send_plain(event, filled, add_buttons=True)
         await asyncio.sleep(0.3)
 
 
@@ -373,7 +405,7 @@ async def show_ping_styles(event):
     for i, style in enumerate(PING_STYLES, 1):
         filled = style.format(speed=100, uptime="1m")
         await event.reply(f"Style #{i}:")
-        await send_plain(event, filled)
+        await send_plain(event, filled, add_buttons=True)
         await asyncio.sleep(0.3)
 
 
