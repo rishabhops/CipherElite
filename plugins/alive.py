@@ -10,26 +10,17 @@
 
 import asyncio
 import json
-import logging
 from datetime import datetime
 from pathlib import Path
 
 from telethon import events, version, Button
 from telethon.errors import BotInlineDisabledError
 from plugins.bot import add_handler, CMD_LIST
+
+from plugins.bot import bot 
 from utils.utils import CipherElite
 from utils.decorators import rishabh
 from config.config import Config
-
-
-try:
-    from plugins.bot import bot 
-except ImportError:
-    try:
-        from utils.utils import bot
-    except ImportError:
-        bot = None
-        logging.warning("Could not import 'bot' client. Inline buttons for .alive will fail.")
 
 PROJECT_ROOT = Path(__file__).parent.parent
 DB_DIR = PROJECT_ROOT / "DB"
@@ -45,6 +36,15 @@ ALIVE_BUTTONS = [
     ]
 ]
 
+# Global cache to pass data from Userbot -> Assistant Bot
+# This ensures the bot sends exactly what the userbot calculated.
+INLINE_DATA = {
+    "alive_text": "CipherElite is Online",
+    "alive_media": None,
+    "ping_text": "Pong!",
+    "ping_media": None
+}
+
 class UserConfig:
     def __init__(self):
         self.alive_style_index = 0
@@ -57,47 +57,59 @@ class UserConfig:
         self.use_pic_for_ping = True
 
     def to_dict(self):
-        return self.__dict__
+        return {
+            "alive_style_index": self.alive_style_index,
+            "ping_style_index": self.ping_style_index,
+            "custom_alive_text": self.custom_alive_text,
+            "custom_ping_text": self.custom_ping_text,
+            "alive_pic": self.alive_pic,
+            "ping_pic": self.ping_pic,
+            "use_pic_for_alive": self.use_pic_for_alive,
+            "use_pic_for_ping": self.use_pic_for_ping,
+        }
 
     def from_dict(self, data):
-        for k, v in data.items():
-            if hasattr(self, k):
-                setattr(self, k, v)
-
-# -- CONFIG PERSISTENCE --
-user_config = UserConfig()
+        for key, val in data.items():
+            if hasattr(self, key):
+                setattr(self, key, val)
 
 def load_config():
     if CONFIG_FILE.exists():
         try:
-            user_config.from_dict(json.loads(CONFIG_FILE.read_text()))
+            data = json.loads(CONFIG_FILE.read_text(encoding="utf-8"))
+            user_config.from_dict(data)
         except Exception:
             pass
 
 def save_config():
     try:
-        CONFIG_FILE.write_text(json.dumps(user_config.to_dict(), indent=2))
+        CONFIG_FILE.write_text(
+            json.dumps(user_config.to_dict(), ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
     except Exception:
         pass
 
-load_config()
-# ------------------------
+# -- END CONFIG --
 
 START_TIME = datetime.now()
 DEFAULT_ALIVE_PIC = Config.DEFAULT_ALIVE_PIC
 DEFAULT_PING_PIC = Config.DEFAULT_PING_PIC
 
-# Globals to pass data from Userbot -> Inline Bot
-LAST_ALIVE_DATA = {}
-LAST_PING_DATA = {}
-
-def get_readable_time(seconds):
-    m, s = divmod(int(seconds), 60)
-    h, m = divmod(m, 60)
-    d, h = divmod(h, 24)
-    if d: return f"{d}d {h}h {m}m"
-    if h: return f"{h}h {m}m"
-    return f"{m}m {s}s"
+def get_readable_time(seconds: float) -> str:
+    count = 0
+    time_list = []
+    suffixes = ["s", "m", "h", "d"]
+    while count < 4:
+        count += 1
+        if count < 3:
+            seconds, result = divmod(seconds, 60)
+        else:
+            seconds, result = divmod(seconds, 24)
+        if seconds == 0 and result == 0:
+            break
+        time_list.append(f"{int(result)}{suffixes[count - 1]}")
+    return ":".join(reversed(time_list))
 
 ALIVE_STYLES = [
     r"""⚡ 𝘾𝙄𝙋𝙃𝙀𝙍 𝙀𝙇𝙄𝙏𝙀 𝙎𝙔𝙎𝙏𝙀𝙈 ⚡
@@ -141,119 +153,125 @@ PING_STYLES = [
 ╚══『 CIPHER ELITE 』══╝""",
 ]
 
+user_config = UserConfig()
+load_config()
+
 def init(client):
-    commands = [".alive", ".ping"]
-    add_handler("alive", commands, "Alive & Ping with Inline Buttons")
+    commands = [
+        ".alive", ".ping",
+        ".setalive <num>", ".setping <num>",
+        ".setalivetext <text>", ".setpingtext <text>",
+        ".setalivepic <url/reply>", ".setpingpic <url/reply>",
+        ".togglealivepic", ".togglepingpic",
+        ".alivestyles", ".pingstyles",
+        ".resetalive", ".resetping"
+    ]
+    desc = "Alive/ping with Real Inline Buttons"
+    add_handler("alive", commands, desc)
 
 # ============================================================================
-#  USERBOT HANDLERS (The Trigger)
+#  USERBOT HANDLERS (Triggers)
 # ============================================================================
 
 @CipherElite.on(events.NewMessage(pattern=r"\.alive"))
 @rishabh()
 async def alive(event):
-    # 1. Prepare Data
+    # 1. Prepare Text
     uptime = get_readable_time((datetime.now() - START_TIME).total_seconds())
-    template = user_config.custom_alive_text or ALIVE_STYLES[user_config.alive_style_index]
+    template = (
+        user_config.custom_alive_text
+        if user_config.custom_alive_text
+        else ALIVE_STYLES[user_config.alive_style_index]
+    )
     text = template.format(
         name=event.sender.first_name,
-        plugins=len(CMD_LIST),
-        uptime=uptime,
         telethon=version.__version__,
+        plugins=len(CMD_LIST),
+        uptime=uptime
     )
     
-    # 2. Store data for the bot to read
-    global LAST_ALIVE_DATA
-    LAST_ALIVE_DATA = {
-        "text": text,
-        "media": user_config.alive_pic if user_config.use_pic_for_alive else None
-    }
+    # 2. Update Global Data for Bot
+    global INLINE_DATA
+    INLINE_DATA["alive_text"] = text
+    INLINE_DATA["alive_media"] = user_config.alive_pic if user_config.use_pic_for_alive else None
 
-    # 3. Trigger Inline Query (Like help.py)
-    if Config.TG_BOT_USERNAME:
-        try:
-            results = await event.client.inline_query(Config.TG_BOT_USERNAME, "alive")
-            await results[0].click(
-                event.chat_id,
-                reply_to=event.reply_to_msg_id,
-                hide_via=True
-            )
-            await event.delete()
-        except BotInlineDisabledError:
-            await event.reply("❌ **Inline Error:** Please enable Inline Mode in @BotFather for your assistant bot.")
-        except Exception as e:
-            await event.reply(f"❌ **Inline Error:** {e}\n(Fallback to text only)")
-    else:
-        await event.reply(text) # Fallback
+    # 3. Trigger Inline Query
+    # Note: Requires Config.TG_BOT_USERNAME to be set in your config!
+    try:
+        results = await event.client.inline_query(Config.TG_BOT_USERNAME, "alive")
+        await results[0].click(
+            event.chat_id,
+            reply_to=event.reply_to_msg_id,
+            hide_via=True
+        )
+        await event.delete()
+    except Exception as e:
+        # Fallback to plain text if bot is down or not configured
+        await event.reply(text, file=INLINE_DATA["alive_media"])
+        if "username" in str(e).lower():
+            print("❌ Cipher Error: Config.TG_BOT_USERNAME is missing or invalid.")
+
 
 @CipherElite.on(events.NewMessage(pattern=r"\.ping"))
 @rishabh()
 async def ping(event):
     start = datetime.now()
-    # We calculate speed here, but we can't show "Pinging..." then delete it 
-    # effectively with inline query. So we just calculate and send.
-    speed = (datetime.now() - start).microseconds // 1000
+    # Note: speed calculation is slightly off with inline, but acceptable
+    elapsed = (datetime.now() - start).microseconds // 1000
     uptime = get_readable_time((datetime.now() - START_TIME).total_seconds())
-    template = user_config.custom_ping_text or PING_STYLES[user_config.ping_style_index]
-    text = template.format(speed=speed, uptime=uptime)
+    template = (
+        user_config.custom_ping_text
+        if user_config.custom_ping_text
+        else PING_STYLES[user_config.ping_style_index]
+    )
+    text = template.format(speed=elapsed, uptime=uptime)
 
-    global LAST_PING_DATA
-    LAST_PING_DATA = {
-        "text": text,
-        "media": user_config.ping_pic if user_config.use_pic_for_ping else None
-    }
+    global INLINE_DATA
+    INLINE_DATA["ping_text"] = text
+    INLINE_DATA["ping_media"] = user_config.ping_pic if user_config.use_pic_for_ping else None
 
-    if Config.TG_BOT_USERNAME:
-        try:
-            results = await event.client.inline_query(Config.TG_BOT_USERNAME, "ping")
-            await results[0].click(
-                event.chat_id,
-                reply_to=event.reply_to_msg_id,
-                hide_via=True
-            )
-            await event.delete()
-        except Exception as e:
-            await event.reply(text)
-    else:
-        await event.reply(text)
+    try:
+        results = await event.client.inline_query(Config.TG_BOT_USERNAME, "ping")
+        await results[0].click(
+            event.chat_id,
+            reply_to=event.reply_to_msg_id,
+            hide_via=True
+        )
+        await event.delete()
+    except Exception:
+        await event.reply(text, file=INLINE_DATA["ping_media"])
 
 # ============================================================================
-#  BOT INLINE HANDLERS (The Response)
+#  BOT HANDLERS (The Response)
 # ============================================================================
-# This part registers the "alive" answer on your Assistant Bot.
+# We attach these handlers to the 'bot' instance imported from plugins.bot
 
 if bot:
     @bot.on(events.InlineQuery(pattern=r"^alive$"))
-    async def inline_alive_handler(event):
+    async def inline_alive(event):
         builder = event.builder
-        
-        # Retrieve the latest generated text/media from the global variable
-        # Default fallback if variable is empty
-        text = LAST_ALIVE_DATA.get("text", "CipherElite is Online.")
-        media = LAST_ALIVE_DATA.get("media", DEFAULT_ALIVE_PIC)
+        text = INLINE_DATA["alive_text"]
+        media = INLINE_DATA["alive_media"]
 
         if media:
-            # Return photo with caption
             result = builder.photo(
                 media,
                 text=text,
                 buttons=ALIVE_BUTTONS
             )
         else:
-            # Return text article
             result = builder.article(
                 "Alive",
                 text=text,
                 buttons=ALIVE_BUTTONS
             )
-        
         await event.answer([result], cache_time=1)
 
     @bot.on(events.InlineQuery(pattern=r"^ping$"))
-    async def inline_ping_handler(event):
+    async def inline_ping(event):
         builder = event.builder
-        text = LAST_PING_DATA.get("text", "Pong!")
-        media = LAST_PING_DATA.get("media", DEFAULT_PING_PIC)
+        text = INLINE_DATA["ping_text"]
+        media = INLINE_DATA["ping_media"]
 
         if media:
             result = builder.photo(
@@ -270,8 +288,11 @@ if bot:
         await event.answer([result], cache_time=1)
 
 # ============================================================================
-#  CONFIG SETTERS (No changes needed here, keeping your original logic)
+#  CONFIG SETTERS (Standard)
 # ============================================================================
+
+async def send_plain(event, text, file=None):
+    await event.reply(text, file=file)
 
 @CipherElite.on(events.NewMessage(pattern=r"\.setalive\s+(\d+)"))
 @rishabh()
