@@ -32,7 +32,7 @@ FONT_CACHE = {}
 def init(client_instance):
     commands = [
         ".font <number> <text> -> Convert normal text into stylish font."
-        ".font <text> → Preview all fonts"
+        ".fonts <text> → Preview all fonts"
     ]
     description = "^_^ Font Changer -> Convert normal text into stylish Unicode font."
     add_handler("font", commands, description)
