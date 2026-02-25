@@ -74,6 +74,8 @@ from telethon.tl.functions.users import GetFullUserRequest
 
 from telethon.tl.functions.users import GetFullUserRequest
 
+from telethon.tl.functions.users import GetFullUserRequest
+
 async def configure_bot_via_botfather(user_client, bot_username):
     """Automatically configure bot through BotFather using user account"""
     user = await user_client.get_me()
@@ -102,17 +104,20 @@ async def configure_bot_via_botfather(user_client, bot_username):
     try:
         # Fetch the bot's full profile information
         bot_entity = await user_client.get_entity(bot_username)
-        full_user = await user_client(GetFullUserRequest(bot_entity))
+        full_user_response = await user_client(GetFullUserRequest(bot_entity))
         
-        # Get current values
-        current_name = bot_entity.first_name
-        current_about = full_user.about or ""
+        # EXTRACT the actual user object from the response container
+        full_user = full_user_response.full_user
         
-        bot_info = full_user.bot_info
-        current_description = bot_info.description if bot_info else ""
+        # Get current values safely
+        current_name = bot_entity.first_name or ""
+        current_about = getattr(full_user, 'about', "") or ""
+        
+        bot_info = getattr(full_user, 'bot_info', None)
+        current_description = getattr(bot_info, 'description', "") if bot_info else ""
         
         current_commands_dict = {}
-        if bot_info and bot_info.commands:
+        if bot_info and getattr(bot_info, 'commands', None):
             current_commands_dict = {cmd.command: cmd.description for cmd in bot_info.commands}
 
         # Check what needs updating
@@ -178,7 +183,6 @@ async def configure_bot_via_botfather(user_client, bot_username):
         print(f"\033[1;31m❌ Failed to configure bot via BotFather: {e}\033[0m")
         print("\033[1;33m⚠️ Please configure bot manually through @BotFather if necessary.\033[0m")
         return False
-
 
 
 
