@@ -72,6 +72,8 @@ Started : {system_info["uptime"]}
 from telethon.tl.functions.users import GetFullUserRequest
 
 
+from telethon.tl.functions.users import GetFullUserRequest
+
 async def configure_bot_via_botfather(user_client, bot_username):
     """Automatically configure bot through BotFather using user account"""
     user = await user_client.get_me()
@@ -87,92 +89,137 @@ async def configure_bot_via_botfather(user_client, bot_username):
         "🔗 Support: @thanosprosss"
     )
     bot_about = f"🤖 Assistant for {user_first_name} | Cipher Elite | @thanosprosss"
+    
+    desired_commands = {
+        "start": "Start the bot",
+        "help": "Show help information",
+        "ping": "Check bot responsiveness",
+        "status": "Show system status"
+    }
 
-    # Check only the bot name
+    print(f"\033[1;34m🔍 Checking current @{bot_username} settings...\033[0m")
+    
     try:
+        # Fetch the bot's full profile information
         bot_entity = await user_client.get_entity(bot_username)
-        current_name = bot_entity.first_name
+        full_user = await user_client(GetFullUserRequest(bot_entity))
         
-        if current_name == bot_name:
-            print("\033[1;32m✅ Bot name already matches - Skipping BotFather setup\033[0m")
+        # Get current values
+        current_name = bot_entity.first_name
+        current_about = full_user.about or ""
+        
+        bot_info = full_user.bot_info
+        current_description = bot_info.description if bot_info else ""
+        
+        current_commands_dict = {}
+        if bot_info and bot_info.commands:
+            current_commands_dict = {cmd.command: cmd.description for cmd in bot_info.commands}
+
+        # Check what needs updating
+        needs_name = current_name != bot_name
+        needs_about = current_about != bot_about
+        needs_description = current_description != bot_bio
+        needs_commands = current_commands_dict != desired_commands
+        
+        if not any([needs_name, needs_about, needs_description, needs_commands]):
+            print("\033[1;32m✅ Bot settings are already up to date - Skipping BotFather setup\033[0m")
             return True
+            
     except Exception as e:
-        print(f"\033[1;33m⚠️ Couldn't verify bot name: {e}\033[0m")
+        print(f"\033[1;33m⚠️ Couldn't verify current bot settings: {e}\033[0m")
+        # If we fail to check, assume everything needs updating
+        needs_name = needs_about = needs_description = needs_commands = True
 
     print(f"\033[1;33mConfiguring bot @{bot_username} via BotFather...\033[0m")
     
     try:
         async with user_client.conversation('BotFather') as conv:
-            # Set bot commands
-            await conv.send_message("/setcommands")
-            await asyncio.sleep(1)
-            await conv.send_message(f"@{bot_username}")
-            await asyncio.sleep(1)
-            commands = [
-                "start - Start the bot",
-                "help - Show help information",
-                "ping - Check bot responsiveness",
-                "status - Show system status"
-            ]
-            await conv.send_message("\n".join(commands))
-            await asyncio.sleep(2)
-            
-            # Set bot name
-            await conv.send_message("/setname")
-            await asyncio.sleep(1)
-            await conv.send_message(f"@{bot_username}")
-            await asyncio.sleep(1)
-            await conv.send_message(bot_name)
-            await asyncio.sleep(2)
-            
-            # Set bot description
-            await conv.send_message("/setdescription")
-            await asyncio.sleep(1)
-            await conv.send_message(f"@{bot_username}")
-            await asyncio.sleep(1)
-            await conv.send_message(bot_bio)
-            await asyncio.sleep(2)
-            
-            # Set bot about text
-            await conv.send_message("/setabouttext")
-            await asyncio.sleep(1)
-            await conv.send_message(f"@{bot_username}")
-            await asyncio.sleep(1)
-            await conv.send_message(bot_about)
-            await asyncio.sleep(2)
-            
-        print("\033[1;32m✅ Bot successfully configured via BotFather\033[0m")
+            if needs_commands:
+                print("\033[1;36m➡️ Updating commands...\033[0m")
+                await conv.send_message("/setcommands")
+                await asyncio.sleep(1)
+                await conv.send_message(f"@{bot_username}")
+                await asyncio.sleep(1)
+                commands_str = "\n".join([f"{k} - {v}" for k, v in desired_commands.items()])
+                await conv.send_message(commands_str)
+                await asyncio.sleep(2)
+                
+            if needs_name:
+                print("\033[1;36m➡️ Updating name...\033[0m")
+                await conv.send_message("/setname")
+                await asyncio.sleep(1)
+                await conv.send_message(f"@{bot_username}")
+                await asyncio.sleep(1)
+                await conv.send_message(bot_name)
+                await asyncio.sleep(2)
+                
+            if needs_description:
+                print("\033[1;36m➡️ Updating description...\033[0m")
+                await conv.send_message("/setdescription")
+                await asyncio.sleep(1)
+                await conv.send_message(f"@{bot_username}")
+                await asyncio.sleep(1)
+                await conv.send_message(bot_bio)
+                await asyncio.sleep(2)
+                
+            if needs_about:
+                print("\033[1;36m➡️ Updating about text...\033[0m")
+                await conv.send_message("/setabouttext")
+                await asyncio.sleep(1)
+                await conv.send_message(f"@{bot_username}")
+                await asyncio.sleep(1)
+                await conv.send_message(bot_about)
+                await asyncio.sleep(2)
+                
+        print("\033[1;32m✅ Bot successfully updated via BotFather\033[0m")
         return True
         
     except Exception as e:
         print(f"\033[1;31m❌ Failed to configure bot via BotFather: {e}\033[0m")
-        print("\033[1;33m⚠️ Please configure bot manually through @BotFather:\n"
-              f"1. Use /setname to change bot name to '{bot_name}'\n"
-              f"2. Use /setdescription to set bio to:\n{bot_bio}\n"
-              f"3. Use /setabouttext to set about text to:\n{bot_about}\033[0m")
+        print("\033[1;33m⚠️ Please configure bot manually through @BotFather if necessary.\033[0m")
         return False
+
+
+
+
+
+from telethon.tl.functions.photos import UploadProfilePhotoRequest
+from pathlib import Path
+
 async def update_bot_profile_picture(bot_client, user_client):
-    """Update bot profile picture using cipher.jpg from images folder"""
+    """Update bot profile picture using cipher.jpg if it doesn't have one already"""
     try:
+        print("\033[1;34m🔍 Checking bot profile picture status...\033[0m")
+        
+        # Check if the bot already has a profile picture
+        current_photos = await bot_client.get_profile_photos('me', limit=1)
+        
+        if current_photos:
+            print("\033[1;32m✅ Bot already has a profile picture - Skipping upload\033[0m")
+            return True
+
         # Path to the cipher.jpg image
         cipher_image_path = Path(__file__).parent.parent / "images" / "cipher.jpg"
         
         if not cipher_image_path.exists():
             print(f"\033[1;31m❌ cipher.jpg not found at: {cipher_image_path}\033[0m")
             print(f"\033[1;33m💡 Please ensure cipher.jpg exists in the images folder\033[0m")
-            return
+            return False
         
-        print(f"\033[1;33m📸 Found cipher.jpg at: {cipher_image_path}\033[0m")
+        print(f"\033[1;33m📸 No profile picture found. Uploading from: {cipher_image_path}\033[0m")
         
         # Upload cipher.jpg as bot profile picture
-        with open(cipher_image_path, 'rb') as f:
-            file = await bot_client.upload_file(f)
-            await bot_client(UploadProfilePhotoRequest(file=file))
+        file = await bot_client.upload_file(str(cipher_image_path))
+        await bot_client(UploadProfilePhotoRequest(file=file))
         
-        print(f"\033[1;32m✅ Bot profile picture updated with cipher.jpg\033[0m")
+        print(f"\033[1;32m✅ Bot profile picture successfully updated with cipher.jpg\033[0m")
+        return True
         
     except Exception as e:
         print(f"\033[1;31m❌ Failed to update bot profile picture: {e}\033[0m")
+        return False
+
+
 
 async def ensure_bot_in_group(bot_client, user_client, log_chat_id):
     """Ensure bot is in logger group and has admin privileges"""
