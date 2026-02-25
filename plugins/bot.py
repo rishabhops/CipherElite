@@ -14,6 +14,7 @@ from utils.decorators import rishabh_help
 import math
 import importlib
 from pathlib import Path
+import asyncio
 
 # Initialize Bot Client
 bot = TelegramClient('bot', Config.API_ID, Config.API_HASH)
@@ -25,6 +26,23 @@ CMD_LIST = {}
 PLUGINS_PER_PAGE = 9  # 3x3 grid
 PLUGINS_PER_ROW = 3
 
+# --- Global Tracker for Auto-Close Timers ---
+HELP_TIMERS = {}
+
+async def reset_help_timer(event, message_id):
+    """Resets the 60-second auto-close timer every time a button is clicked."""
+    if message_id in HELP_TIMERS:
+        HELP_TIMERS[message_id].cancel()
+        
+    async def close_menu():
+        await asyncio.sleep(60)
+        try:
+            await event.edit("<i>⏳ Cipher Elite help session expired.</i>", buttons=None, parse_mode='html')
+        except Exception:
+            pass
+            
+    HELP_TIMERS[message_id] = asyncio.create_task(close_menu())
+
 def init(client_instance):
     pass
 
@@ -35,7 +53,6 @@ def add_handler(plugin_name, commands, description=""):
             "commands": commands.copy() if isinstance(commands, list) else [commands],
             "description": description
         }
-        # Debug Log
         print(f"🎭 Cipher Elite: Registered '{plugin_name}' ({len(CMD_LIST[plugin_name]['commands'])} cmds)")
 
 def remove_handler(plugin_name):
@@ -58,17 +75,14 @@ async def init_bot(user_client=None):
     # -------------------------------------------------------------------------
     if user_client:
         try:
-            # Get owner info from user client
             owner = await user_client.get_me()
             owner_id = owner.id
             owner_name = owner.first_name
             
             print(f"\n🔌 Loading bot plugins for owner: {owner_name} (ID: {owner_id})")
             
-            # Load all bot plugins from bot_plugins directory
             bot_plugins_path = Path(__file__).parent.parent / "bot_plugins"
             
-            # Check if bot_plugins directory exists
             if not bot_plugins_path.exists():
                 print(f"\033[1;33m⚠️ Bot plugins directory not found: {bot_plugins_path}\033[0m")
             else:
@@ -102,44 +116,39 @@ async def init_bot(user_client=None):
     async def inline_handler(event):
         builder = event.builder
         if event.text == "help":
-            # Stats
             total_plugins = len(CMD_LIST)
             total_commands = sum(len(data['commands']) for data in CMD_LIST.values())
             
             text = (
-                "✨ <b>CIPHER ELITE USERBOT</b> ✨\n"
-                "━━━━━━━━━━━━━━━━━━━━━━\n"
-                f"⚡ <b>Loaded Plugins:</b> <code>{total_plugins}</code>\n"
-                f"📂 <b>Commands:</b> <code>{total_commands}</code>\n\n"
-                "<i>Select a plugin to view its commands</i>\n"
-                "━━━━━━━━━━━━━━━━━━━━━━"
+                "✦ <b>𝐂𝐈𝐏𝐇𝐄𝐑 𝐄𝐋𝐈𝐓𝐄 𝐌𝐄𝐍𝐔</b> ✦\n"
+                "⟡ ═════════════════ ⟡\n"
+                f"❖ <b>Loaded Plugins:</b> <code>{total_plugins}</code>\n"
+                f"❖ <b>Total Commands:</b> <code>{total_commands}</code>\n\n"
+                "<i>Select a module below to view commands.</i>\n"
+                "⟡ ═════════════════ ⟡"
             )
             
-            # Button Logic
             buttons = []
             plugin_names = list(CMD_LIST.keys())
             plugin_names.sort(key=lambda x: (x != 'quickhelp', x)) # quickhelp first
             
             total_pages = math.ceil(len(plugin_names) / PLUGINS_PER_PAGE)
             
-            # Generate First Page Grid
             row = []
             for i, plugin in enumerate(plugin_names[:PLUGINS_PER_PAGE]):
                 if plugin == 'quickhelp':
-                    display_name = "⚡Help Guide"
+                    display_name = "⚡ Quick Guide"
                 else:
                     display_name = plugin.title()[:10] + ".." if len(plugin) > 12 else plugin.title()
                 
                 row.append(Button.inline(display_name, f"help_plugin_{plugin}"))
-                
                 if (i + 1) % PLUGINS_PER_ROW == 0:
                     buttons.append(row)
                     row = []
-            
             if row: buttons.append(row)
             
             if total_pages > 1:
-                buttons.append([Button.inline("Next Page →", f"help_page_1")])
+                buttons.append([Button.inline("Next Page ❯", f"help_page_1")])
             
             result = builder.article(
                 title="Cipher Elite Help Menu",
@@ -157,45 +166,54 @@ async def init_bot(user_client=None):
     async def callback_handler(event):
         data = event.data_match.group(1).decode()
         
+        # ⏱️ Reset the 60-second timer on user interaction
+        await reset_help_timer(event, event.message_id)
+        
         # --- VIEW PLUGIN DETAILS ---
         if data.startswith("plugin_"):
             plugin_name = data.replace("plugin_", "")
             
+            # 🧮 Calculate which page this plugin belongs to for the back button
+            plugin_names = list(CMD_LIST.keys())
+            plugin_names.sort(key=lambda x: (x != 'quickhelp', x))
+            try:
+                plugin_index = plugin_names.index(plugin_name)
+                page_number = plugin_index // PLUGINS_PER_PAGE
+            except ValueError:
+                page_number = 0
+            
             if plugin_name in CMD_LIST:
-                # Special 'quickhelp' page
                 if plugin_name == "quickhelp":
                     text = (
-                        f"⚡ <b>Cipher Elite Quick Help</b>\n"
-                        f"━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                        f"✦ <b>𝐐𝐔𝐈𝐂𝐊 𝐇𝐄𝐋𝐏 𝐆𝐔𝐈𝐃𝐄</b> ✦\n"
+                        f"⟡ ═════════════════ ⟡\n\n"
                         f"🎯 <b>Basic Commands:</b>\n"
-                        f"• <code>.help</code> - Menu\n"
-                        f"• <code>.plugins</code> - List all\n"
-                        f"• <code>.install</code> - Add plugin\n"
-                        f"• <code>.uninstall</code> - Remove plugin\n\n"
-                        f"🤖 <b>Powered by Cipher Elite</b>"
+                        f" ├ <code>.help</code> - Show Menu\n"
+                        f" ├ <code>.plugins</code> - View All\n"
+                        f" ├ <code>.install</code> - Add Plugin\n"
+                        f" └ <code>.uninstall</code> - Remove Plugin\n\n"
+                        f"🤖 <i>Powered by Cipher Elite</i>"
                     )
                 else:
-                    # Standard Plugin Page
                     desc = CMD_LIST[plugin_name]['description']
                     text = (
-                        f"🔹 <b>{plugin_name.title()} Plugin</b>\n"
-                        "━━━━━━━━━━━━━━━━━━━━━━\n"
+                        f"✦ <b>{plugin_name.upper()} 𝐌𝐎𝐃𝐔𝐋𝐄</b> ✦\n"
+                        f"⟡ ═════════════════ ⟡\n"
                         f"<i>{desc}</i>\n\n"
-                        "<b>Available Commands:</b>\n"
+                        f"❖ <b>Available Commands:</b>\n"
                     )
                     
                     for cmd in CMD_LIST[plugin_name]["commands"]:
-                        # 🛡️ HTML ESCAPING LOGIC (Prevents crashes on <args>)
                         if isinstance(cmd, str) and cmd.strip():
                             if " - " in cmd:
                                 c, d = cmd.split(" - ", 1)
                                 c = c.strip().replace('<', '&lt;').replace('>', '&gt;')
-                                text += f"• <code>{c}</code>\n  <i>{d.strip()}</i>\n\n"
+                                text += f" ├ <code>{c}</code>\n └ <i>{d.strip()}</i>\n\n"
                             else:
                                 c = cmd.strip().replace('<', '&lt;').replace('>', '&gt;')
-                                text += f"• <code>{c}</code>\n\n"
+                                text += f" ├ <code>{c}</code>\n\n"
                 
-                buttons = [[Button.inline("← Back to Menu", "help_page_0")]]
+                buttons = [[Button.inline("❮ Back to Menu", f"help_page_{page_number}")]]
                 await event.edit(text, buttons=buttons, parse_mode='html')
             return
         
@@ -208,15 +226,14 @@ async def init_bot(user_client=None):
             total_pages = math.ceil(len(plugin_names) / PLUGINS_PER_PAGE)
             
             text = (
-                "✨ <b>CIPHER ELITE USERBOT</b> ✨\n"
-                "━━━━━━━━━━━━━━━━━━━━━━\n"
-                f"⚡ <b>Loaded Plugins:</b> <code>{len(plugin_names)}</code>\n"
-                f"📂 <b>Page:</b> <code>{page+1}/{total_pages}</code>\n\n"
-                "<i>Select a plugin to view its commands</i>\n"
-                "━━━━━━━━━━━━━━━━━━━━━━"
+                "✦ <b>𝐂𝐈𝐏𝐇𝐄𝐑 𝐄𝐋𝐈𝐓𝐄 𝐌𝐄𝐍𝐔</b> ✦\n"
+                "⟡ ═════════════════ ⟡\n"
+                f"❖ <b>Loaded Plugins:</b> <code>{len(plugin_names)}</code>\n"
+                f"❖ <b>Page:</b> <code>{page+1} of {total_pages}</code>\n\n"
+                "<i>Select a module below to view commands.</i>\n"
+                "⟡ ═════════════════ ⟡"
             )
             
-            # Generate Grid for Current Page
             buttons = []
             start = page * PLUGINS_PER_PAGE
             end = start + PLUGINS_PER_PAGE
@@ -225,7 +242,7 @@ async def init_bot(user_client=None):
             row = []
             for i, plugin in enumerate(current_plugins):
                 if plugin == 'quickhelp':
-                    display = "⚡Help Guide"
+                    display = "⚡ Quick Guide"
                 else:
                     display = plugin.title()[:10] + ".." if len(plugin) > 12 else plugin.title()
                 
@@ -235,12 +252,11 @@ async def init_bot(user_client=None):
                     row = []
             if row: buttons.append(row)
             
-            # Nav Buttons
             nav = []
             if page > 0:
-                nav.append(Button.inline("← Previous", f"help_page_{page-1}"))
+                nav.append(Button.inline("❮ Previous", f"help_page_{page-1}"))
             if end < len(plugin_names):
-                nav.append(Button.inline("Next →", f"help_page_{page+1}"))
+                nav.append(Button.inline("Next ❯", f"help_page_{page+1}"))
             if nav: buttons.append(nav)
             
             await event.edit(text, buttons=buttons, parse_mode='html')
@@ -263,7 +279,6 @@ async def init_bot(user_client=None):
                         msg += f"  <code>{i+1}.</code> {str(cmd)[:50]}\n"
                     msg += "\n"
             
-            # Handle long messages
             if len(msg) > 4000:
                 for x in range(0, len(msg), 4000):
                     await event.reply(msg[x:x+4000], parse_mode='html')
@@ -276,4 +291,3 @@ async def init_bot(user_client=None):
 
 async def register_commands():
     pass
-    
