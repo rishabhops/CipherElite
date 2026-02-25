@@ -71,14 +71,19 @@ async def register_commands():
         try:
             channel_input = text[1]
             channel = await event.client.get_entity(channel_input)
+            
+            # CRITICAL FIX: Ensure the ID is saved as a negative channel ID (-100...)
             channel_id = channel.id
+            if not str(channel_id).startswith("-100"):
+                channel_id = int(f"-100{channel_id}")
+                
             channel_name = channel.title if hasattr(channel, 'title') else getattr(channel, 'username', 'Channel')
             
             # Determine the best link to save
             if getattr(channel, 'username', None):
                 channel_link = f"https://t.me/{channel.username}"
             else:
-                channel_link = channel_input # Fallback to whatever link they pasted
+                channel_link = channel_input 
             
             chat_id = str(event.chat_id)
             data = load_data()
@@ -112,47 +117,71 @@ async def register_commands():
 
     @CipherElite.on(events.NewMessage(incoming=True))
     async def check_forcesub(event):
-        # Skip if not a group or if it's our own message
         if not (event.is_group or event.is_channel) or event.out:
             return
         
         chat_id = str(event.chat_id)
         data = load_data()
         
-        # Skip if forcesub not enabled
         if chat_id not in data:
             return
             
         user_id = event.sender_id
         channel_id = data[chat_id]["channel_id"]
         
-        # ADMIN BYPASS: Don't check admins or creators
+        # CRITICAL FIX: Retroactively fix old broken positive IDs from the JSON file
+        if str(channel_id).isdigit():
+            channel_id = int(f"-100{channel_id}")
+            
+        # 1. ADMIN BYPASS
         try:
             participant = await event.client.get_permissions(event.chat_id, user_id)
             if participant.is_admin or participant.is_creator:
-                return # Skip forcesub check for admins
+                return
         except Exception:
-            pass # If permission check fails, just proceed to forcesub check
+            pass 
         
+        user = await event.get_sender()
+        if not user:
+            return
+
+        user_in_channel = False
+        
+        # 2. CHECK SUBSCRIPTION
         try:
-            # Step 1: Try to get the user entity normally
-            try:
-                user = await event.client.get_entity(user_id)
-            except ValueError:
-                # Step 2: 🚨 AGGRESSIVE CACHE WARMING 🚨
-                # If Telegram hid the access_hash, we force Telethon to scrape 
-                # recent chat members to grab the full profile.
-                await event.client.get_participants(event.chat_id, limit=100)
-                user = await event.client.get_entity(user_id)
-            
-            # Step 3: Check if user is in the required channel using the FULL user object
             await event.client(GetParticipantRequest(
                 channel=channel_id,
                 participant=user
             ))
+            user_in_channel = True
             
         except UserNotParticipantError:
-            # User is definitely not in the channel, delete their message
+            pass # User is definitely NOT in the channel
+            
+        except ValueError as ve:
+            # 3. CACHE MISS FALLBACK: If Telethon still gets confused about the Channel ID,
+            # we use the string link to fetch the entity dynamically.
+            try:
+                channel_link = data[chat_id].get("channel_link")
+                if channel_link and channel_link != "Link unavailable":
+                    channel_entity = await event.client.get_entity(channel_link)
+                    await event.client(GetParticipantRequest(
+                        channel=channel_entity,
+                        participant=user
+                    ))
+                    user_in_channel = True
+            except UserNotParticipantError:
+                pass # Not in channel
+            except Exception as e:
+                print(f"Forcesub failed to resolve backup channel link: {e}")
+                user_in_channel = True # Fail-safe: let message stay if bot breaks
+                
+        except Exception as e:
+            print(f"Forcesub unexpected error: {e}")
+            user_in_channel = True # Fail-safe
+            
+        # 4. DELETE AND WARN
+        if not user_in_channel:
             try:
                 await event.delete()
                 
@@ -162,7 +191,6 @@ async def register_commands():
                 user_first_name = user.first_name if hasattr(user, 'first_name') and user.first_name else "User"
                 user_mention = f"[{user_first_name}](tg://user?id={user_id})"
                 
-                # Send warning
                 msg = await event.respond(
                     f"⚠️ **Force Subscribe Active**\n\n"
                     f"👤 Hello {user_mention}, you must join our channel to chat here!\n"
@@ -170,16 +198,7 @@ async def register_commands():
                     f"Please join via the link above and try again!"
                 )
                 
-                # Delete warning after 10 seconds
                 await asyncio.sleep(10)
                 await msg.delete()
             except Exception as delete_err:
                 print(f"Failed to delete/warn user: {delete_err}")
-                
-        except ValueError as ve:
-            # If the aggressive cache warming STILL fails, we log it but don't crash
-            print(f"Forcesub critical cache miss for {user_id}: {ve} - Telegram refuses to provide data.")
-            
-        except Exception as e:
-            # Catch everything else (like bot banned from target channel)
-            print(f"Forcesub check error: {e}")
