@@ -126,15 +126,19 @@ async def register_commands():
         channel_id = data[chat_id]["channel_id"]
         
         try:
-            # Use get_input_sender() to grab the cached entity directly from the event
-            # This prevents the "Could not find the input entity" error
-            user_entity = await event.get_input_sender()
+            # FORCE Telethon to fetch the complete user object
+            user = await event.get_sender()
             
-            # Check if user is in the required channel
+            # If it's a channel forwarding anonymously or a weird Telegram edge case, skip
+            if not user:
+                return
+            
+            # Check if user is in the required channel using the FULL user object
             await event.client(GetParticipantRequest(
                 channel=channel_id,
-                participant=user_entity
+                participant=user
             ))
+            
         except UserNotParticipantError:
             # User is not in channel, delete their message
             try:
@@ -143,13 +147,12 @@ async def register_commands():
                 channel_name = data[chat_id]["channel_name"]
                 channel_link = data[chat_id].get("channel_link", "")
                 
-                # Fetch user details to mention them
-                user = await event.get_sender()
-                user_id = event.sender_id
-                user_first_name = user.first_name if user and user.first_name else "User"
+                # We already have the full user object, so we build the mention directly
+                user_id = user.id
+                user_first_name = user.first_name if user.first_name else "User"
                 user_mention = f"[{user_first_name}](tg://user?id={user_id})"
                 
-                # Send warning using respond() instead of reply()
+                # Send warning
                 msg = await event.respond(
                     f"⚠️ **Force Subscribe Active**\n\n"
                     f"👤 Hello {user_mention}, you must join our channel to chat here!\n"
@@ -162,6 +165,14 @@ async def register_commands():
                 await msg.delete()
             except Exception as delete_err:
                 print(f"Failed to delete/warn user: {delete_err}")
+                
+        except ValueError as ve:
+            # Catch the specific Telethon entity error if it somehow still happens
+            if "Could not find the input entity" in str(ve):
+                print(f"Forcesub: Cache miss for user {event.sender_id}. Telegram didn't provide their access_hash.")
+            else:
+                print(f"Forcesub value error: {ve}")
+                
         except Exception as e:
-            # We catch other errors (like if the bot is banned from the channel)
+            # Catch everything else (like the bot being banned from the target channel)
             print(f"Forcesub check error: {e}")
