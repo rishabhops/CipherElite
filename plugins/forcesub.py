@@ -2,7 +2,7 @@
 #  CipherElite Userbot Plugin
 #
 #  Plugin Name:    forcesub
-#  Author:         @rishabhops
+#  Author:         CipherElite Dev (@rishabhops)
 #  Repository:     https://github.com/rishabhops/CipherElite
 #
 #  License:        MIT
@@ -122,34 +122,44 @@ async def register_commands():
         # Skip if forcesub not enabled
         if chat_id not in data:
             return
-        
+            
+        user_id = event.sender_id
         channel_id = data[chat_id]["channel_id"]
         
+        # ADMIN BYPASS: Don't check admins or creators
         try:
-            # FORCE Telethon to fetch the complete user object
-            user = await event.get_sender()
+            participant = await event.client.get_permissions(event.chat_id, user_id)
+            if participant.is_admin or participant.is_creator:
+                return # Skip forcesub check for admins
+        except Exception:
+            pass # If permission check fails, just proceed to forcesub check
+        
+        try:
+            # Step 1: Try to get the user entity normally
+            try:
+                user = await event.client.get_entity(user_id)
+            except ValueError:
+                # Step 2: 🚨 AGGRESSIVE CACHE WARMING 🚨
+                # If Telegram hid the access_hash, we force Telethon to scrape 
+                # recent chat members to grab the full profile.
+                await event.client.get_participants(event.chat_id, limit=100)
+                user = await event.client.get_entity(user_id)
             
-            # If it's a channel forwarding anonymously or a weird Telegram edge case, skip
-            if not user:
-                return
-            
-            # Check if user is in the required channel using the FULL user object
+            # Step 3: Check if user is in the required channel using the FULL user object
             await event.client(GetParticipantRequest(
                 channel=channel_id,
                 participant=user
             ))
             
         except UserNotParticipantError:
-            # User is not in channel, delete their message
+            # User is definitely not in the channel, delete their message
             try:
                 await event.delete()
                 
                 channel_name = data[chat_id]["channel_name"]
                 channel_link = data[chat_id].get("channel_link", "")
                 
-                # We already have the full user object, so we build the mention directly
-                user_id = user.id
-                user_first_name = user.first_name if user.first_name else "User"
+                user_first_name = user.first_name if hasattr(user, 'first_name') and user.first_name else "User"
                 user_mention = f"[{user_first_name}](tg://user?id={user_id})"
                 
                 # Send warning
@@ -167,12 +177,9 @@ async def register_commands():
                 print(f"Failed to delete/warn user: {delete_err}")
                 
         except ValueError as ve:
-            # Catch the specific Telethon entity error if it somehow still happens
-            if "Could not find the input entity" in str(ve):
-                print(f"Forcesub: Cache miss for user {event.sender_id}. Telegram didn't provide their access_hash.")
-            else:
-                print(f"Forcesub value error: {ve}")
-                
+            # If the aggressive cache warming STILL fails, we log it but don't crash
+            print(f"Forcesub critical cache miss for {user_id}: {ve} - Telegram refuses to provide data.")
+            
         except Exception as e:
-            # Catch everything else (like the bot being banned from the target channel)
+            # Catch everything else (like bot banned from target channel)
             print(f"Forcesub check error: {e}")
