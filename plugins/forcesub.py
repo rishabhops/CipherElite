@@ -123,14 +123,17 @@ async def register_commands():
         if chat_id not in data:
             return
         
-        user_id = event.sender_id
         channel_id = data[chat_id]["channel_id"]
         
         try:
+            # Use get_input_sender() to grab the cached entity directly from the event
+            # This prevents the "Could not find the input entity" error
+            user_entity = await event.get_input_sender()
+            
             # Check if user is in the required channel
             await event.client(GetParticipantRequest(
                 channel=channel_id,
-                participant=user_id
+                participant=user_entity
             ))
         except UserNotParticipantError:
             # User is not in channel, delete their message
@@ -142,10 +145,11 @@ async def register_commands():
                 
                 # Fetch user details to mention them
                 user = await event.get_sender()
+                user_id = event.sender_id
                 user_first_name = user.first_name if user and user.first_name else "User"
                 user_mention = f"[{user_first_name}](tg://user?id={user_id})"
                 
-                # Send warning using respond() instead of reply() because the original message is now deleted
+                # Send warning using respond() instead of reply()
                 msg = await event.respond(
                     f"⚠️ **Force Subscribe Active**\n\n"
                     f"👤 Hello {user_mention}, you must join our channel to chat here!\n"
@@ -159,5 +163,5 @@ async def register_commands():
             except Exception as delete_err:
                 print(f"Failed to delete/warn user: {delete_err}")
         except Exception as e:
+            # We catch other errors (like if the bot is banned from the channel)
             print(f"Forcesub check error: {e}")
-
