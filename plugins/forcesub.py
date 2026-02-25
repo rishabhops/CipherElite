@@ -2,14 +2,14 @@
 #  CipherElite Userbot Plugin
 #
 #  Plugin Name:    forcesub
-#  Author:         CipherElite Dev (@rishabhops)
+#  Author:         @rishabhops
 #  Repository:     https://github.com/rishabhops/CipherElite
 #
 #  License:        MIT
 # =============================================================================
 
 import json
-# import asyncio moved to top
+import asyncio
 from pathlib import Path
 from telethon import events
 from telethon.tl.functions.channels import GetParticipantRequest
@@ -35,21 +35,21 @@ def save_data(data):
 
 def init(client_instance):
     commands = [
-        ".fsub <channel> - Enable force subscribe for a channel",
-        ".unforcesub - Disable force subscribe",
+        ".fsub <@username/link> - Enable force subscribe (e.g., .fsub @THANOS_PRO or .fsub https://t.me/THANOS_PRO)",
+        ".unforcesub - Disable force subscribe in this chat",
         ".fsub status - Check force subscribe status"
     ]
-    description = "Force Subscribe - Users must join a channel to chat"
+    description = "Force Subscribe - Users must join a specific channel to chat. Unsubscribed users' messages are deleted."
     add_handler("forcesub", commands, description)
 
 async def register_commands():
-    @CipherElite.on(events.NewMessage(pattern=r"\.fsub"))
+    @CipherElite.on(events.NewMessage(pattern=r"\.fsub(?: |$)"))
     @rishabh()
     async def fsub(event):
         text = event.text.strip().split(maxsplit=1)
         
         if len(text) == 1:
-            await event.reply("❌ Usage: `.fsub <channel>` or `.fsub status`")
+            await event.reply("❌ **Usage:** `.fsub <channel_username_or_link>`\n💡 **Example:** `.fsub @THANOS_PRO`")
             return
         
         if text[1].lower() == "status":
@@ -62,29 +62,38 @@ async def register_commands():
             
             channel_id = data[chat_id]["channel_id"]
             channel_name = data[chat_id]["channel_name"]
+            channel_link = data[chat_id].get("channel_link", "Link unavailable")
             
-            await event.reply(f"✅ **Force Subscribe Status**\n\n📢 Channel: {channel_name}\n🆔 ID: `{channel_id}`\n\n✔️ Status: ENABLED")
+            await event.reply(f"✅ **Force Subscribe Status**\n\n📢 **Channel:** [{channel_name}]({channel_link})\n🆔 **ID:** `{channel_id}`\n\n✔️ **Status:** ENABLED")
             return
         
         # Enable force subscribe
         try:
-            channel = await event.client.get_entity(text[1])
+            channel_input = text[1]
+            channel = await event.client.get_entity(channel_input)
             channel_id = channel.id
-            channel_name = channel.title if hasattr(channel, 'title') else channel.username
+            channel_name = channel.title if hasattr(channel, 'title') else getattr(channel, 'username', 'Channel')
+            
+            # Determine the best link to save
+            if getattr(channel, 'username', None):
+                channel_link = f"https://t.me/{channel.username}"
+            else:
+                channel_link = channel_input # Fallback to whatever link they pasted
             
             chat_id = str(event.chat_id)
             data = load_data()
             
             data[chat_id] = {
                 "channel_id": channel_id,
-                "channel_name": channel_name
+                "channel_name": channel_name,
+                "channel_link": channel_link
             }
             
             save_data(data)
             
-            await event.reply(f"✅ **Force Subscribe Enabled**\n\n📢 Channel: {channel_name}\n🆔 ID: `{channel_id}`\n\n💡 Users must join this channel to chat!")
+            await event.reply(f"✅ **Force Subscribe Enabled**\n\n📢 **Channel:** [{channel_name}]({channel_link})\n🆔 **ID:** `{channel_id}`\n\n💡 Users must now join this channel to chat here!")
         except Exception as e:
-            await event.reply(f"❌ Invalid channel! Error: {str(e)}")
+            await event.reply(f"❌ **Invalid channel!** Make sure the bot/userbot has access to it.\n**Error:** `{str(e)}`")
 
     @CipherElite.on(events.NewMessage(pattern=r"\.unforcesub"))
     @rishabh()
@@ -127,21 +136,28 @@ async def register_commands():
             # User is not in channel, delete their message
             try:
                 await event.delete()
-                channel_name = data[chat_id]["channel_name"]
                 
-                # Send warning (will be auto-deleted)
-                msg = await event.reply(
+                channel_name = data[chat_id]["channel_name"]
+                channel_link = data[chat_id].get("channel_link", "")
+                
+                # Fetch user details to mention them
+                user = await event.get_sender()
+                user_first_name = user.first_name if user and user.first_name else "User"
+                user_mention = f"[{user_first_name}](tg://user?id={user_id})"
+                
+                # Send warning using respond() instead of reply() because the original message is now deleted
+                msg = await event.respond(
                     f"⚠️ **Force Subscribe Active**\n\n"
-                    f"👤 You must join our channel to chat here!\n"
-                    f"📢 Channel: {channel_name}\n\n"
-                    f"Join and try again!"
+                    f"👤 Hello {user_mention}, you must join our channel to chat here!\n"
+                    f"📢 **Channel:** [{channel_name}]({channel_link})\n\n"
+                    f"Please join via the link above and try again!"
                 )
                 
                 # Delete warning after 10 seconds
-                # import asyncio moved to top
                 await asyncio.sleep(10)
                 await msg.delete()
-            except:
-                pass
+            except Exception as delete_err:
+                print(f"Failed to delete/warn user: {delete_err}")
         except Exception as e:
             print(f"Forcesub check error: {e}")
+
