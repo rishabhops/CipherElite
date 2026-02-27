@@ -40,12 +40,19 @@ async def register_commands():
         msg = await event.reply(f"🔍 Searching GIF for: **{query}**")
         
         try:
-            # Use Tenor API (requires API key, using giphy as alternative)
-            api_key = "dc6zaTOxFJmzC"  # Giphy public beta key
-            url = f"https://api.giphy.com/v1/gifs/search?api_key={api_key}&q={query}&limit=1"
+            # Using your new Giphy API key
+            api_key = "LtqWfuGQ1agFnsBZL0o04dlf6BrVc38J" 
+            url = "https://api.giphy.com/v1/gifs/search"
+            
+            # Using params ensures spaces in queries don't break the URL
+            params = {
+                "api_key": api_key,
+                "q": query,
+                "limit": 1
+            }
             
             async with aiohttp.ClientSession() as session:
-                async with session.get(url) as resp:
+                async with session.get(url, params=params) as resp:
                     if resp.status == 200:
                         data = await resp.json()
                         
@@ -63,7 +70,7 @@ async def register_commands():
                         else:
                             await msg.edit(f"❌ No GIF found for: {query}")
                     else:
-                        await msg.edit("❌ Failed to search GIF!")
+                        await msg.edit(f"❌ API Error: Received status {resp.status}")
         except Exception as e:
             await msg.edit(f"❌ Error: {str(e)}")
 
