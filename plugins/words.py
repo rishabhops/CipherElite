@@ -97,11 +97,15 @@ async def register_commands():
                         synonyms = []
                         for entry in data:
                             for meaning in entry.get('meanings', []):
+                                # Grab from the meaning level (New API Structure)
+                                synonyms.extend(meaning.get('synonyms', []))
+                                # Grab from the definition level (Old API Structure)
                                 for definition in meaning.get('definitions', []):
                                     synonyms.extend(definition.get('synonyms', []))
                         
+                        # Filter out empty strings, remove duplicates, and limit
+                        synonyms = [s for s in synonyms if s]
                         if synonyms:
-                            # Remove duplicates and limit
                             synonyms = list(set(synonyms))[:20]
                             synonyms_text = f"📝 **Synonyms for {word.title()}:**\n\n"
                             synonyms_text += ", ".join(synonyms)
@@ -138,11 +142,15 @@ async def register_commands():
                         antonyms = []
                         for entry in data:
                             for meaning in entry.get('meanings', []):
+                                # Grab from the meaning level (New API Structure)
+                                antonyms.extend(meaning.get('antonyms', []))
+                                # Grab from the definition level (Old API Structure)
                                 for definition in meaning.get('definitions', []):
                                     antonyms.extend(definition.get('antonyms', []))
                         
+                        # Filter out empty strings, remove duplicates, and limit
+                        antonyms = [a for a in antonyms if a]
                         if antonyms:
-                            # Remove duplicates and limit
                             antonyms = list(set(antonyms))[:20]
                             antonyms_text = f"📝 **Antonyms for {word.title()}:**\n\n"
                             antonyms_text += ", ".join(antonyms)
