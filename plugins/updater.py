@@ -2,7 +2,7 @@
 #  CipherElite Userbot Plugin
 #
 #  Plugin Name:    updater
-#  Author:         CipherElite Dev (@rishabhops)
+#  Author:         @rishabhops
 #  Repository:     https://github.com/rishabhops/CipherElite
 #
 #  License:        MIT
@@ -125,8 +125,12 @@ async def do_update(event):
             local.write_bytes(content)
         db["last_sha"] = remote_sha
         save_db(db)
+        
+        # Check requirements before restarting
+        await check_and_install_reqs(msg)
+        
         return await msg.edit(
-          "✅ Initial import complete! Variables preserved.\n"
+          "✅ Initial import & dependencies complete! Variables preserved.\n"
           "Now try .ping and .alive\n"
           "Restarting…"
         )
@@ -158,6 +162,9 @@ async def do_update(event):
     db["last_sha"] = remote_sha
     save_db(db)
 
+    # ─── New Feature: Dependency Check ──────────────────────────────
+    await check_and_install_reqs(msg)
+
     # final success edit + preserve vars + tip
     await msg.edit(
       "✅ Update successful. Variables untouched.\n"
@@ -167,8 +174,31 @@ async def do_update(event):
     await asyncio.sleep(1.0)
     os.execv(sys.executable, [sys.executable] + sys.argv)
 
+
+async def check_and_install_reqs(msg):
+    """Helper function to check and install missing python dependencies safely."""
+    req_path = PROJECT_ROOT / "requirements.txt"
+    if not req_path.exists():
+        return  # No requirements file to check
+        
+    await msg.edit("📦 **Checking dependencies in requirements.txt...**")
+    
+    pip_process = await asyncio.create_subprocess_shell(
+        f"{sys.executable} -m pip install -r {req_path}",
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE
+    )
+    stdout, stderr = await pip_process.communicate()
+    output = stdout.decode().strip()
+    
+    if "Successfully installed" in output:
+        await msg.edit("⚙️ **New dependencies installed successfully!**")
+        await asyncio.sleep(1.5)
+    else:
+        await msg.edit("✅ **All dependencies are already satisfied!**")
+        await asyncio.sleep(1.0)
+
+
 def init(client):
     # no-op so your loader doesn’t complain
     pass
-    
-
