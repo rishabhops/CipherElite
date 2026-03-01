@@ -27,12 +27,12 @@ class PersonalAssistant:
     def __init__(self):
         self.data = {
             "config": {
-                "alive_name": os.environ.get("ALIVE_NAME", "Master"),
+                "alive_name": os.environ.get("ALIVE_NAME", "Rishabh"),
                 "assistant_name": os.environ.get("ASSISTANT_NAME", "CipherAI"),
                 "pmpermit_pic": os.environ.get("PMPERMIT_PIC", DEFAULT_PMPERMIT_PIC),
                 "use_pic": True,
                 "max_warnings": int(os.environ.get("MAX_WARNINGS", 5)),
-                "gemini_api_key": None  # New field to store the key persistently
+                "gemini_api_key": None
             },
             "users": {},
             "warnings": {},
@@ -42,7 +42,7 @@ class PersonalAssistant:
         self.ai_sessions = {}
         self.model = None
         
-        # 1. Load data from JSON first
+        # 1. Load and safely validate data from JSON first
         self._load()
         
         # 2. If no key in JSON, check environment variables as backup
@@ -88,12 +88,23 @@ class PersonalAssistant:
             return False
 
     def _load(self):
+        """Loads DB and strictly enforces data types to prevent crashes."""
         try:
             if DB_FILE.exists():
                 with DB_FILE.open("r", encoding="utf-8") as f:
                     on_disk = json.load(f)
                 for k, v in on_disk.items():
-                    self.data[k] = v
+                    # Force these to ALWAYS be dictionaries
+                    if k in ["users", "warnings", "user_states"]:
+                        self.data[k] = v if isinstance(v, dict) else {}
+                    # Force approved users to ALWAYS be a list
+                    elif k == "approved_users":
+                        self.data[k] = v if isinstance(v, list) else []
+                    # Safely update config without overwriting
+                    elif k == "config" and isinstance(v, dict):
+                        self.data["config"].update(v)
+                    else:
+                        self.data[k] = v
         except Exception as e:
             logging.error(f"Assistant load error: {e}")
 
@@ -172,7 +183,11 @@ class PersonalAssistant:
                 "first_seen": datetime.now().isoformat()
             }
             self.data["user_states"][uid] = "introduced"
-            self.data["warnings"][uid] = 0
+            
+            # Ensure the warnings dict has this user initialized
+            if uid not in self.data["warnings"]:
+                self.data["warnings"][uid] = 0
+                
             self._save()
             
             # If no AI, send the standard intro immediately
@@ -180,8 +195,10 @@ class PersonalAssistant:
                 await self.send_message(event, "introduction")
                 return
 
-        # 2) Warnings / Blocking mechanism (Applies to both AI and Non-AI)
+        # 2) Warnings / Blocking mechanism
+        self.data["warnings"].setdefault(uid, 0)
         self.data["warnings"][uid] += 1
+        
         if self.data["warnings"][uid] >= self.data["config"]["max_warnings"]:
             await self.send_message(event, "blocked")
             await event.client(functions.contacts.BlockRequest(int(uid)))
@@ -226,6 +243,8 @@ def init(client):
         ".setai <key>         — Set/Update Gemini API Key",
         ".rmai                — Remove AI Key and revert to standard bot",
         ".listapproved        — List approved users",
+        ".setpermitpic        — Set the permit picture",
+        ".togglepermitpic     — Enable/disable the picture"
     ]
     add_handler("pmpermit", commands, "Personal Assistant PM Manager")
 
@@ -233,7 +252,102 @@ def init(client):
     async def _incoming(event):
         await assistant.handle_message(event)
 
-    # ... [KEEP YOUR EXISTING .approve, .disapprove, .listapproved, .setpermitpic, .togglepermitpic, .block COMMANDS HERE] ...
+    @CipherElite.on(events.NewMessage(outgoing=True, pattern=r"\.(?:a|approve)(?:$|\s)"))
+    @rishabh()
+    async def _approve(event):
+        if event.is_private:
+            uid = str(event.chat_id)
+        else:
+            reply = await event.get_reply_message()
+            if not reply:
+                return await event.reply("↪️ Reply to the user to approve.")
+            uid = str(reply.sender_id)
+
+        if uid not in assistant.data["approved_users"]:
+            assistant.data["approved_users"].append(uid)
+        assistant.data["warnings"].pop(uid, None)
+        assistant._save()
+        await assistant.send_message(event, "approved")
+
+    @CipherElite.on(events.NewMessage(outgoing=True, pattern=r"\.(?:da|disapprove)(?:$|\s)"))
+    @rishabh()
+    async def _disapprove(event):
+        if event.is_private:
+            uid = str(event.chat_id)
+        else:
+            reply = await event.get_reply_message()
+            if not reply:
+                return await event.reply("↪️ Reply to the user to disapprove.")
+            uid = str(reply.sender_id)
+
+        assistant.data["approved_users"] = [
+            u for u in assistant.data["approved_users"] if u != uid
+        ]
+        assistant.data["warnings"][uid] = 0
+        assistant._save()
+        await assistant.send_message(event, "disapproved")
+
+    @CipherElite.on(events.NewMessage(outgoing=True, pattern=r"\.listapproved$"))
+    @rishabh()
+    async def _list(event):
+        approved = assistant.data["approved_users"]
+        if not approved:
+            return await event.reply("No users are approved.")
+        text = "**Approved Users:**\n"
+        for uid in approved:
+            info = assistant.data["users"].get(uid, {})
+            name = info.get("name", "Unknown")
+            text += f"• {name} (`{uid}`)\n"
+        await event.reply(text)
+
+    @CipherElite.on(events.NewMessage(outgoing=True, pattern=r"\.setpermitpic(?:\s+.*)?$"))
+    @rishabh()
+    async def _setpic(event):
+        if event.reply_to_msg_id:
+            msg = await event.get_reply_message()
+            if msg.media:
+                path = await CipherElite.download_media(msg)
+                assistant.data["config"]["pmpermit_pic"] = path
+                assistant.data["config"]["use_pic"] = True
+                assistant._save()
+                return await event.reply("✅ Permit picture set from reply")
+            return await event.reply("❌ Reply to an image.")
+        parts = event.text.split(None, 1)
+        if len(parts) > 1:
+            assistant.data["config"]["pmpermit_pic"] = parts[1].strip()
+            assistant.data["config"]["use_pic"] = True
+            assistant._save()
+            return await event.reply("✅ Permit picture set from URL")
+        await event.reply("❌ Usage: .setpermitpic <url> or reply to an image")
+
+    @CipherElite.on(events.NewMessage(outgoing=True, pattern=r"\.togglepermitpic$"))
+    @rishabh()
+    async def _togglepic(event):
+        cfg = assistant.data["config"]
+        cfg["use_pic"] = not cfg.get("use_pic", True)
+        assistant._save()
+        state = "enabled" if cfg["use_pic"] else "disabled"
+        await event.reply(f"✅ Permit picture {state}")
+
+    @CipherElite.on(events.NewMessage(outgoing=True, pattern=r"\.block(?:$|\s)"))
+    @rishabh()
+    async def _block(event):
+        if event.is_private:
+            uid = str(event.chat_id)
+        else:
+            reply = await event.get_reply_message()
+            if not reply:
+                return await event.reply("↪️ Reply to the user to block.")
+            uid = str(reply.sender_id)
+
+        assistant.data["approved_users"] = [
+            u for u in assistant.data["approved_users"] if u != uid
+        ]
+        assistant.data["warnings"].pop(uid, None)
+        assistant.data["user_states"].pop(uid, None)
+        assistant._save()
+        await event.client(functions.contacts.BlockRequest(int(uid)))
+        await event.reply(f"🚫 User `{uid}` has been blocked.")
 
     @CipherElite.on(events.NewMessage(outgoing=True, pattern=r"\.setai(?:\s+(.+))?$"))
     @rishabh()
@@ -242,11 +356,9 @@ def init(client):
         if not key:
             return await event.reply("❌ Usage: `.setai <your_gemini_api_key>`")
         
-        # Save to DB
         assistant.data["config"]["gemini_api_key"] = key.strip()
         assistant._save()
         
-        # Reinitialize live
         success = assistant._init_ai()
         if success:
             await event.reply("✅ Gemini API Key saved! AI Gatekeeper is now **ACTIVE**.")
