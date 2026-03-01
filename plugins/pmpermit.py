@@ -1,3 +1,13 @@
+# =============================================================================
+#  CipherElite Userbot Plugin - Personal Assistant PM Manager
+#
+#  Plugin Name:    pmpermit
+#  Author:         CipherElite Dev (@rishabhops)
+#  Repository:     https://github.com/rishabhops/CipherElite
+#
+#  LICENSE:        MIT
+# =============================================================================
+
 import os
 import json
 import random
@@ -24,15 +34,15 @@ DB_FILE      = DB_DIR / "assistant_db.json"
 
 
 class PersonalAssistant:
-    def __init__(self):
+    def __init__(self, ai_config):
+        self.ai_config = ai_config  # Reference to centralized config
         self.data = {
             "config": {
                 "alive_name": os.environ.get("ALIVE_NAME", "Rishabh"),
                 "assistant_name": os.environ.get("ASSISTANT_NAME", "CipherAI"),
                 "pmpermit_pic": os.environ.get("PMPERMIT_PIC", DEFAULT_PMPERMIT_PIC),
                 "use_pic": True,
-                "max_warnings": int(os.environ.get("MAX_WARNINGS", 5)),
-                "gemini_api_key": None
+                "max_warnings": int(os.environ.get("MAX_WARNINGS", 5))
             },
             "users": {},
             "warnings": {},
@@ -42,17 +52,10 @@ class PersonalAssistant:
         self.ai_sessions = {}
         self.model = None
         
-        # 1. Load and safely validate data from JSON first
+        # 1. Load and safely validate data from JSON
         self._load()
         
-        # 2. If no key in JSON, check environment variables as backup
-        if not self.data["config"].get("gemini_api_key"):
-            env_key = os.environ.get("GEMINI_API_KEY")
-            if env_key:
-                self.data["config"]["gemini_api_key"] = env_key
-                self._save()
-
-        # 3. Attempt to boot up the AI
+        # 2. Attempt to boot up the AI
         self._init_ai()
 
         # Ensure default pic exists
@@ -62,12 +65,12 @@ class PersonalAssistant:
             self._save()
 
     def _init_ai(self):
-        """Initializes the Gemini model if a valid key exists."""
-        api_key = self.data["config"].get("gemini_api_key")
+        """Initializes the Gemini model using centralized config."""
+        api_key = self.ai_config.get_api_key()  # Get from centralized config
         if not api_key:
             self.model = None
             return False
-            
+        
         try:
             genai.configure(api_key=api_key)
             system_instruction = (
@@ -235,13 +238,17 @@ class PersonalAssistant:
 
 
 def init(client):
-    assistant = PersonalAssistant()
+    try:
+        from plugins.ai_setup import ai_config  # Import centralized config
+    except ImportError:
+        print("❌ ERROR: ai_setup.py not found! Please create it first.")
+        return False
+    
+    assistant = PersonalAssistant(ai_config)  # Pass config to assistant
     commands = [
         ".a / .approve        — Approve a user",
         ".da / .disapprove    — Revoke approval",
         ".block               — Block a user",
-        ".setai <key>         — Set/Update Gemini API Key",
-        ".rmai                — Remove AI Key and revert to standard bot",
         ".listapproved        — List approved users",
         ".setpermitpic        — Set the permit picture",
         ".togglepermitpic     — Enable/disable the picture"
@@ -349,29 +356,5 @@ def init(client):
         await event.client(functions.contacts.BlockRequest(int(uid)))
         await event.reply(f"🚫 User `{uid}` has been blocked.")
 
-    @CipherElite.on(events.NewMessage(outgoing=True, pattern=r"\.setai(?:\s+(.+))?$"))
-    @rishabh()
-    async def _setai(event):
-        key = event.pattern_match.group(1)
-        if not key:
-            return await event.reply("❌ Usage: `.setai <your_gemini_api_key>`")
-        
-        assistant.data["config"]["gemini_api_key"] = key.strip()
-        assistant._save()
-        
-        success = assistant._init_ai()
-        if success:
-            await event.reply("✅ Gemini API Key saved! AI Gatekeeper is now **ACTIVE**.")
-        else:
-            await event.reply("⚠️ Key saved, but AI failed to initialize. Please check the key.")
-
-    @CipherElite.on(events.NewMessage(outgoing=True, pattern=r"\.rmai$"))
-    @rishabh()
-    async def _rmai(event):
-        assistant.data["config"]["gemini_api_key"] = None
-        assistant.model = None
-        assistant.ai_sessions.clear()
-        assistant._save()
-        await event.reply("🛑 AI Gatekeeper disabled. Reverted to standard text bot.")
-
+    print("✅ PM Permit Plugin initialized")
     return assistant
