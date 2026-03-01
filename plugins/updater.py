@@ -2,7 +2,7 @@
 #  CipherElite Userbot Plugin
 #
 #  Plugin Name:    updater
-#  Author:         @rishabhops
+#  Author:         CipherElite Dev (@rishabhops)
 #  Repository:     https://github.com/rishabhops/CipherElite
 #
 #  License:        MIT
@@ -68,6 +68,32 @@ async def fetch_full_tree():
     js = await get_json(tree_url)
     return [e for e in js.get("tree", []) if e["type"] == "blob"]
 
+async def check_and_install_reqs(msg):
+    """Checks requirements. Returns True if new packages were installed, False otherwise."""
+    req_path = PROJECT_ROOT / "requirements.txt"
+    if not req_path.exists():
+        return False 
+        
+    await msg.edit("📦 **Checking dependencies in requirements.txt...**")
+    
+    pip_process = await asyncio.create_subprocess_shell(
+        f"{sys.executable} -m pip install -r {req_path}",
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE
+    )
+    stdout, stderr = await pip_process.communicate()
+    output = stdout.decode().strip()
+    
+    # If pip actually had to download and install something
+    if "Successfully installed" in output or "Downloading" in output:
+        await msg.edit("⚙️ **New dependencies installed successfully!**")
+        await asyncio.sleep(1.5)
+        return True
+    else:
+        await msg.edit("✅ **All dependencies are already satisfied!**")
+        await asyncio.sleep(1.0)
+        return False
+
 @CipherElite.on(events.NewMessage(pattern=r"\.checkupdate$", outgoing=True))
 @rishabh()
 async def check_update(event):
@@ -75,8 +101,11 @@ async def check_update(event):
     last_sha = db.get("last_sha", "")
     await event.reply("🔍 Checking for updates…")
 
-    branch = await get_json(f"{API_BASE}/branches/{GITHUB_BRANCH}")
-    remote_sha = branch["commit"]["sha"]
+    try:
+        branch = await get_json(f"{API_BASE}/branches/{GITHUB_BRANCH}")
+        remote_sha = branch["commit"]["sha"]
+    except Exception as e:
+        return await event.reply(f"❌ Failed to fetch updates: {e}")
 
     if not last_sha:
         # initial import listing
@@ -108,8 +137,11 @@ async def do_update(event):
     last_sha = db.get("last_sha", "")
     msg      = await event.reply("🔄 Fetching updates…")
 
-    branch = await get_json(f"{API_BASE}/branches/{GITHUB_BRANCH}")
-    remote_sha = branch["commit"]["sha"]
+    try:
+        branch = await get_json(f"{API_BASE}/branches/{GITHUB_BRANCH}")
+        remote_sha = branch["commit"]["sha"]
+    except Exception as e:
+        return await msg.edit(f"❌ Failed to fetch updates: {e}")
 
     # ─── initial import ─────────────────────────────────────────────
     if not last_sha:
@@ -126,25 +158,43 @@ async def do_update(event):
         db["last_sha"] = remote_sha
         save_db(db)
         
-        # Check requirements before restarting
         await check_and_install_reqs(msg)
         
-        return await msg.edit(
+        await msg.edit(
           "✅ Initial import & dependencies complete! Variables preserved.\n"
           "Now try .ping and .alive\n"
           "Restarting…"
         )
+        await asyncio.sleep(1.0)
+        os.execv(sys.executable, [sys.executable] + sys.argv)
+        return
 
     # ─── delta update ───────────────────────────────────────────────
     if remote_sha == last_sha:
-        return await msg.edit("✅ Already up-to-date.")
+        # Code is up to date, but we MUST check requirements anyway!
+        installed_new = await check_and_install_reqs(msg)
+        
+        if installed_new:
+            # If pip installed something, we have to restart to load it
+            await msg.edit("✅ Missing dependencies were found and installed! Restarting to load them…")
+            await asyncio.sleep(1.0)
+            os.execv(sys.executable, [sys.executable] + sys.argv)
+        else:
+            # If nothing was installed, no restart needed
+            return await msg.edit("✅ Code and dependencies are already up-to-date!")
 
     comp = await get_json(f"{API_BASE}/compare/{last_sha}...{remote_sha}")
     files = comp.get("files", [])
     if not files:
         db["last_sha"] = remote_sha
         save_db(db)
-        return await msg.edit("ℹ️ No changes detected – marker updated.")
+        installed_new = await check_and_install_reqs(msg)
+        if installed_new:
+            await msg.edit("✅ Dependencies updated! Restarting…")
+            await asyncio.sleep(1.0)
+            os.execv(sys.executable, [sys.executable] + sys.argv)
+        else:
+            return await msg.edit("ℹ️ No code changes detected – marker updated.")
 
     await msg.edit(f"📄 {len(files)} files changed – downloading…")
     for f in files:
@@ -162,7 +212,7 @@ async def do_update(event):
     db["last_sha"] = remote_sha
     save_db(db)
 
-    # ─── New Feature: Dependency Check ──────────────────────────────
+    # Check requirements after downloading new files
     await check_and_install_reqs(msg)
 
     # final success edit + preserve vars + tip
@@ -173,31 +223,6 @@ async def do_update(event):
     )
     await asyncio.sleep(1.0)
     os.execv(sys.executable, [sys.executable] + sys.argv)
-
-
-async def check_and_install_reqs(msg):
-    """Helper function to check and install missing python dependencies safely."""
-    req_path = PROJECT_ROOT / "requirements.txt"
-    if not req_path.exists():
-        return  # No requirements file to check
-        
-    await msg.edit("📦 **Checking dependencies in requirements.txt...**")
-    
-    pip_process = await asyncio.create_subprocess_shell(
-        f"{sys.executable} -m pip install -r {req_path}",
-        stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.PIPE
-    )
-    stdout, stderr = await pip_process.communicate()
-    output = stdout.decode().strip()
-    
-    if "Successfully installed" in output:
-        await msg.edit("⚙️ **New dependencies installed successfully!**")
-        await asyncio.sleep(1.5)
-    else:
-        await msg.edit("✅ **All dependencies are already satisfied!**")
-        await asyncio.sleep(1.0)
-
 
 def init(client):
     # no-op so your loader doesn’t complain
