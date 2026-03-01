@@ -19,10 +19,23 @@ from vars import ELITE_BOT_USERNAME
 # Store conversation history per chat
 conversation_history = {}
 
-# System prompt
-SYSTEM_PROMPT = """You are Cipher AI, created by @thanosceo for the CipherElite Userbot. 
-Provide short, natural, and accurate answers. Keep responses concise and helpful.
-Avoid verbose explanations unless requested."""
+# System prompt - Optimized for short, concise responses
+SYSTEM_PROMPT = """You are Cipher AI, created by @thanosceo for the CipherElite Userbot.
+
+IMPORTANT RULES:
+1. Keep responses SHORT and CONCISE (max 150 words)
+2. Use bold text for important words using **word**
+3. Use line breaks for readability
+4. Never use code blocks unless absolutely necessary
+5. Be direct and helpful
+6. If asked for code, provide minimal examples only
+7. Use emojis sparingly for better formatting
+
+Example response style:
+**Topic:** Brief explanation with **bold** highlights
+• Point 1
+• Point 2
+💡 Pro tip if relevant"""
 
 
 def init(client):
@@ -41,11 +54,11 @@ def init(client):
     add_handler("cipher_ai", commands, "Cipher AI - Powered by Google Gemini")
     
     async def make_ai_request(messages):
-        """Make request to Google Generative AI"""
+        """Make request to Google Generative AI with optimized settings"""
         try:
             api_key = ai_config.get_api_key()
             if not api_key:
-                return "❌ **API Key not configured!** Use `.setai <key>` to set up Google Gemini API."
+                return "❌ **API Key not configured!**\n\nUse `.setai <key>` to set up Google Gemini API.\n\n🔗 Get key: https://aistudio.google.com/"
             
             genai.configure(api_key=api_key)
             model = genai.GenerativeModel('gemini-2.5-flash')
@@ -53,41 +66,49 @@ def init(client):
             # Format messages for Gemini
             text_input = "\n".join([f"{msg['role']}: {msg['content']}" for msg in messages])
             
-            response = model.generate_content(text_input)
+            # Use lower temperature and tokens for shorter responses
+            response = model.generate_content(
+                text_input,
+                generation_config=genai.types.GenerationConfig(
+                    max_output_tokens=150,  # Limit response length
+                    temperature=0.7,  # Slightly lower for more focused responses
+                    top_p=0.9,
+                )
+            )
             return response.text
             
         except Exception as e:
-            return f"❌ **Error:** {str(e)[:150]}"
+            return f"❌ **Error:** {str(e)[:100]}"
     
     @CipherElite.on(events.NewMessage(pattern=r"\.ai(?:\s+(.*))?"))
     @rishabh()
     async def ai_handler(event):
-        """Handle AI queries"""
+        """Handle AI queries with optimized formatting"""
         try:
             if not ai_config.is_enabled():
                 await event.reply(
-                    f"❌ **API Key not configured!**\n\n"
-                    f"Use `.setai <your_gemini_api_key>` to set up AI.\n\n"
-                    f"🔗 Get key from: https://aistudio.google.com/"
+                    "❌ **API Key Not Set**\n\n"
+                    "Use `.setai <your_gemini_api_key>`\n\n"
+                    "🔗 Get key: https://aistudio.google.com/"
                 )
                 return
             
             query = event.pattern_match.group(1)
             if not query:
                 await event.reply(
-                    f"❓ **Usage:** `.ai <your question>`\n\n"
-                    f"**Examples:**\n"
-                    f"• `.ai What is AI?`\n"
-                    f"• `.ai Write a Python function`\n"
-                    f"• `.ai Explain quantum physics`"
+                    "❓ **How to use Cipher AI:**\n\n"
+                    "`.ai What is Python?`\n"
+                    "`.ai Write a hello world`\n"
+                    "`.ai Explain blockchain`\n"
+                    "`.ai How does AI work?`"
                 )
                 return
             
             if len(query) > 2000:
-                await event.reply("📝 **Query too long!** Keep it under 2000 characters.")
+                await event.reply("📝 **Query too long!** Max 2000 characters.")
                 return
             
-            thinking_msg = await event.reply("🤔 **Cipher AI is thinking...**")
+            thinking_msg = await event.reply("🤔 **Cipher AI thinking...**")
             print(f"🤖 Processing AI query: {query[:50]}...")
             
             chat_id = event.chat_id
@@ -103,10 +124,10 @@ def init(client):
             try:
                 response = await asyncio.wait_for(
                     make_ai_request(conversation_history[chat_id]),
-                    timeout=30.0
+                    timeout=25.0
                 )
             except asyncio.TimeoutError:
-                response = "⏰ **Timeout:** AI took too long. Try a shorter question."
+                response = "⏰ **Timeout:** Request took too long. Try again."
             
             if response.startswith("❌"):
                 await thinking_msg.edit(response)
@@ -115,27 +136,36 @@ def init(client):
             
             conversation_history[chat_id].append({"role": "assistant", "content": response})
             
-            # Split long responses
-            if len(response) > 3500:
-                parts = [response[i:i+3500] for i in range(0, len(response), 3500)]
-                await thinking_msg.edit(
-                    f"🤖 **Cipher AI Response (Part 1/{len(parts)}):**\n\n{parts[0]}"
-                )
-                for i, part in enumerate(parts[1:], 2):
-                    await event.reply(f"🤖 **Part {i}/{len(parts)}:**\n\n{part}")
-            else:
-                formatted = (
-                    f"🤖 **Cipher AI Response:**\n\n{response}\n\n"
-                    f"💭 **Query:** `{query[:80]}{'...' if len(query) > 80 else ''}`"
-                )
-                await thinking_msg.edit(formatted)
+            # Optimize response for Telegram display
+            response = response.strip()
             
-            print(f"✅ AI response sent successfully")
+            # If response is still long, summarize it
+            if len(response) > 2000:
+                response = response[:1900] + "\n\n*[Response truncated - use `.aiclear` and ask again]*"
+            
+            # Format final response with better styling
+            if len(response) > 500:
+                # For longer responses, add a separator
+                formatted = (
+                    f"🤖 **Cipher AI Response:**\n\n"
+                    f"{response}\n\n"
+                    f"─────────────────\n"
+                    f"💭 Q: `{query[:60]}{'...' if len(query) > 60 else ''}`"
+                )
+            else:
+                # For shorter responses, more compact format
+                formatted = (
+                    f"🤖 **Cipher AI:**\n\n"
+                    f"{response}"
+                )
+            
+            await thinking_msg.edit(formatted)
+            print(f"✅ AI response sent successfully ({len(response)} chars)")
             
         except Exception as e:
             print(f"❌ AI Handler Error: {e}")
             try:
-                await event.reply(f"❌ **Error:** {str(e)[:150]}")
+                await event.reply(f"❌ **Error:** {str(e)[:100]}")
             except:
                 pass
     
@@ -147,32 +177,35 @@ def init(client):
         if chat_id in conversation_history:
             msg_count = len(conversation_history[chat_id])
             del conversation_history[chat_id]
-            await event.reply(f"🗑️ **Cleared!** Removed `{msg_count}` messages.")
+            await event.reply(f"🗑️ **Cleared!** {msg_count} messages removed.")
         else:
-            await event.reply("📭 **No history** for this chat.")
+            await event.reply("📭 **No history** in this chat.")
     
     @CipherElite.on(events.NewMessage(pattern=r"\.aiinfo"))
     @rishabh()
     async def aiinfo_handler(event):
         """Show AI info"""
-        info = f"""🤖 **Cipher AI Information:**
+        is_enabled = ai_config.is_enabled()
+        status_emoji = "✅" if is_enabled else "❌"
+        
+        info = f"""🤖 **Cipher AI - Information**
 
-✨ **Provider:** Google Generative AI (Gemini)
-🔑 **API Status:** {'✅ Configured' if ai_config.is_enabled() else '❌ Not Set'}
-🌐 **Model:** gemini-2.5-flash
+{status_emoji} **Status:** {'Active' if is_enabled else 'Inactive'}
+🔧 **Model:** Gemini 2.5 Flash
+🌐 **Provider:** Google AI
 💬 **Active Chats:** {len(conversation_history)}
 
 📝 **Commands:**
-• `.ai <question>` - Ask a question
+• `.ai <question>` - Ask AI
 • `.aiclear` - Clear history
 • `.aiinfo` - Show this info
-• `.setai <key>` - Set API key (from AI Setup)
 
-🔗 **Links:**
-• Get API Key: https://aistudio.google.com/
-• Google AI Docs: https://ai.google.dev/"""
+⚙️ **Setup:**
+• `.setai <key>` - Set API key
+
+🔗 **Get Key:** https://aistudio.google.com/"""
         
         await event.reply(info)
     
-    print("✅ Cipher AI Plugin initialized (Google Gemini)")
+    print("✅ Cipher AI Plugin initialized (Google Gemini - Optimized)")
     return True
