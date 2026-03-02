@@ -23,20 +23,22 @@ conversation_history = {}
 SYSTEM_PROMPT = """You are Cipher AI, created by @thanosceo for the CipherElite Userbot.
 
 RESPONSE GUIDELINES:
-1. **For simple questions** (definitions, quick facts, yes/no): Keep response SHORT (2-3 sentences max)
-2. **For complex questions** (how-to, explanations, code): Provide detailed helpful answer
-3. **For list-based questions** (pros/cons, steps): Use bullet points
-4. **ALWAYS use **bold** for important keywords**
-5. Avoid unnecessary fluff and redundant explanations
-6. Use line breaks for readability
-7. Include practical examples when relevant
-8. Don't apologize or add disclaimers unless necessary
+1. **For simple questions** (definitions, quick facts, yes/no): Keep SHORT (1-2 paragraphs)
+2. **For complex questions** (how-to, tutorials, guides, code): Provide COMPLETE detailed answer
+3. **For list-based questions** (pros/cons, steps, process): Use numbered/bullet points
+4. **ALWAYS use **bold** for important keywords and section headers**
+5. Avoid unnecessary apologies and disclaimers
+6. Use line breaks and formatting for readability
+7. Include practical examples when relevant for tutorials/how-to
+8. For deployment/setup guides: Provide COMPLETE step-by-step instructions
+9. Don't truncate - give full answer, not partial
 
 SMART FORMATTING:
-• Simple answer → 1-2 paragraphs, bold highlights
-• Complex answer → Structured with headers, bullets, examples
-• Code answers → Keep examples minimal but useful
-• Always prioritize clarity over length"""
+• Simple → 1-2 paragraphs with bold highlights
+• Tutorial/How-to → Numbered steps, detailed explanations
+• Code → Minimal but complete examples
+• Guides → Complete with all necessary details
+• Always prioritize completeness over brevity for complex topics"""
 
 
 def init(client):
@@ -67,12 +69,12 @@ def init(client):
             # Format messages for Gemini
             text_input = "\n".join([f"{msg['role']}: {msg['content']}" for msg in messages])
             
-            # Allow more tokens for detailed responses but let AI decide length
+            # Allow more tokens for complete responses
             response = model.generate_content(
                 text_input,
                 generation_config=genai.types.GenerationConfig(
-                    max_output_tokens=800,  # Allow up to 800 tokens for flexibility
-                    temperature=0.7,  # Balanced for quality
+                    max_output_tokens=2000,  # Allow full detailed responses
+                    temperature=0.7,
                     top_p=0.9,
                 )
             )
@@ -83,59 +85,49 @@ def init(client):
     
     def estimate_response_type(query):
         """Estimate if question needs short or detailed answer"""
-        short_keywords = ["what is", "who is", "when", "where", "how many", "is ", "does ", "can ", "define", "meaning"]
-        complex_keywords = ["how to", "explain", "why", "process", "tutorial", "guide", "write", "create", "build", "difference", "comparison"]
+        short_keywords = ["what is", "who is", "when", "where", "how many", "define", "meaning"]
+        complex_keywords = ["how to", "deploy", "explain", "tutorial", "guide", "step", "process", "setup", "install", "configure", "build", "create", "write code"]
         
         query_lower = query.lower()
         
-        # Check if it's a simple question
-        if any(keyword in query_lower for keyword in short_keywords):
-            if any(keyword in query_lower for keyword in complex_keywords):
-                return "medium"  # Both simple and complex indicators
-            return "short"
-        
-        # Check if it's complex
+        # Check for complex/tutorial questions
         if any(keyword in query_lower for keyword in complex_keywords):
             return "detailed"
         
-        return "medium"  # Default
+        # Check if it's a simple question
+        if any(keyword in query_lower for keyword in short_keywords):
+            return "short"
+        
+        return "medium"
     
     def format_response(response, response_type):
-        """Format response based on type"""
+        """Format response based on type - don't truncate complex answers"""
         response = response.strip()
         
-        # Remove common unnecessary phrases
+        # Remove common unnecessary phrases only
         unnecessary_phrases = [
-            "I'm glad you asked",
-            "Great question",
-            "Thank you for asking",
-            "I appreciate the question",
-            "Let me explain",
-            "Sure, I'll help you with",
-            "As I mentioned",
-            "It's important to note that",
-            "I should mention that",
+            "I'm glad you asked. ",
+            "Great question! ",
+            "Thank you for asking. ",
+            "Let me explain: ",
+            "Sure, here's ",
         ]
         
         for phrase in unnecessary_phrases:
-            response = response.replace(phrase + ", ", "")
-            response = response.replace(phrase + ". ", "")
+            if response.startswith(phrase):
+                response = response[len(phrase):]
         
         response = response.strip()
         
-        # For very long responses, intelligently truncate
-        if response_type == "short" and len(response) > 400:
-            # For short answers that became long, truncate first paragraph
+        # For short answers, be strict about length
+        if response_type == "short" and len(response) > 500:
             sentences = response.split(". ")
-            response = ". ".join(sentences[:2]) + "."
+            response = ". ".join(sentences[:3]) + "."
         
-        elif response_type == "medium" and len(response) > 1500:
-            # For medium answers, keep structure but limit
-            response = response[:1400] + "..."
-        
-        elif response_type == "detailed" and len(response) > 3000:
-            # For detailed answers, more lenient
-            response = response[:2900] + "\n\n*[Response shortened]*"
+        # For detailed/complex answers, keep complete response
+        # Only add indicator if truly massive
+        elif response_type == "detailed" and len(response) > 3500:
+            response = response + "\n\n💡 *Response may continue in next message if too long*"
         
         return response
     
@@ -156,13 +148,13 @@ def init(client):
             if not query:
                 await event.reply(
                     "❓ **How to use Cipher AI:**\n\n"
-                    "**Simple questions:**\n"
+                    "**Simple Questions:**\n"
                     "`.ai What is Python?`\n"
                     "`.ai Who created Bitcoin?`\n\n"
-                    "**Complex questions:**\n"
-                    "`.ai How to learn Python?`\n"
+                    "**Complex Questions:**\n"
+                    "`.ai How to deploy Cipher Elite?`\n"
                     "`.ai Explain machine learning`\n"
-                    "`.ai Write a hello world program`"
+                    "`.ai Write a Python function`"
                 )
                 return
             
@@ -190,7 +182,7 @@ def init(client):
             try:
                 response = await asyncio.wait_for(
                     make_ai_request(conversation_history[chat_id]),
-                    timeout=30.0
+                    timeout=35.0
                 )
             except asyncio.TimeoutError:
                 response = "⏰ **Timeout:** Request took too long. Try again or use `.aiclear` to reset."
@@ -204,60 +196,59 @@ def init(client):
             response = format_response(response, response_type)
             conversation_history[chat_id].append({"role": "assistant", "content": response})
             
-            # Prepare final formatted message
+            # Prepare final formatted message based on response type
             if response_type == "short":
-                # Compact format for simple answers
+                formatted = f"🤖 **Answer:**\n\n{response}"
+            
+            elif response_type == "detailed":
                 formatted = (
-                    f"🤖 **Answer:**\n\n"
-                    f"{response}"
+                    f"🤖 **Detailed Response:**\n\n"
+                    f"{response}\n\n"
+                    f"═════════════════════\n"
+                    f"📌 **Q:** `{query[:60]}{'...' if len(query) > 60 else ''}`"
                 )
-            elif response_type == "medium":
-                # Standard format
+            
+            else:  # medium
                 formatted = (
                     f"🤖 **Cipher AI Response:**\n\n"
                     f"{response}\n\n"
                     f"─────────────────\n"
-                    f"💭 Q: `{query[:55]}{'...' if len(query) > 55 else ''}`"
-                )
-            else:  # detailed
-                # Full format for detailed answers
-                formatted = (
-                    f"🤖 **Cipher AI - Detailed Response:**\n\n"
-                    f"{response}\n\n"
-                    f"═════════════════════\n"
-                    f"📌 **Question:** `{query[:60]}{'...' if len(query) > 60 else ''}`\n"
-                    f"💡 Use `.aiclear` to reset history"
+                    f"💭 Q: `{query[:60]}{'...' if len(query) > 60 else ''}`"
                 )
             
-            # Split if too long for Telegram
+            # Handle message splitting for Telegram's 4096 char limit
             if len(formatted) > 4096:
-                # Split into multiple messages
-                parts = []
-                current_part = ""
-                paragraphs = formatted.split("\n\n")
+                # Split into multiple messages intelligently
+                messages = []
+                current_msg = ""
                 
-                for para in paragraphs:
-                    if len(current_part) + len(para) + 2 > 4000:
-                        if current_part:
-                            parts.append(current_part)
-                        current_part = para
+                # Split by double newline (paragraphs)
+                parts = formatted.split("\n\n")
+                
+                for part in parts:
+                    if len(current_msg) + len(part) + 4 > 4000:
+                        if current_msg:
+                            messages.append(current_msg.strip())
+                        current_msg = part
                     else:
-                        current_part += "\n\n" + para if current_part else para
+                        current_msg += "\n\n" + part if current_msg else part
                 
-                if current_part:
-                    parts.append(current_part)
+                if current_msg.strip():
+                    messages.append(current_msg.strip())
                 
-                # Send first part and edit thinking message
-                await thinking_msg.edit(parts[0])
-                
-                # Send remaining parts
-                for part in parts[1:]:
-                    await asyncio.sleep(0.5)
-                    await event.reply(part)
+                # Send first message by editing thinking message
+                if messages:
+                    await thinking_msg.edit(messages[0])
+                    
+                    # Send remaining messages
+                    for msg in messages[1:]:
+                        await asyncio.sleep(0.5)
+                        await event.reply(msg)
+                    
+                    print(f"✅ Response sent in {len(messages)} messages ({response_type} response)")
             else:
                 await thinking_msg.edit(formatted)
-            
-            print(f"✅ AI response sent ({response_type} response, {len(response)} chars)")
+                print(f"✅ AI response sent ({response_type} response, {len(response)} chars)")
             
         except Exception as e:
             print(f"❌ AI Handler Error: {e}")
@@ -293,9 +284,9 @@ def init(client):
 💬 **Active Chats:** {len(conversation_history)}
 
 📝 **Smart Response System:**
-• Simple questions → Short answers
-• Complex questions → Detailed answers
-• Removes unnecessary fluff
+• Simple questions → Concise answers
+• Complex/Tutorials → Complete detailed answers
+• Auto-splits long responses
 
 📚 **Commands:**
 • `.ai <question>` - Ask AI
@@ -309,5 +300,5 @@ def init(client):
         
         await event.reply(info)
     
-    print("✅ Cipher AI Plugin initialized (Smart Response System)")
+    print("✅ Cipher AI Plugin initialized (Smart Complete Response System)")
     return True
