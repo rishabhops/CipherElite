@@ -1,6 +1,6 @@
 # =============================================================================
 #  CipherElite Userbot Plugin - Cipher AI (Google Gemini)
-#  With Repository Data Access
+#  With Repository Data Access & Real Chat Memory
 #
 #  Plugin Name:    cipher_ai
 #  Author:         CipherElite Dev (@rishabhops)
@@ -25,7 +25,7 @@ conversation_history = {}
 # System prompt - Custom identity and behavior
 SYSTEM_PROMPT = """You are **Cipher AI**, a specialized AI assistant created for the **CipherElite Userbot**.
 
-**ABOUT YOU:**
+**ABOUT YOU (ONLY MENTION IF EXPLICITLY ASKED):**
 • **Name:** Cipher AI
 • **Created by:** Rishabh Anand (@rishabhops)
 • **Owner/Creator's Telegram:** @thanosceo
@@ -34,39 +34,19 @@ SYSTEM_PROMPT = """You are **Cipher AI**, a specialized AI assistant created for
 • **Primary Repo Branch:** cooking
 
 **YOUR PURPOSE:**
-You are integrated into the CipherElite Telegram Userbot to assist users with:
-- Questions about CipherElite features and usage
-- Deployment and setup instructions
-- Plugin development and customization
-- General programming and technical help
-- How-to guides and tutorials
-- Code examples and explanations
-- Information about Telegram automation
-- Problem-solving and debugging
+You are integrated into the CipherElite Telegram Userbot. Your primary focus is helping with CipherElite features, deployment, and coding. 
+HOWEVER, you are also a general-purpose AI. You MUST answer general everyday questions (like career advice, education, general knowledge, etc.) naturally and helpfully without restricting yourself to technical topics.
 
 **PERSONALITY & BEHAVIOR:**
-1. Always introduce yourself as "Cipher AI" when asked about identity
-2. Always mention your creator "Rishabh Anand" with his GitHub handle @rishabhops
-3. Always mention your owner "thanosceo" with Telegram handle @thanosceo
-4. Be helpful, concise, and professional
-5. Use **bold formatting** for important keywords
-6. For simple questions: Keep SHORT (1-2 paragraphs)
-7. For complex questions: Provide COMPLETE detailed answers
-8. Use bullet points and numbered lists for clarity
-9. Include practical examples when relevant
-10. Never apologize unnecessarily or add disclaimers
-11. Be proud of being part of CipherElite - mention it when relevant
-12. When asked about deployment or setup: Provide accurate, step-by-step instructions based on CipherElite's actual structure
-13. Know that CipherElite uses: Telethon, Python 3.8+, VPS deployment, SQLite databases
-
-**RESPONSE FORMAT:**
-• When asked about yourself: "I am **Cipher AI**, created by **Rishabh Anand** (@rishabhops). I'm part of the **CipherElite** project, powered by **@thanosceo**."
-• For tutorials: Use numbered steps
-• For explanations: Use bullet points
-• Always use **bold** for important terms
-• Keep formatting clean and readable for Telegram
-• For CipherElite deployment: Provide complete, accurate instructions"""
-
+1. ONLY introduce yourself or mention your creators if the user EXPLICITLY asks questions like "who are you", "who made you", or "what is your name". Do NOT inject your identity into normal answers.
+2. Answer whatever the user asks directly. Do not pivot the conversation back to CipherElite unless the user's question is actually about the bot.
+3. Be helpful, concise, and professional. Act like a natural conversational partner.
+4. Use **bold formatting** for important keywords.
+5. For simple questions: Keep SHORT (1-2 paragraphs).
+6. For complex questions: Provide COMPLETE detailed answers using bullet points and numbered lists.
+7. Never apologize unnecessarily or add disclaimers about being an AI.
+8. When asked about deployment or setup for CipherElite: Provide accurate, step-by-step instructions based on CipherElite's actual structure (Telethon, Python 3.8+, VPS deployment, SQLite databases).
+"""
 
 async def fetch_repository_data(owner="rishabhops", repo="CipherElite", branch="cooking"):
     """Fetch repository structure and README from GitHub"""
@@ -124,7 +104,7 @@ def init(client):
     add_handler("cipher_ai", commands, "Cipher AI - Powered by Google Gemini with Repo Access")
     
     async def make_ai_request(messages, repo_context=""):
-        """Make request to Google Generative AI with repository context"""
+        """Make request to Google Generative AI using native chat history"""
         try:
             api_key = ai_config.get_api_key()
             if not api_key:
@@ -142,12 +122,16 @@ def init(client):
                 system_instruction=enhanced_prompt
             )
             
-            # Format messages for Gemini
-            text_input = "\n".join([f"{msg['role']}: {msg['content']}" for msg in messages])
+            # Convert messages to Gemini's native history format for better context memory
+            gemini_history = []
+            for msg in messages:
+                # Gemini expects roles to be 'user' or 'model'
+                role = "user" if msg["role"] == "user" else "model"
+                gemini_history.append({"role": role, "parts": [msg["content"]]})
             
-            # Allow complete responses
+            # Allow complete responses and pass the properly structured history array
             response = model.generate_content(
-                text_input,
+                gemini_history,
                 generation_config=genai.types.GenerationConfig(
                     max_output_tokens=2000,
                     temperature=0.7,
@@ -162,7 +146,7 @@ def init(client):
     def estimate_response_type(query):
         """Estimate if question needs short or detailed answer"""
         short_keywords = ["what is", "who is", "when", "where", "how many", "define", "meaning", "your name", "who made", "who created"]
-        complex_keywords = ["how to", "deploy", "deploy", "setup", "install", "tutorial", "guide", "step", "process", "configure", "build", "create", "write code", "cipherelite", "userbot"]
+        complex_keywords = ["how to", "deploy", "setup", "install", "tutorial", "guide", "step", "process", "configure", "build", "create", "write code", "cipherelite", "userbot"]
         
         query_lower = query.lower()
         
@@ -239,16 +223,19 @@ def init(client):
                 await event.reply("📝 **Query too long!** Max 2000 characters.")
                 return
             
-            thinking_msg = await event.reply("🤔 **Cipher AI thinking...** (scanning repository...)")
+            thinking_msg = await event.reply("🤔 **Cipher AI thinking...**")
             print(f"🤖 Processing AI query: {query[:50]}...")
             
             # Estimate response type
             response_type = estimate_response_type(query)
             print(f"📊 Detected response type: {response_type}")
             
-            # Fetch repository data if question is about CipherElite
+            # Fetch repository data ONLY if question is specifically about CipherElite
             repo_context = ""
-            if any(keyword in query.lower() for keyword in ["cipherelite", "deploy", "setup", "install", "plugin", "command"]):
+            cipher_keywords = ["cipherelite", "cipher elite", "userbot setup", "userbot deploy", "this bot's repo"]
+            
+            if any(keyword in query.lower() for keyword in cipher_keywords):
+                await thinking_msg.edit("🤔 **Cipher AI thinking...** (scanning repository...)")
                 print("📚 Fetching CipherElite repository data...")
                 repo_data = await fetch_repository_data()
                 if repo_data["has_data"]:
@@ -261,11 +248,15 @@ def init(client):
             if chat_id not in conversation_history:
                 conversation_history[chat_id] = []
             
+            # Add user query to history
             conversation_history[chat_id].append({"role": "user", "content": query})
             
-            # Keep history limited to last 5 exchanges
-            if len(conversation_history[chat_id]) > 10:
-                conversation_history[chat_id] = conversation_history[chat_id][-10:]
+            # Keep history limited to last 20 messages (10 exchanges) for longer memory
+            if len(conversation_history[chat_id]) > 20:
+                conversation_history[chat_id] = conversation_history[chat_id][-20:]
+                # Google Gemini API requires the first message in the history array to be from a 'user'
+                if conversation_history[chat_id][0]["role"] == "assistant":
+                    conversation_history[chat_id] = conversation_history[chat_id][1:]
             
             try:
                 response = await asyncio.wait_for(
@@ -277,11 +268,15 @@ def init(client):
             
             if response.startswith("❌"):
                 await thinking_msg.edit(response)
+                # If it failed, pop the last user message off so it doesn't break future context
+                conversation_history[chat_id].pop()
                 print(f"❌ AI error: {response}")
                 return
             
             # Format response intelligently
             response = format_response(response, response_type)
+            
+            # Add AI response to history
             conversation_history[chat_id].append({"role": "assistant", "content": response})
             
             # Prepare final formatted message based on response type
@@ -352,7 +347,7 @@ def init(client):
         if chat_id in conversation_history:
             msg_count = len(conversation_history[chat_id])
             del conversation_history[chat_id]
-            await event.reply(f"🗑️ **Cleared!** {msg_count} messages removed.")
+            await event.reply(f"🗑️ **Cleared!** {msg_count} messages removed. My memory is now fresh.")
         else:
             await event.reply("📭 **No history** in this chat.")
     
@@ -376,15 +371,15 @@ def init(client):
 💬 **Active Chats:** {len(conversation_history)}
 
 📝 **Features:**
+• Real Chat Memory Integration
 • Custom Identity
 • Repository Data Access
 • CipherElite-aware responses
 • Intelligent response length
-• Complete detailed answers
 
 📚 **Commands:**
 • `.ai <question>` - Ask me anything
-• `.aiclear` - Clear history
+• `.aiclear` - Clear memory in this chat
 • `.aiinfo` - About me
 
 🔗 **Links:**
@@ -394,5 +389,5 @@ def init(client):
         
         await event.reply(info)
     
-    print("✅ Cipher AI Plugin initialized (With Repository Access)")
+    print("✅ Cipher AI Plugin initialized (With Real Chat Memory)")
     return True
