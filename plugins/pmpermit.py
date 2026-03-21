@@ -25,6 +25,7 @@ from config.config import Config
 
 # Default PM permit picture
 DEFAULT_PMPERMIT_PIC = Config.DEFAULT_PMPERMIT_PIC
+LOG_CHAT_ID = Config.LOG_CHAT_ID
 
 # DB setup
 PROJECT_ROOT = Path(__file__).parent.parent
@@ -119,6 +120,25 @@ class PersonalAssistant:
         except Exception as e:
             logging.error(f"Assistant save error: {e}")
 
+    async def send_notification(self, event, user_info, message_text):
+        """Send notification to log group about new PM."""
+        try:
+            notification_text = (
+                f"📨 **New PM from Unapproved User**\n\n"
+                f"👤 **Name:** {user_info.get('name', 'Unknown')}\n"
+                f"🔗 **Username:** @{user_info.get('username', 'N/A')}\n"
+                f"🆔 **User ID:** `{user_info.get('id', 'N/A')}`\n"
+                f"⏰ **Time:** `{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}`\n\n"
+                f"💬 **Message:**\n```\n{message_text[:200]}\n```\n\n"
+                f"📌 **Quick Actions:**\n"
+                f"→ Reply `.a` to approve\n"
+                f"→ Reply `.da` to disapprove\n"
+                f"→ Reply `.block` to block"
+            )
+            await event.client.send_message(LOG_CHAT_ID, notification_text)
+        except Exception as e:
+            logging.error(f"Failed to send notification: {e}")
+
     async def send_message(self, event, mtype, **kwargs):
         """Fallback non-AI messaging system."""
         try:
@@ -189,6 +209,7 @@ class PersonalAssistant:
                 "name": sender.first_name,
                 "username": sender.username,
                 "first_seen": datetime.now().isoformat(),
+                "id": uid,
             }
             self.data["user_states"][uid] = "introduced"
 
@@ -201,6 +222,8 @@ class PersonalAssistant:
             # If no AI, send the standard intro immediately
             if not self.model:
                 await self.send_message(event, "introduction")
+                # Send notification for first message
+                await self.send_notification(event, self.data["users"][uid], text or "[No text]")
                 return
 
         # 2) Warnings / Blocking mechanism
@@ -224,14 +247,21 @@ class PersonalAssistant:
                         event.message.text
                     )
                 await event.reply(response.text)
+                
+                # Send notification to log group
+                await self.send_notification(event, self.data["users"][uid], event.message.text or "[No text]")
             except Exception as e:
                 logging.error(f"AI Error: {e}")
                 await event.reply("⏳ Processing... please wait for manual approval.")
+                # Still send notification on error
+                await self.send_notification(event, self.data["users"][uid], event.message.text or "[No text]")
         else:
             # --- STANDARD NON-AI FLOW ---
             if self.data["user_states"].get(uid) == "introduced" and text in ("ok", "okay"):
                 self.data["user_states"][uid] = "acknowledged"
                 await self.send_message(event, "acknowledgment")
+                # Send notification when user provides reason
+                await self.send_notification(event, self.data["users"][uid], event.message.text or "[No text]")
                 self._save()
                 return
 
@@ -241,6 +271,8 @@ class PersonalAssistant:
                 warn_count=self.data["warnings"][uid],
                 max_warnings=self.data["config"]["max_warnings"],
             )
+            # Send notification for every message
+            await self.send_notification(event, self.data["users"][uid], event.message.text or "[No text]")
             self._save()
 
 
