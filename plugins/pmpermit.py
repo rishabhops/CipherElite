@@ -43,7 +43,7 @@ class PersonalAssistant:
                 "pmpermit_pic": os.environ.get("PMPERMIT_PIC", DEFAULT_PMPERMIT_PIC),
                 "use_pic": True,
                 "max_warnings": int(os.environ.get("MAX_WARNINGS", 5)),
-                "pmpermit_enabled": True,  # NEW: global switch (default ON)
+                "pmpermit_enabled": True,  # global switch (default ON)
             },
             "users": {},
             "warnings": {},
@@ -119,6 +119,23 @@ class PersonalAssistant:
         except Exception as e:
             logging.error(f"Assistant save error: {e}")
 
+    async def _log_pm(self, event, sender, message_text: str):
+        """Send a log of the user's message to LOG_CHAT_ID."""
+        log_chat = getattr(Config, "LOG_CHAT_ID", None)
+        if not log_chat:
+            return
+        try:
+            mention = f"[{sender.first_name or 'User'}](tg://user?id={sender.id})"
+            text = (
+                f"**Incoming PM**\n"
+                f"From: {mention} (`{sender.id}`)\n"
+                f"Username: @{sender.username or 'N/A'}\n"
+                f"Message:\n{message_text or '_empty_'}"
+            )
+            await event.client.send_message(log_chat, text, link_preview=False)
+        except Exception as e:
+            logging.error(f"Failed to log PM: {e}")
+
     async def send_message(self, event, mtype, **kwargs):
         """Fallback non-AI messaging system."""
         try:
@@ -181,7 +198,10 @@ class PersonalAssistant:
         if sender.bot or sender.is_self or uid in self.data["approved_users"]:
             return
 
-        text = (event.message.text or "").lower()
+        text = (event.message.text or "").strip()
+
+        # Log every incoming PM from non-approved users
+        await self._log_pm(event, sender, text)
 
         # 1) First-time user setup
         if uid not in self.data["users"]:
@@ -220,16 +240,15 @@ class PersonalAssistant:
                 self.ai_sessions[uid] = self.model.start_chat(history=[])
             try:
                 async with event.client.action(event.chat_id, "typing"):
-                    response = await self.ai_sessions[uid].send_message_async(
-                        event.message.text
-                    )
+                    response = await self.ai_sessions[uid].send_message_async(text)
                 await event.reply(response.text)
             except Exception as e:
                 logging.error(f"AI Error: {e}")
                 await event.reply("⏳ Processing... please wait for manual approval.")
         else:
             # --- STANDARD NON-AI FLOW ---
-            if self.data["user_states"].get(uid) == "introduced" and text in ("ok", "okay"):
+            lowered = text.lower()
+            if self.data["user_states"].get(uid) == "introduced" and lowered in ("ok", "okay"):
                 self.data["user_states"][uid] = "acknowledged"
                 await self.send_message(event, "acknowledgment")
                 self._save()
@@ -251,6 +270,8 @@ def init(client):
         print("❌ ERROR: ai_setup.py not found! Please create it first.")
         return False
 
+        # Note: with no ai_setup.py, you can still stub ai_config.get_api_key to return None
+
     assistant = PersonalAssistant(ai_config)  # Pass config to assistant
     commands = [
         ".a / .approve        — Approve a user",
@@ -259,7 +280,7 @@ def init(client):
         ".listapproved        — List approved users",
         ".setpermitpic        — Set the permit picture",
         ".togglepermitpic     — Enable/disable the picture",
-        ".pmpermit on|off     — Enable/disable PM permit globally",  # NEW
+        ".pmpermit on|off     — Enable/disable PM permit globally",
     ]
     add_handler("pmpermit", commands, "Personal Assistant PM Manager")
 
@@ -313,19 +334,7 @@ def init(client):
             text += f"• {name} (`{uid}`)\n"
         await event.reply(text)
 
-    @CipherElite.on(events.NewMessage(outgoing=True, pattern=r"\.setpermitpic(?:\s+.*)?$"))
-    @rishabh()
-    async def _setpic(event):
-        if event.reply_to_msg_id:
-            msg = await event.get_reply_message()
-            if msg.media:
-                path = await CipherElite.download_media(msg)
-                assistant.data["config"]["pmpermit_pic"] = path
-                assistant.data["config"]["use_pic"] = True
-                assistant._save()
-                return await event.reply("✅ Permit picture set from reply")
-            return await event.reply("❌ Reply to an image.")
-        parts = event.text.split(None, 1)
+    @CipherElite.on1)
         if len(parts) > 1:
             assistant.data["config"]["pmpermit_pic"] = parts[1].strip()
             assistant.data["config"]["use_pic"] = True
@@ -342,7 +351,7 @@ def init(client):
         state = "enabled" if cfg["use_pic"] else "disabled"
         await event.reply(f"✅ Permit picture {state}")
 
-    # NEW: global pmpermit toggle
+    # Global pmpermit toggle
     @CipherElite.on(events.NewMessage(outgoing=True, pattern=r"\.pmpermit(?:$|\s)(on|off)?"))
     @rishabh()
     async def _toggle_pmpermit(event):
