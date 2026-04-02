@@ -1,5 +1,6 @@
 # Use a lightweight Python image
-FROM python:3.10-slim-buster
+FROM python:3.10-slim-bookworm
+
 
 
 LABEL org.opencontainers.image.title="CipherElite"
