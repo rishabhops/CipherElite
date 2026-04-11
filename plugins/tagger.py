@@ -174,7 +174,7 @@ async def handle_user_tag(event, msg_list=None, static_text=None):
 # ==========================================
 
 @CipherElite.on(events.NewMessage(pattern=r"^\.btag(?: |$)(.*)", outgoing=True))
-@rishabh
+@rishabh()
 async def bulk_tag(event):
     if event.id in processed_msgs: return
     processed_msgs.append(event.id)
@@ -187,7 +187,7 @@ async def bulk_tag(event):
 
 
 @CipherElite.on(events.NewMessage(pattern=r"^\.utag(?: |$)(.*)", outgoing=True))
-@rishabh
+@rishabh()
 async def user_tag(event):
     if event.id in processed_msgs: return
     processed_msgs.append(event.id)
@@ -200,14 +200,14 @@ async def user_tag(event):
 
 # --- Good Morning Handlers ---
 @CipherElite.on(events.NewMessage(pattern=r"^\.btaggm$", outgoing=True))
-@rishabh
+@rishabh()
 async def btag_gm(event):
     if event.id in processed_msgs: return
     processed_msgs.append(event.id)
     await handle_bulk_tag(event, msg_list=GM_MESSAGES)
 
 @CipherElite.on(events.NewMessage(pattern=r"^\.utaggm$", outgoing=True))
-@rishabh
+@rishabh()
 async def utag_gm(event):
     if event.id in processed_msgs: return
     processed_msgs.append(event.id)
@@ -215,14 +215,14 @@ async def utag_gm(event):
 
 # --- Good Night Handlers ---
 @CipherElite.on(events.NewMessage(pattern=r"^\.btaggn$", outgoing=True))
-@rishabh
+@rishabh()
 async def btag_gn(event):
     if event.id in processed_msgs: return
     processed_msgs.append(event.id)
     await handle_bulk_tag(event, msg_list=GN_MESSAGES)
 
 @CipherElite.on(events.NewMessage(pattern=r"^\.utaggn$", outgoing=True))
-@rishabh
+@rishabh()
 async def utag_gn(event):
     if event.id in processed_msgs: return
     processed_msgs.append(event.id)
@@ -230,14 +230,14 @@ async def utag_gn(event):
 
 # --- Voice Chat Handlers ---
 @CipherElite.on(events.NewMessage(pattern=r"^\.btagvc$", outgoing=True))
-@rishabh
+@rishabh()
 async def btag_vc(event):
     if event.id in processed_msgs: return
     processed_msgs.append(event.id)
     await handle_bulk_tag(event, msg_list=VC_MESSAGES)
 
 @CipherElite.on(events.NewMessage(pattern=r"^\.utagvc$", outgoing=True))
-@rishabh
+@rishabh()
 async def utag_vc(event):
     if event.id in processed_msgs: return
     processed_msgs.append(event.id)
@@ -245,7 +245,7 @@ async def utag_vc(event):
 
 # --- Cancel Handler ---
 @CipherElite.on(events.NewMessage(pattern=r"^\.cancel$", outgoing=True))
-@rishabh
+@rishabh()
 async def cancel_tagging(event):
     if event.id in processed_msgs: return
     processed_msgs.append(event.id)
