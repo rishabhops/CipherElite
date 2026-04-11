@@ -112,7 +112,7 @@ async def init_bot(user_client=None):
     # 1. INLINE QUERY HANDLER (The Main Menu)
     # -------------------------------------------------------------------------
     @bot.on(events.InlineQuery)
-    @rishabh_help()
+    @rishabh_help
     async def inline_handler(event):
         builder = event.builder
         if event.text == "help":
@@ -162,7 +162,7 @@ async def init_bot(user_client=None):
     # 2. CALLBACK HANDLER (Button Clicks)
     # -------------------------------------------------------------------------
     @bot.on(events.CallbackQuery(pattern=r"help_(.*)"))
-    @rishabh_help()
+    @rishabh_help
     async def callback_handler(event):
         data = event.data_match.group(1).decode()
         
@@ -266,7 +266,7 @@ async def init_bot(user_client=None):
     # 3. DEBUG COMMAND
     # -------------------------------------------------------------------------
     @bot.on(events.NewMessage(pattern=r"\.debugcmds"))
-    @rishabh_help()
+    @rishabh_help
     async def debug_commands(event):
         try:
             msg = "🔍 <b>Debug: Stored Commands</b>\n\n"
