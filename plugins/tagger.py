@@ -1,9 +1,8 @@
-#
 import asyncio
 import random
 from collections import deque
 from telethon import events
-from telethon.errors import FloodWaitError
+from telethon.errors import FloodWaitError, ChatWriteForbiddenError, UserBannedInChannelError
 
 from config.config import Config
 from utils.utils import CipherElite
@@ -13,9 +12,7 @@ from utils.decorators import rishabh
 # ==========================================
 # GLOBAL VARIABLES
 # ==========================================
-# Stores chat IDs where tagging is currently active (Allows multi-chat tagging)
 active_chats = set() 
-# Uses a bounded queue to prevent memory leaks while caching processed commands
 processed_msgs = deque(maxlen=2000) 
 
 # ==========================================
@@ -65,16 +62,16 @@ def init(client_instance):
         "🏷️ **Advanced Group Tagger**\n"
         "⚡ Safe Bulk & Individual Tagging\n"
         "📝 Custom & Random Messages\n"
-        "🛑 Anti-Spam Delays Included\n\n"
+        "🛑 Anti-Ban Humanized Delays Included\n\n"
     )
 
     add_handler("tagger", commands, description)
 
 # ==========================================
-# CORE HELPER FUNCTIONS
+# ANTI-BAN HELPER FUNCTIONS
 # ==========================================
 async def get_users(event):
-    """Fetches all active users in the chat (ignores bots and deleted accounts)."""
+    """Fetches all active users in the chat."""
     users = []
     chat_id = event.chat_id
     if not chat_id:
@@ -85,66 +82,79 @@ async def get_users(event):
             users.append(user)
     return users
 
+async def human_delay(messages_sent):
+    """Calculates safe, randomized sleep times to mimic humans and evade spam filters."""
+    if messages_sent > 0 and messages_sent % 10 == 0:
+        # Long break every 10 messages (10 to 15 seconds)
+        await asyncio.sleep(random.uniform(10.0, 15.0))
+    else:
+        # Standard random break (2.5 to 4.5 seconds)
+        await asyncio.sleep(random.uniform(2.5, 4.5))
+
+# ==========================================
+# CORE TAGGING FUNCTIONS
+# ==========================================
 async def handle_bulk_tag(event, msg_list=None, static_text=None):
-    """Core function to handle all bulk tagging operations."""
     chat_id = event.chat_id
     if chat_id in active_chats:
         return await event.reply("⚠️ **Tagging is already running in this chat. Type `.cancel` to stop it.**")
     
-    status = await event.reply("✅ **Starting Bulk Tag...**")
+    status = await event.reply("✅ **Starting Bulk Tag (Anti-Ban Mode)...**")
     active_chats.add(chat_id)
     users = await get_users(event)
-    mentions, count = "", 0
+    mentions, count, messages_sent = "", 0, 0
     
     try:
         for user in users:
-            # Stop if the user cancelled the process
             if chat_id not in active_chats: 
                 break
                 
             mentions += f"[{user.first_name}](tg://user?id={user.id}) "
             count += 1
             
-            # Send message when 5 users are batched
             if count == 5:
                 base_msg = random.choice(msg_list).replace("{mention}", "").strip() if msg_list else static_text
                 
-                # Infinite loop to securely handle FloodWaitError without breaking the main tagging loop
                 while True:
                     try:
                         await event.client.send_message(chat_id, f"{base_msg}\n\n{mentions}")
-                        break # Success, break out of retry loop
+                        messages_sent += 1
+                        break 
                     except FloodWaitError as e:
-                        await asyncio.sleep(e.seconds + 2) # Sleep and retry
+                        if e.seconds > 60:
+                            await event.reply(f"🛑 **FloodWait over 60s ({e.seconds}s)! Stopping to protect account.**")
+                            active_chats.remove(chat_id)
+                            return
+                        await asyncio.sleep(e.seconds + 2) 
+                    except (ChatWriteForbiddenError, UserBannedInChannelError):
+                        await event.reply("🛑 **Error: I lack permission to send messages here or have been muted. Stopping.**")
+                        active_chats.remove(chat_id)
+                        return
                 
                 mentions, count = "", 0
-                await asyncio.sleep(2.5) # Anti-spam delay
+                await human_delay(messages_sent)
                 
-        # Handle any remaining users (less than 5) at the end of the list
         if mentions and chat_id in active_chats:
             base_msg = random.choice(msg_list).replace("{mention}", "").strip() if msg_list else static_text
-            while True:
-                try:
-                    await event.client.send_message(chat_id, f"{base_msg}\n\n{mentions}")
-                    break
-                except FloodWaitError as e:
-                    await asyncio.sleep(e.seconds + 2)
+            try:
+                await event.client.send_message(chat_id, f"{base_msg}\n\n{mentions}")
+            except Exception:
+                pass
                     
     finally:
-        # Ensure the chat is removed from active list even if an error occurs
         if chat_id in active_chats:
             active_chats.remove(chat_id)
-        await status.edit("✅ **Bulk tagging completed!**")
+        await status.edit("✅ **Bulk tagging completed safely!**")
 
 
 async def handle_user_tag(event, msg_list=None, static_text=None):
-    """Core function to handle all individual (per-user) tagging operations."""
     chat_id = event.chat_id
     if chat_id in active_chats:
         return await event.reply("⚠️ **Tagging is already running in this chat. Type `.cancel` to stop it.**")
         
-    status = await event.reply("✅ **Starting Per User Tag...**")
+    status = await event.reply("✅ **Starting Per User Tag (Anti-Ban Mode)...**")
     active_chats.add(chat_id)
+    messages_sent = 0
     
     try:
         for user in await get_users(event):
@@ -154,20 +164,28 @@ async def handle_user_tag(event, msg_list=None, static_text=None):
             mention = f"[{user.first_name}](tg://user?id={user.id})"
             text = random.choice(msg_list).format(mention=mention) if msg_list else f"{mention} {static_text}"
             
-            # Secure FloodWaitError handling
             while True:
                 try:
                     await event.client.send_message(chat_id, text)
+                    messages_sent += 1
                     break
                 except FloodWaitError as e:
+                    if e.seconds > 60:
+                        await event.reply(f"🛑 **FloodWait over 60s ({e.seconds}s)! Stopping to protect account.**")
+                        active_chats.remove(chat_id)
+                        return
                     await asyncio.sleep(e.seconds + 2)
+                except (ChatWriteForbiddenError, UserBannedInChannelError):
+                    await event.reply("🛑 **Error: I lack permission to send messages here or have been muted. Stopping.**")
+                    active_chats.remove(chat_id)
+                    return
                     
-            await asyncio.sleep(2.5) # Anti-spam delay
+            await human_delay(messages_sent)
             
     finally:
         if chat_id in active_chats:
             active_chats.remove(chat_id)
-        await status.edit("✅ **Per user tag completed!**")
+        await status.edit("✅ **Per user tag completed safely!**")
 
 # ==========================================
 # COMMAND HANDLERS
@@ -185,7 +203,6 @@ async def bulk_tag(event):
     
     await handle_bulk_tag(event, static_text=custom_msg)
 
-
 @CipherElite.on(events.NewMessage(pattern=r"^\.utag(?: |$)(.*)", outgoing=True))
 @rishabh()
 async def user_tag(event):
@@ -198,7 +215,6 @@ async def user_tag(event):
         
     await handle_user_tag(event, static_text=custom_msg)
 
-# --- Good Morning Handlers ---
 @CipherElite.on(events.NewMessage(pattern=r"^\.btaggm$", outgoing=True))
 @rishabh()
 async def btag_gm(event):
@@ -213,7 +229,6 @@ async def utag_gm(event):
     processed_msgs.append(event.id)
     await handle_user_tag(event, msg_list=GM_MESSAGES)
 
-# --- Good Night Handlers ---
 @CipherElite.on(events.NewMessage(pattern=r"^\.btaggn$", outgoing=True))
 @rishabh()
 async def btag_gn(event):
@@ -228,7 +243,6 @@ async def utag_gn(event):
     processed_msgs.append(event.id)
     await handle_user_tag(event, msg_list=GN_MESSAGES)
 
-# --- Voice Chat Handlers ---
 @CipherElite.on(events.NewMessage(pattern=r"^\.btagvc$", outgoing=True))
 @rishabh()
 async def btag_vc(event):
@@ -243,7 +257,6 @@ async def utag_vc(event):
     processed_msgs.append(event.id)
     await handle_user_tag(event, msg_list=VC_MESSAGES)
 
-# --- Cancel Handler ---
 @CipherElite.on(events.NewMessage(pattern=r"^\.cancel$", outgoing=True))
 @rishabh()
 async def cancel_tagging(event):
