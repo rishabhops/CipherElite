@@ -51,11 +51,24 @@ def save_database(db):
         print(f"Error saving assistant database: {e}")
 
 def add_user(user_id):
-    """Add a user to the database if not already present"""
+    """Add a user to the database safely, auto-repairing if JSON is corrupted"""
     db = load_database()
+    
+    # Safety Check 1: Ensure 'users' exists
+    if "users" not in db:
+        db["users"] = []
+        
+    # Safety Check 2: Auto-repair if the JSON file accidentally saved 'users' as a dict {}
+    if isinstance(db["users"], dict):
+        print("⚠️ Auto-repairing db['users'] from dict back to list in JSON file...")
+        # Convert dictionary keys back into a list
+        db["users"] = list(db["users"].keys())
+        
+    # Safely append now that we are 100% sure it is a list
     if user_id not in db["users"]:
         db["users"].append(user_id)
         save_database(db)
+        
     return len(db["users"])
 
 def get_stats():
@@ -93,7 +106,7 @@ def init_bot_plugin(bot, owner_id, owner_name):
     async def start_handler(event):
         user_id = event.sender_id
         
-        # Add user to database
+        # Add user to database (Now 100% safe from dict crashes)
         users_count = add_user(user_id)
         
         # Check if sender is the owner
