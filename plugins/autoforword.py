@@ -43,7 +43,7 @@ def init(client_instance):
         ".addfwd <source> <dest> - Start live auto-forwarding",
         ".delfwd <source> <dest> - Stop auto-forwarding",
         ".listfwd - View all active forwarding routes",
-        ".batchfwd <source> <dest> <limit> - Clone X amount of old messages"
+        ".batchfwd <source> <dest> <limit> - Clone X amount of recent messages"
     ]
     description = (
         "🔄 **Advanced Auto-Forwarder**\n"
@@ -190,11 +190,17 @@ async def batch_forward(event):
     if not source or not dest:
         return await status.edit("❌ **Error:** Could not resolve chats. Ensure you are joined!")
         
-    await status.edit(f"⏳ **Batch Cloning {limit} messages...**\n*This may take time due to anti-ban delays.*")
+    await status.edit(f"⏳ **Fetching the last {limit} messages...**\n*This may take time due to anti-ban delays.*")
     
     count = 0
     try:
-        async for msg in event.client.iter_messages(int(source), limit=limit, reverse=True):
+        # Fetch the newest `limit` messages normally
+        messages = await event.client.get_messages(int(source), limit=limit)
+        
+        # Reverse the list so we send them in chronological order
+        messages.reverse()
+        
+        for msg in messages:
             if not msg.text and not msg.media:
                 continue 
                 
@@ -218,7 +224,7 @@ async def batch_forward(event):
     except Exception as e:
         return await event.reply(f"⚠️ **Batch Stopped with error:** `{str(e)}`")
         
-    await status.edit(f"✅ **Batch Forward Completed!**\nSuccessfully cloned `{count}` messages.")
+    await status.edit(f"✅ **Batch Forward Completed!**\nSuccessfully cloned the last `{count}` messages.")
 
 
 # ==========================================
