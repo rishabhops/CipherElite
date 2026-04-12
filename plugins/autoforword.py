@@ -1,7 +1,6 @@
 # =============================================================================
 #  CipherElite Advanced Auto-Forwarder & Cloner
-#  Author:         CipherElite Dev rishabh (@rishabhops)
-#. telegram username - @thanosceo
+#  Author:         CipherElite Dev (@rishabhops)
 # =============================================================================
 
 import os
@@ -41,15 +40,16 @@ def save_db(db):
 # ==========================================
 def init(client_instance):
     commands = [
-        ".addfwd <source> <dest> - Start live auto-forwarding from source to destination",
-        ".delfwd <source> <dest> - Stop auto-forwarding between these chats",
+        ".addfwd <source> <dest> - Start live auto-forwarding",
+        ".delfwd <source> <dest> - Stop auto-forwarding",
         ".listfwd - View all active forwarding routes",
-        ".batchfwd <source> <dest> <limit> - Clone X amount of old messages to destination"
+        ".batchfwd <source> <dest> <limit> - Clone X amount of old messages"
     ]
     description = (
         "🔄 **Advanced Auto-Forwarder**\n"
         "⚡ Ghost Clones (No Forward Tag)\n"
-        "🔓 Works on Private/Restricted Channels\n"
+        "🔓 **Private Channels:** Fully supported using -100 IDs\n"
+        "🔗 **Smart Buttons:** Inline URL buttons are safely converted to text links\n"
         "🚦 Multi-Route Support Included\n\n"
     )
     add_handler("autoforward", commands, description)
@@ -60,14 +60,40 @@ def init(client_instance):
 async def get_chat_id(client, chat_link):
     """Safely resolves usernames, invite links, or integer IDs to exact Telethon Peer IDs."""
     try:
-        # If it's a number string, convert to int
         if chat_link.lstrip('-').isdigit():
             chat_link = int(chat_link)
-        
         entity = await client.get_entity(chat_link)
         return str(get_peer_id(entity))
     except Exception as e:
         return None
+
+async def safe_clone(client, dest_id, msg):
+    """
+    Surgically extracts text and media to bypass Userbot restrictions.
+    Smartly converts inline URL buttons into clickable text links at the bottom!
+    """
+    text = msg.text or ""
+    
+    # Check if the message has buttons (reply_markup)
+    if msg.reply_markup and hasattr(msg.reply_markup, 'rows'):
+        button_links = []
+        for row in msg.reply_markup.rows:
+            for button in row.buttons:
+                # We can only extract buttons that have actual URLs
+                if hasattr(button, 'url') and button.url:
+                    button_links.append(f"🔗 **[{button.text}]({button.url})**")
+        
+        # If we found links, attach them to the bottom of the text
+        if button_links:
+            text += "\n\n" + "\n".join(button_links)
+
+    # Send the surgically cloned message using the Userbot
+    await client.send_message(
+        int(dest_id),
+        message=text,
+        file=msg.media,
+        link_preview=False # Keeps it clean
+    )
 
 # ==========================================
 # COMMAND HANDLERS
@@ -86,7 +112,7 @@ async def add_forward(event):
     dest = await get_chat_id(event.client, args[1])
     
     if not source or not dest:
-        return await status.edit("❌ **Error:** Could not resolve Source or Destination. Make sure you have joined both chats!")
+        return await status.edit("❌ **Error:** Could not resolve Source or Destination. Make sure you are joined to both!")
         
     db = load_db()
     if source not in db["routes"]:
@@ -115,7 +141,6 @@ async def del_forward(event):
     
     if source in db["routes"] and dest in db["routes"][source]:
         db["routes"][source].remove(dest)
-        # Cleanup empty source keys
         if not db["routes"][source]:
             del db["routes"][source]
             
@@ -147,10 +172,9 @@ async def list_forward(event):
 @CipherElite.on(events.NewMessage(pattern=r"^\.batchfwd(?: |$)(.*)", outgoing=True))
 @rishabh()
 async def batch_forward(event):
-    """Clones historical messages from a chat."""
     args = event.pattern_match.group(1).split()
     if len(args) != 3:
-        return await event.reply("❌ **Syntax Error:** `.batchfwd <source> <dest> <limit>`\n*Example:* `.batchfwd @source_channel @my_channel 50`")
+        return await event.reply("❌ **Syntax Error:** `.batchfwd <source> <dest> <limit>`\n*Example:* `.batchfwd @source @dest 50`")
         
     source_arg, dest_arg, limit_arg = args[0], args[1], args[2]
     
@@ -170,15 +194,13 @@ async def batch_forward(event):
     
     count = 0
     try:
-        # reverse=True fetches the oldest messages first (chronological order)
         async for msg in event.client.iter_messages(int(source), limit=limit, reverse=True):
             if not msg.text and not msg.media:
-                continue # Skip empty service messages
+                continue 
                 
             while True:
                 try:
-                    # Using send_message with 'msg' object copies the message without Forward Tag
-                    await event.client.send_message(int(dest), msg)
+                    await safe_clone(event.client, dest, msg)
                     count += 1
                     break
                 except FloodWaitError as e:
@@ -187,43 +209,40 @@ async def batch_forward(event):
                     await asyncio.sleep(e.seconds + 2)
                 except ChatWriteForbiddenError:
                     return await event.reply("🛑 **Error: I lack permission to write in the destination chat.**")
+                except Exception as e:
+                    print(f"⚠️ Skipped message {msg.id} due to error: {e}")
+                    break 
             
-            # Anti-Ban delay between each message
-            await asyncio.sleep(2.5)
+            await asyncio.sleep(2.5) # Anti-Ban delay
             
     except Exception as e:
         return await event.reply(f"⚠️ **Batch Stopped with error:** `{str(e)}`")
         
     await status.edit(f"✅ **Batch Forward Completed!**\nSuccessfully cloned `{count}` messages.")
 
+
 # ==========================================
 # THE LIVE AUTO-FORWARD ENGINE
 # ==========================================
-
 @CipherElite.on(events.NewMessage())
 async def live_forward_worker(event):
-    # Only process if we have active routes
     db = load_db()
     if not db["routes"]:
         return
         
-    # Get the ID of the chat this message was sent in
     chat_id = str(get_peer_id(event.chat_id)) if event.chat_id else None
     
-    # Check if this chat is registered as a source
     if chat_id and chat_id in db["routes"]:
         destinations = db["routes"][chat_id]
         
         for dest in destinations:
             try:
-                # Ghost clone the message to destination (no forward tag)
-                await event.client.send_message(int(dest), event.message)
+                await safe_clone(event.client, dest, event.message)
             except FloodWaitError as e:
-                # If we hit floodwait, we sleep in the background
                 await asyncio.sleep(e.seconds)
                 try:
-                    await event.client.send_message(int(dest), event.message)
+                    await safe_clone(event.client, dest, event.message)
                 except:
                     pass
-            except Exception:
-                pass # Silently pass to avoid crashing the worker
+            except Exception as e:
+                print(f"Live forward error: {e}")
