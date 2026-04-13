@@ -7,7 +7,7 @@ import requests
 import urllib.parse
 import asyncio
 from telethon import events
-from telethon.utils import get_display_name, get_peer_id
+from telethon.utils import get_display_name
 
 from utils.utils import CipherElite
 from plugins.bot import add_handler
@@ -16,19 +16,19 @@ from utils.decorators import rishabh
 # ==========================================
 # CONFIGURATION & STATE
 # ==========================================
-# This dictionary tracks: {chat_id: target_user_id}
 ROASTING_DATA = {}
 
+# 🔥 THE NEW, HUMAN-LIKE SAVAGE PROMPT
 ROAST_SYSTEM_PROMPT = """
-You are the Cipher Elite Roast Master. 
-Your goal is to reply to the user's message with a savage, witty, and clever roast.
+You are a savage, witty friend roasting people in a Telegram chat.
 RULES:
-1. Be extremely sarcastic and funny.
-2. Keep the roast under 40 words.
-3. Don't use actual hate speech or slurs (stay within Telegram safety).
-4. If they talk about coding or tech, mock their logic.
-5. Language: Use the same language they used (English or Hinglish).
-6. End every roast with the 🔥 emoji.
+1. Roast them based EXACTLY on what they just said. No random metaphors. No robotic tech jokes.
+2. Keep it under 25 words. Short, punchy, and brutally insulting.
+3. Act like a real person, not an AI.
+4. LANGUAGE IS CRITICAL:
+   - If they speak Hindi/Hinglish (e.g., "kya kar raha hai", "dimag sahi hai?"), reply in pure, savage Hinglish street slang (e.g., "tere se matlab?", "apna dimaag check karle pehle").
+   - If they speak English, use casual English slang.
+5. End every reply with the 🔥 emoji.
 """
 
 # ==========================================
@@ -52,11 +52,10 @@ def init(client_instance):
 # AI GENERATOR FUNCTION
 # ==========================================
 def get_ai_roast(user_text):
-    """Calls the Pollinations AI API to get a savage roast."""
     try:
         full_prompt = f"{ROAST_SYSTEM_PROMPT}\n\nTarget said: {user_text}"
         encoded = urllib.parse.quote(full_prompt)
-        url = f"https://text.pollinations.ai/{encoded}"
+        url = f"https://text.pollinations.ai/{encoded}?model=mistral" # Forcing Mistral model usually gives better/shorter text
         
         response = requests.get(url, timeout=15)
         if response.status_code == 200:
@@ -80,7 +79,6 @@ async def toggle_roast(event):
             return await event.edit("✅ **Roast Oracle deactivated in this chat.**")
         return await event.edit("⚠️ **No roast target found in this chat.**")
 
-    # Determine target
     target_user = None
     if event.is_reply:
         reply_msg = await event.get_reply_message()
@@ -106,19 +104,11 @@ async def toggle_roast(event):
 async def auto_roaster(event):
     chat_id = event.chat_id
     
-    # Check if this chat has an active roast target
     if chat_id in ROASTING_DATA:
         target_id = ROASTING_DATA[chat_id]
         
-        # Check if the sender is the marked target
         if event.sender_id == target_id:
-            # Show "typing..." to make it look like you're actually writing
             async with event.client.action(chat_id, 'typing'):
-                # Get the savage AI response
                 roast_text = get_ai_roast(event.text or "...")
-                
-                # Add a small human-like delay
                 await asyncio.sleep(2)
-                
-                # Reply to the target
                 await event.reply(roast_text)
