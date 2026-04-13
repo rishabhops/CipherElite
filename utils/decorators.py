@@ -22,21 +22,21 @@ async def is_owner_or_sudo(event):
 # ==========================================
 # 1. ADMIN / OWNER / SUDO DECORATOR
 # ==========================================
-def authorized_users_only():
-    def decorator(func):
-        @wraps(func)
+def authorized_users_only(func=None):
+    def decorator(f):
+        @wraps(f)
         async def wrapper(event):
             sender_id = event.sender_id
             
             # 🎭 PRIORITY 1: Always allow Owner & Sudo users (no exceptions)
             if await is_owner_or_sudo(event):
                 print(f"✅ Owner/Sudo user {sender_id} authorized - bypassing checks")
-                return await func(event)
+                return await f(event)
             
             # 🎭 PRIORITY 2: Allow in private chats for non-sudo users
             if event.is_private:
                 print(f"✅ Private chat authorized for user {sender_id}")
-                return await func(event)
+                return await f(event)
             
             # 🎭 PRIORITY 3: Check admin rights for normal users in groups
             try:
@@ -44,10 +44,10 @@ def authorized_users_only():
                 
                 if hasattr(chat, 'admin_rights') and chat.admin_rights:
                     if chat.admin_rights.delete_messages or chat.admin_rights.ban_users:
-                        return await func(event)
+                        return await f(event)
                 
                 if hasattr(chat, 'creator') and chat.creator:
-                    return await func(event)
+                    return await f(event)
                 
                 try:
                     participant = await event.client(GetParticipantRequest(
@@ -55,7 +55,7 @@ def authorized_users_only():
                         participant=sender_id
                     ))
                     if isinstance(participant.participant, (ChannelParticipantAdmin, ChannelParticipantCreator)):
-                        return await func(event)
+                        return await f(event)
                 except (UserNotParticipantError, ChatAdminRequiredError, AttributeError):
                     pass
                 
@@ -68,16 +68,20 @@ def authorized_users_only():
                              "❌ **This command is restricted to admins only!**\n"
                              "🛡️ **Required:** Admin privileges, Sudo access, or Bot Owner")
             return
-            
         return wrapper
-    return decorator
+
+    # Magic logic to allow both @authorized_users_only and @authorized_users_only()
+    if func is None:
+        return decorator
+    else:
+        return decorator(func)
 
 # ==========================================
 # 2. OWNER & SUDO ONLY DECORATOR (Silent Fail)
 # ==========================================
-def rishabh():
-    def decorator(func):
-        @wraps(func)
+def rishabh(func=None):
+    def decorator(f):
+        @wraps(f)
         async def wrapper(event):
             sender_id = event.sender_id
             
@@ -85,17 +89,22 @@ def rishabh():
                 print(f"❌ Unauthorized access attempt by {sender_id}")
                 return
             
-            print(f"✅ Owner/Sudo user {sender_id} executing command: {func.__name__}")
-            return await func(event)
+            print(f"✅ Owner/Sudo user {sender_id} executing command: {f.__name__}")
+            return await f(event)
         return wrapper
-    return decorator
+
+    # Magic logic to allow both @rishabh and @rishabh()
+    if func is None:
+        return decorator
+    else:
+        return decorator(func)
 
 # ==========================================
 # 3. OWNER & SUDO ONLY DECORATOR (With Alert)
 # ==========================================
-def rishabh_help():
-    def decorator(func):
-        @wraps(func)
+def rishabh_help(func=None):
+    def decorator(f):
+        @wraps(f)
         async def wrapper(event):
             
             if not await is_owner_or_sudo(event):
@@ -108,6 +117,11 @@ def rishabh_help():
                 )
                 return
                 
-            return await func(event)
+            return await f(event)
         return wrapper
-    return decorator
+
+    # Magic logic to allow both @rishabh_help and @rishabh_help()
+    if func is None:
+        return decorator
+    else:
+        return decorator(func)
