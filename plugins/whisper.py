@@ -37,11 +37,12 @@ def init(client_instance):
 # 1. THE USERBOT HANDLER (Creates the Whisper)
 # ==========================================
 @CipherElite.on(events.NewMessage(pattern=r"^\.w(?: |$)(.*)", outgoing=True))
-@rishabh()
+@rishabh
 async def send_whisper(event):
-    bot_username = getattr(Config, "ELITE_BOT_USERNAME", None)
+    # Fixed to match your specific config.py variable
+    bot_username = getattr(Config, "TG_BOT_USERNAME", None)
     if not bot_username:
-        return await event.reply("❌ **Error:** Please add `ELITE_BOT_USERNAME = '@your_bot'` to your config.py!")
+        return await event.reply("❌ **Error:** Please add `TG_BOT_USERNAME` to your config.py!")
 
     args = event.pattern_match.group(1).strip()
     target_entity = None
