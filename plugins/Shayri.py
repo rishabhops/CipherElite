@@ -1,10 +1,9 @@
 # =============================================================================
-#  CipherElite Master Poet (Shayari Generator)
+#  CipherElite Offline Shayari Repository
 #  Author:         CipherElite Dev (@rishabhops)
 # =============================================================================
 
-import requests
-import urllib.parse
+import random
 from telethon import events
 
 from utils.utils import CipherElite
@@ -12,95 +11,78 @@ from plugins.bot import add_handler
 from utils.decorators import rishabh
 
 # ==========================================
-# THE MASTER POET SYSTEM PROMPT
+# SHAYARI REPOSITORY (Add as many as you want here!)
 # ==========================================
-SHAYARI_PROMPT = """
-You are a legendary, soulful Shayar (Urdu/Hindi poet) like Mirza Ghalib or Rahat Indori.
-Your task is to write a deeply emotional, authentic, and beautiful 2-line or 4-line poetry/shayari based on the user's topic.
-
-CRITICAL RULES:
-1. QUALITY: It must be genuine poetry. Deep meaning, proper rhythm (kafiya/radeef), and real emotion. NO cringe, NO cheap jokes, NO generic robotic phrases. 
-2. FORMAT: ONLY output the shayari lines. Do NOT say "Here is your shayari", do NOT use quotes, do NOT add any intro/outro text.
-3. VIBE: Match the emotion perfectly. (e.g., 'love' = romantic/deep, 'broken heart' = painful/melancholic, 'attitude' = savage/royal).
-4. EMOJI: Add 1 or 2 relevant emojis at the very end of the shayari.
-"""
+SHAYARI_DB = {
+    "love": [
+        "Aapki muskurahat ne hamara hosh uda diya,\nHum akele the, aapne mehfil se mila diya. ❤️",
+        "Nazron se nazar mili to baat ho gayi,\nAapki ek hasi se hamari subah, raat ho gayi. 🌹",
+        "Zindagi mein aapka aana ek khwab sa lagta hai,\nAapke bina har lamha azaab sa lagta hai. ✨"
+    ],
+    "sad": [
+        "Khamoshi se bikharna aa gaya hai,\nHumein ab khud mein rehna aa gaya hai. 💔",
+        "Dard ki mehfil mein ek naya fasaana likhenge,\nTere bina zindagi ka har lamha purana likhenge. 🥀",
+        "Jisko chaha tha dil se wo door ho gaya,\nMera dil toot kar choor choor ho gaya. 🌧️"
+    ],
+    "attitude": [
+        "Hukumat wo hi karta hai jiska dilon par raaj hota hai,\nYun to gali ke kutton ke sar pe bhi taj hota hai. 🔥",
+        "Hum wo nahi jo duniya ke hisaab se chalein,\nHum wo hain jiske hisaab se duniya chale. 👑",
+        "Sher ko shikaar karna sikhaya nahi jata,\nAur humein hamari aukaat yaad dilaya nahi jata. 🦅"
+    ],
+    "dosti": [
+        "Dosti ka rishta sabse pyara hota hai,\nIsme har dard ka sahara hota hai. 🤝",
+        "Dost wo nahi jo sirf khushi mein saath de,\nDost wo hai jo rote hue ko hasa de. 🫂",
+        "Zindagi ki raahon mein bohot dost milenge,\nPar hum jaisa pagal dost dhoondhte reh jaoge. 😜"
+    ],
+    "motivational": [
+        "Manzil unhi ko milti hai jinke sapno mein jaan hoti hai,\nPankhon se kuch nahi hota, hauslon se udaan hoti hai. 🕊️",
+        "Waqt se ladkar jo naseeb badal de,\nInsaan wahi jo apni taqdeer badal de. ⏳"
+    ]
+}
 
 # ==========================================
 # HELP MENU INTEGRATION
 # ==========================================
 def init(client_instance):
+    # Dynamically grab the keys from our database to show in the help menu
+    available_keys = ", ".join(SHAYARI_DB.keys())
+    
     commands = [
-        ".shayari <topic> - Get a Hinglish shayari (e.g., .shayari broken heart)",
-        ".hshayari <topic> - Get a pure Hindi shayari (e.g., .hshayari dosti)",
-        ".eshayari <topic> - Get an English poetic quote (e.g., .eshayari love)"
+        f".shayari <category> - Fetch a random shayari"
     ]
     description = (
-        "✍️ **The Master Poet (Shayari)**\n"
-        "🎭 Generates deep, authentic, and emotional poetry.\n"
-        "🗣️ Supports Hinglish, Hindi, and English.\n"
-        "⚡ Perfect rhythm and meaning, no robotic cringe.\n\n"
+        "✍️ **Offline Shayari Repository**\n"
+        "🎭 Instant, high-quality, handpicked poetry.\n"
+        f"📂 **Available Categories:** `{available_keys}`\n\n"
     )
     add_handler("shayari", commands, description)
 
 # ==========================================
-# AI GENERATOR FUNCTION
+# COMMAND HANDLER
 # ==========================================
-def generate_shayari(topic, language):
-    """Calls Pollinations AI with the Master Poet prompt."""
-    try:
-        if language == "Hinglish":
-            lang_instruction = "Write STRICTLY in Hinglish (Hindi/Urdu words written in the English alphabet)."
-        elif language == "Hindi":
-            lang_instruction = "Write STRICTLY in pure Hindi Script (Devanagari - हिंदी)."
-        else:
-            lang_instruction = "Write STRICTLY in pure, beautiful English poetry."
-
-        full_prompt = f"{SHAYARI_PROMPT}\n\nLanguage Rule: {lang_instruction}\n\nTopic requested by user: {topic}"
-        encoded = urllib.parse.quote(full_prompt)
-        
-        # Using openai model for better poetic nuance instead of mistral
-        url = f"https://text.pollinations.ai/{encoded}?model=openai"
-        
-        response = requests.get(url, timeout=15)
-        if response.status_code == 200:
-            return response.text.strip()
-        return "❌ *Kalam toot gayi...* (API Error: Could not generate shayari)."
-    except Exception:
-        return "❌ *Lafz nahi mil rahe...* (Server Timeout)."
-
-# ==========================================
-# COMMAND HANDLERS
-# ==========================================
-
 @CipherElite.on(events.NewMessage(pattern=r"^\.shayari(?: |$)(.*)", outgoing=True))
 @rishabh
-async def hinglish_shayari(event):
-    topic = event.pattern_match.group(1).strip()
-    if not topic:
-        return await event.edit("❌ **Bhai, topic toh batao!**\nExample: `.shayari broken heart` or `.shayari dosti`")
+async def random_shayari_handler(event):
+    category = event.pattern_match.group(1).strip().lower()
+    available_keys = ", ".join(SHAYARI_DB.keys())
     
-    await event.edit("✍️ *Soch raha hoon...*")
-    shayari = generate_shayari(topic, "Hinglish")
-    await event.edit(f"{shayari}")
-
-@CipherElite.on(events.NewMessage(pattern=r"^\.hshayari(?: |$)(.*)", outgoing=True))
-@rishabh
-async def hindi_shayari(event):
-    topic = event.pattern_match.group(1).strip()
-    if not topic:
-        return await event.edit("❌ **कृपया विषय बताएं!**\nExample: `.hshayari माँ` or `.hshayari प्यार`")
+    # If user didn't type a category or typed an invalid one
+    if not category or category not in SHAYARI_DB:
+        error_msg = (
+            "❌ **Bhai, sahi category batao!**\n\n"
+            f"📂 **Available Categories:**\n`{available_keys}`\n\n"
+            "📝 **Usage:** `.shayari love` or `.shayari attitude`"
+        )
+        return await event.edit(error_msg)
     
-    await event.edit("✍️ *लफ्ज़ पिरो रहा हूँ...*")
-    shayari = generate_shayari(topic, "Hindi")
-    await event.edit(f"{shayari}")
-
-@CipherElite.on(events.NewMessage(pattern=r"^\.eshayari(?: |$)(.*)", outgoing=True))
-@rishabh
-async def english_shayari(event):
-    topic = event.pattern_match.group(1).strip()
-    if not topic:
-        return await event.edit("❌ **Please provide a topic!**\nExample: `.eshayari betrayal` or `.eshayari missing you`")
+    # Pick a random shayari from the chosen category
+    selected_shayari = random.choice(SHAYARI_DB[category])
     
-    await event.edit("✍️ *Channeling my inner poet...*")
-    shayari = generate_shayari(topic, "English")
-    await event.edit(f"{shayari}")
+    # Format and send it
+    final_text = (
+        f"╭───〔 🎭 **{category.capitalize()} Shayari** 〕───╮\n\n"
+        f"**{selected_shayari}**\n\n"
+        f"╰───〔 ✍️ **CipherElite** 〕───╯"
+    )
+    
+    await event.edit(final_text)
