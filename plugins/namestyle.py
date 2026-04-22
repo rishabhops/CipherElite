@@ -2,18 +2,21 @@
 #  CipherElite Userbot Plugin
 #
 #  Plugin Name:    namestyle
-#  Author:         rishabh Anand
-#  GitHub:         rishabhops
-#  Description:    Generate 10 elite display-name variants from text
-#  Command:        .namestyle <name>
-#                  Reply to any message with .namestyle
+#  Author:         CipherElite Dev (@rishabhops)
+#  Repository:     https://github.com/rishabhops/CipherElite
+#
+#  License:        MIT
 # =============================================================================
 
+import os
+from pathlib import Path
 from telethon import events
-from utils.decorators import rishabh_help
+from utils.utils import CipherElite
+from utils.decorators import rishabh
+from plugins.bot import add_handler
 
 # =========================
-# Character maps
+# Character maps (same as before)
 # =========================
 
 BOLD_MAP = str.maketrans({
@@ -39,26 +42,13 @@ SCRIPT_MAP = str.maketrans({
 })
 
 GOTHIC_MAP = str.maketrans({
-    "A":"𝕬","B":"𝕭","C":"𝕮","D":"𝕯","E":"𝕰","F":"𝕱","G":"𝕲","H":"𝕳","I":"𝕴","J":"𝕵","K":"𝕶","L":"𝕷","M":"𝕸",
-    "N":"𝕹","O":"𝕺","P":"𝕻","Q":"𝕼","R":"𝕽","S":"𝕾","T":"𝕿","U":"𝖀","V":"𝖁","W":"𝖂","X":"𝖃","Y":"𝖄","Z":"𝖅",
-    "a":"𝖆","b":"𝖇","c":"𝖈","d":"𝖉","e":"𝖊","f":"𝖋","g":"𝖌","h":"𝖍","i":"𝖎","j":"𝖏","k":"𝖐","l":"𝖑","m":"𝖒",
-    "n":"𝖓","o":"𝖔","p":"𝖕","q":"𝖖","r":"𝖗","s":"𝖘","t":"𝖙","u":"𝖚","v":"𝖛","w":"𝖜","x":"𝖝","y":"𝖞","z":"𝖟"
+    "A":"𝔸","B":"𝔹","C":"ℂ","D":"𝔻","E":"𝔼","F":"𝔽","G":"𝔾","H":"ℍ","I":"𝕀","J":"𝕁","K":"𝕂","L":"𝕃","M":"𝕄",
+    "N":"ℕ","O":"𝕆","P":"ℙ","Q":"𝔔","R":"ℝ","S":"𝕊","T":"𝕋","U":"𝕌","V":"𝕍","W":"𝕎","X":"𝕏","Y":"𝕐","Z":"ℤ"
 })
 
 MONO_MAP = str.maketrans({
     "A":"𝙰","B":"𝙱","C":"𝙲","D":"𝙳","E":"𝙴","F":"𝙵","G":"𝙶","H":"𝙷","I":"𝙸","J":"𝙹","K":"𝙺","L":"𝙻","M":"𝙼",
-    "N":"𝙽","O":"𝙾","P":"𝙿","Q":"𝚀","R":"𝚁","S":"𝚂","T":"𝚃","U":"𝚄","V":"𝚅","W":"𝚆","X":"𝚇","Y":"𝚈","Z":"𝚉",
-    "a":"𝚊","b":"𝚋","c":"𝚌","d":"𝚍","e":"𝚎","f":"𝚏","g":"𝚐","h":"𝚑","i":"𝚒","j":"𝚓","k":"𝚔","l":"𝚕","m":"𝚖",
-    "n":"𝚗","o":"𝚘","p":"𝚙","q":"𝚚","r":"𝚛","s":"𝚜","t":"𝚝","u":"𝚞","v":"𝚟","w":"𝚠","x":"𝚡","y":"𝚢","z":"𝚣",
-    "0":"𝟶","1":"𝟷","2":"𝟸","3":"𝟹","4":"𝟺","5":"𝟻","6":"𝟼","7":"𝟽","8":"𝟾","9":"𝟿"
-})
-
-CIRCLED_MAP = str.maketrans({
-    "A":"Ⓐ","B":"Ⓑ","C":"Ⓒ","D":"Ⓓ","E":"Ⓔ","F":"Ⓕ","G":"Ⓖ","H":"Ⓗ","I":"Ⓘ","J":"Ⓙ","K":"Ⓚ","L":"Ⓛ","M":"Ⓜ",
-    "N":"Ⓝ","O":"Ⓞ","P":"Ⓟ","Q":"Ⓠ","R":"Ⓡ","S":"Ⓢ","T":"Ⓣ","U":"Ⓤ","V":"Ⓥ","W":"Ⓦ","X":"Ⓧ","Y":"Ⓨ","Z":"Ⓩ",
-    "a":"ⓐ","b":"ⓑ","c":"ⓒ","d":"ⓓ","e":"ⓔ","f":"ⓕ","g":"ⓖ","h":"ⓗ","i":"ⓘ","j":"ⓙ","k":"ⓚ","l":"ⓛ","m":"ⓜ",
-    "n":"ⓝ","o":"ⓞ","p":"ⓟ","q":"ⓠ","r":"ⓡ","s":"ⓢ","t":"ⓣ","u":"ⓤ","v":"ⓥ","w":"ⓦ","x":"ⓧ","y":"ⓨ","z":"ⓩ",
-    "0":"⓪","1":"①","2":"②","3":"③","4":"④","5":"⑤","6":"⑥","7":"⑦","8":"⑧","9":"⑨"
+    "N":"𝙽","O":"𝙾","P":"𝙿","Q":"𝚀","R":"𝚁","S":"𝚂","T":"𝚃","U":"𝚄","V":"𝚅","W":"𝚆","X":"𝚇","Y":"𝚈","Z":"𝚉"
 })
 
 SMALLCAPS_MAP = {
@@ -66,16 +56,14 @@ SMALLCAPS_MAP = {
     "n":"ɴ","o":"ᴏ","p":"ᴘ","q":"ǫ","r":"ʀ","s":"s","t":"ᴛ","u":"ᴜ","v":"ᴠ","w":"ᴡ","x":"x","y":"ʏ","z":"ᴢ"
 }
 
-# =========================
-# Helpers
-# =========================
-
 def apply_map(text: str, mapping) -> str:
+    """Apply Unicode style mapping to text"""
     if isinstance(mapping, dict):
         return "".join(mapping.get(ch.lower(), ch) if ch.isalpha() and ch.lower() in mapping else ch for ch in text)
     return text.translate(mapping)
 
 def wide_text(text: str) -> str:
+    """Convert to wide text"""
     return " ".join(list(text))
 
 def sparkle_wrap(text: str) -> str:
@@ -95,83 +83,82 @@ def square_wrap(text: str) -> str:
     return "".join(boxed.get(ch.upper(), ch) if ch.isalpha() else ch for ch in text)
 
 def sanitize_name(text: str) -> str:
+    """Clean and sanitize input name"""
     return " ".join(text.strip().split())
 
 def generate_name_styles(name: str):
+    """Generate 10 elite name styles"""
     name = sanitize_name(name)
     return [
-        ("Bold", apply_map(name, BOLD_MAP)),
-        ("Italic", apply_map(name, ITALIC_MAP)),
-        ("Script", apply_map(name, SCRIPT_MAP)),
-        ("Gothic", apply_map(name, GOTHIC_MAP)),
-        ("Monospace", apply_map(name, MONO_MAP)),
-        ("Circled", apply_map(name, CIRCLED_MAP)),
-        ("Small Caps", apply_map(name, SMALLCAPS_MAP)),
-        ("Wide", wide_text(name)),
-        ("Squared", square_wrap(name)),
-        ("Elite", dark_wrap(bracket_wrap(sparkle_wrap(name))))
+        ("💎 Bold Elite", apply_map(name, BOLD_MAP)),
+        ("✍️ Italic Pro", apply_map(name, ITALIC_MAP)),
+        ("🖌️ Script Lux", apply_map(name, SCRIPT_MAP)),
+        ("🦇 Gothic Dark", apply_map(name, GOTHIC_MAP)),
+        ("💻 Mono Code", apply_map(name, MONO_MAP)),
+        ("⭕ Circled", apply_map(name, CIRCLED_MAP)),
+        ("🔤 Small Caps", apply_map(name, SMALLCAPS_MAP)),
+        ("📏 Wide Style", wide_text(name)),
+        ("⬜ Squared", square_wrap(name)),
+        ("𓆩 Elite 𓆪", dark_wrap(bracket_wrap(sparkle_wrap(name))))
     ]
 
-# =========================
-# Help metadata
-# =========================
+def init(client_instance):
+    """Register plugin with help system"""
+    commands = [
+        ".namestyle <name> - Generate 10 elite display name styles",
+        ".namestyle (reply) - Style replied message text"
+    ]
+    description = "Generate 10 elite display-name variants for Telegram profiles and bios"
+    add_handler("namestyle", commands, description)
 
-@rishabh_help(
-    name="namestyle",
-    description="Generate 10 elite display-name styles from input text.",
-    usage=".namestyle <name> or reply to a message with .namestyle",
-    examples=[".namestyle Rishabh Anand", "reply to a name with .namestyle"]
-)
-def register_namestyle_help():
-    return {
-        "namestyle": {
-            "commands": [".namestyle <name>"],
-            "description": "Create 10 stylish name variants for Telegram display name or bio use."
-        }
-    }
+async def get_input_text(event):
+    """Get text from command args or replied message"""
+    if event.is_reply:
+        reply = await event.get_reply_message()
+        if reply.raw_text:
+            return reply.raw_text.strip()
+    
+    text = event.text.split(maxsplit=1)
+    if len(text) > 1:
+        return text[1].strip()
+    
+    return None
 
-# =========================
-# Main command
-# =========================
+async def register_commands():
+    """Register all namestyle commands"""
+    
+    @CipherElite.on(events.NewMessage(pattern=r"^\.namestyle(?:\s+(.*))?$"))
+    @rishabh()
+    async def namestyle(event):
+        raw_name = await get_input_text(event)
+        
+        if not raw_name:
+            await event.reply(
+                "❌ **Usage:**\n"
+                "`.namestyle Rishabh Anand`\n"
+                "**OR**\n"
+                "Reply to any message with `.namestyle`"
+            )
+            return
+        
+        if len(raw_name) > 40:
+            await event.reply("❌ **Name too long!** Keep under 40 chars.")
+            return
+        
+        # Generate styles
+        styles = generate_name_styles(raw_name)
+        
+        # Build response
+        msg = f"✨ **<b>NameStyle Elite</b>** ✨\n\n"
+        msg += f"📝 **Input:** `{raw_name}`\n\n"
+        
+        for idx, (label, styled) in enumerate(styles, 1):
+            msg += f"{idx}. **{label}**\n"
+            msg += f"`{styled}`\n\n"
+        
+        msg += "💡 **Tip:** Long press to copy any style!"
+        
+        await event.reply(msg)
 
-async def namestyle_handler(event):
-    reply = await event.get_reply_message()
-    args = event.pattern_match.group(1).strip() if event.pattern_match else ""
-
-    if args:
-        raw_name = args
-    elif reply and reply.raw_text:
-        raw_name = reply.raw_text.strip()
-    else:
-        await event.edit(
-            "<b>❌ Give me a name first.</b>\n\n"
-            "<b>Usage:</b> <code>.namestyle Rishabh Anand</code>\n"
-            "<b>Or:</b> reply to any message with <code>.namestyle</code>"
-        )
-        return
-
-    if len(raw_name) > 40:
-        await event.edit("<b>❌ Name is too long.</b>\nKeep it under <code>40</code> characters.")
-        return
-
-    styles = generate_name_styles(raw_name)
-
-    text = f"<b>✨ NameStyle Generator</b>\n"
-    text += f"<b>Input:</b> <code>{raw_name}</code>\n\n"
-
-    for idx, (label, styled) in enumerate(styles, start=1):
-        text += f"<b>{idx}. {label}</b>\n<code>{styled}</code>\n\n"
-
-    text += "<b>Tip:</b> Tap and hold to copy any style."
-
-    await event.edit(text, parse_mode="html")
-
-# =========================
-# Init / registration
-# =========================
-
-def init(client):
-    client.add_event_handler(
-        namestyle_handler,
-        events.NewMessage(outgoing=True, pattern=r"^\.namestyle(?:\s+(.*))?$")
-    )
+# Auto-register on import
+register_commands()
