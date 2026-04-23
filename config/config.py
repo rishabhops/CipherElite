@@ -20,7 +20,8 @@ class Config:
     DEFAULT_ALIVE_PIC = ALIVE_PIC
     DEFAULT_PMPERMIT_PIC = PMPERMIT_PIC
     # Version Info
-    VERSION = "1.0.0"
-    BRANCH = "elite"
+    VERSION = "2"
+    BRANCH = BRANCH
     UPSTREAM_REPO = "https://github.com/rishabhops/CipherElite"
+
 

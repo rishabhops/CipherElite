@@ -1,3 +1,13 @@
+# =============================================================================
+#  CipherElite Userbot Plugin - Personal Assistant PM Manager
+#
+#  Plugin Name:    pmpermit
+#  Author:         CipherElite Dev (@rishabhops)
+#  Repository:     https://github.com/rishabhops/CipherElite
+#
+#  LICENSE:        MIT
+# =============================================================================
+
 import os
 import json
 import random
@@ -6,6 +16,7 @@ import logging
 from datetime import datetime
 from pathlib import Path
 
+import google.generativeai as genai
 from telethon import events, functions
 from utils.utils import CipherElite
 from utils.decorators import rishabh
@@ -14,42 +25,91 @@ from config.config import Config
 
 # Default PM permit picture
 DEFAULT_PMPERMIT_PIC = Config.DEFAULT_PMPERMIT_PIC
+LOG_CHAT_ID = Config.LOG_CHAT_ID
 
 # DB setup
 PROJECT_ROOT = Path(__file__).parent.parent
-DB_DIR       = PROJECT_ROOT / "DB"
+DB_DIR = PROJECT_ROOT / "DB"
 DB_DIR.mkdir(exist_ok=True)
-DB_FILE      = DB_DIR / "assistant_db.json"
+DB_FILE = DB_DIR / "assistant_db.json"
 
 
 class PersonalAssistant:
-    def __init__(self):
+    def __init__(self, ai_config):
+        self.ai_config = ai_config  # Reference to centralized config
         self.data = {
             "config": {
-                "alive_name": os.environ.get("ALIVE_NAME", "Master"),
+                "alive_name": os.environ.get("ALIVE_NAME", "Rishabh"),
                 "assistant_name": os.environ.get("ASSISTANT_NAME", "CipherAI"),
                 "pmpermit_pic": os.environ.get("PMPERMIT_PIC", DEFAULT_PMPERMIT_PIC),
                 "use_pic": True,
                 "max_warnings": int(os.environ.get("MAX_WARNINGS", 5)),
+                "pmpermit_enabled": True,  # NEW: global switch (default ON)
             },
             "users": {},
             "warnings": {},
             "approved_users": [],
             "user_states": {},
         }
+        self.ai_sessions = {}
+        self.model = None
+
+        # 1. Load and safely validate data from JSON
         self._load()
+
+        # 2. Attempt to boot up the AI
+        self._init_ai()
+
+        # Ensure default pic exists
         cfg = self.data["config"]
         if not cfg.get("pmpermit_pic"):
             cfg["pmpermit_pic"] = DEFAULT_PMPERMIT_PIC
             self._save()
 
+    def _init_ai(self):
+        """Initializes the Gemini model using centralized config."""
+        api_key = self.ai_config.get_api_key()  # Get from centralized config
+        if not api_key:
+            self.model = None
+            return False
+
+        try:
+            genai.configure(api_key=api_key)
+            system_instruction = (
+                f"You are an AI gatekeeper named {self.data['config']['assistant_name']} "
+                f"managing the Telegram inbox for {self.data['config']['alive_name']}. "
+                "Ask the user politely why they are reaching out. "
+                "If they provide a valid reason, tell them you will notify the owner. "
+                "Keep responses strictly under 40 words."
+            )
+            self.model = genai.GenerativeModel(
+                "gemini-2.5-flash",
+                system_instruction=system_instruction,
+            )
+            return True
+        except Exception as e:
+            logging.error(f"Failed to initialize AI Gatekeeper: {e}")
+            self.model = None
+            return False
+
     def _load(self):
+        """Loads DB and strictly enforces data types to prevent crashes."""
         try:
             if DB_FILE.exists():
                 with DB_FILE.open("r", encoding="utf-8") as f:
                     on_disk = json.load(f)
                 for k, v in on_disk.items():
-                    self.data[k] = v
+                    # Force these to ALWAYS be dictionaries
+                    if k in ["users", "warnings", "user_states"]:
+                        self.data[k] = v if isinstance(v, dict) else {}
+                    # Force approved users to ALWAYS be a list
+                    elif k == "approved_users":
+                        self.data[k] = v if isinstance(v, list) else []
+                    # Safely update config without overwriting
+                    elif k == "config" and isinstance(v, dict):
+                        self.data["config"].update(v)
+                    else:
+                        self.data[k] = v
         except Exception as e:
             logging.error(f"Assistant load error: {e}")
 
@@ -60,12 +120,27 @@ class PersonalAssistant:
         except Exception as e:
             logging.error(f"Assistant save error: {e}")
 
+    async def send_notification(self, event, user_info, message_text):
+        """Send notification to log group about new PM."""
+        try:
+            notification_text = (
+                f"📨 **New PM from Unapproved User**\n\n"
+                f"👤 **Name:** {user_info.get('name', 'Unknown')}\n"
+                f"🔗 **Username:** @{user_info.get('username', 'N/A')}\n"
+                f"🆔 **User ID:** `{user_info.get('id', 'N/A')}`\n"
+                f"⏰ **Time:** `{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}`\n\n"
+                f"💬 **Message:**\n```\n{message_text[:200]}\n```\n\n"
+                f"📌 **Quick Actions:**\n"
+                f"→ Reply `.a` to approve\n"
+                f"→ Reply `.da` to disapprove\n"
+                f"→ Reply `.block` to block"
+            )
+            await event.client.send_message(LOG_CHAT_ID, notification_text)
+        except Exception as e:
+            logging.error(f"Failed to send notification: {e}")
+
     async def send_message(self, event, mtype, **kwargs):
-        """
-        Send a permit‐flow message. This safely resolves the entity
-        for typing actions and sending files to avoid 'could not find entity'.
-        """
-        # Prepare target entity (User or chat)
+        """Fallback non-AI messaging system."""
         try:
             target = await event.get_sender()
         except Exception:
@@ -86,15 +161,9 @@ class PersonalAssistant:
                 "⚠️ Warning {warn_count}/{max_warnings}\n"
                 "Please wait for approval before messaging again."
             ],
-            "approved": [
-                "✅ You are now approved! Feel free to continue."
-            ],
-            "disapproved": [
-                "❌ Your approval has been revoked."
-            ],
-            "blocked": [
-                "🚫 You have been blocked due to repeated messages."
-            ],
+            "approved": ["✅ You are now approved! Feel free to continue."],
+            "disapproved": ["❌ Your approval has been revoked."],
+            "blocked": ["🚫 You have been blocked due to repeated messages."],
         }
 
         lst = texts.get(mtype, [])
@@ -103,61 +172,61 @@ class PersonalAssistant:
 
         msg = random.choice(lst).format(**kwargs)
 
-        # Show typing indicator (if possible)
         try:
-            async with event.client.action(target, 'typing'):
+            async with event.client.action(target, "typing"):
                 await asyncio.sleep(1.0)
         except Exception:
             pass
 
-        # Send with picture on introduction if enabled
         if mtype == "introduction" and cfg.get("use_pic"):
             try:
-                await event.client.send_file(
-                    target,
-                    cfg["pmpermit_pic"],
-                    caption=msg
-                )
+                await event.client.send_file(target, cfg["pmpermit_pic"], caption=msg)
             except Exception:
                 await event.reply(msg)
         else:
             await event.reply(msg)
 
     async def handle_message(self, event):
-        # only private chats
         if not event.is_private:
+            return
+
+        # NEW: bypass everything if pmpermit is disabled
+        if not self.data["config"].get("pmpermit_enabled", True):
             return
 
         sender = await event.get_sender()
         uid = str(sender.id)
 
-        # ignore bots and already-approved
-        if sender.bot or uid in self.data["approved_users"]:
+        # Ignore bots, yourself, and approved users
+        if sender.bot or sender.is_self or uid in self.data["approved_users"]:
             return
 
         text = (event.message.text or "").lower()
 
-        # 1) First-time user → introduction
+        # 1) First-time user setup
         if uid not in self.data["users"]:
             self.data["users"][uid] = {
                 "name": sender.first_name,
                 "username": sender.username,
-                "first_seen": datetime.now().isoformat()
+                "first_seen": datetime.now().isoformat(),
+                "id": uid,
             }
             self.data["user_states"][uid] = "introduced"
-            self.data["warnings"][uid] = 0
-            await self.send_message(event, "introduction")
-            self._save()
-            return
 
-        # 2) Acknowledgment
-        if self.data["user_states"].get(uid) == "introduced" and text in ("ok", "okay"):
-            self.data["user_states"][uid] = "acknowledged"
-            await self.send_message(event, "acknowledgment")
-            self._save()
-            return
+            # Ensure the warnings dict has this user initialized
+            if uid not in self.data["warnings"]:
+                self.data["warnings"][uid] = 0
 
-        # 3) Warnings / blocking
+            self._save()
+
+            # If no AI, send the standard intro immediately
+            if not self.model:
+                await self.send_message(event, "introduction")
+                # Send notification for first message
+                await self.send_notification(event, self.data["users"][uid], text or "[No text]")
+                return
+
+        # 2) Warnings / Blocking mechanism
         self.data["warnings"].setdefault(uid, 0)
         self.data["warnings"][uid] += 1
 
@@ -167,24 +236,62 @@ class PersonalAssistant:
             self._save()
             return
 
-        await self.send_message(
-            event,
-            "warning",
-            warn_count=self.data["warnings"][uid],
-            max_warnings=self.data["config"]["max_warnings"]
-        )
-        self._save()
+        # 3) Route based on AI availability
+        if self.model:
+            # --- AI GATEKEEPER FLOW ---
+            if uid not in self.ai_sessions:
+                self.ai_sessions[uid] = self.model.start_chat(history=[])
+            try:
+                async with event.client.action(event.chat_id, "typing"):
+                    response = await self.ai_sessions[uid].send_message_async(
+                        event.message.text
+                    )
+                await event.reply(response.text)
+                
+                # Send notification to log group
+                await self.send_notification(event, self.data["users"][uid], event.message.text or "[No text]")
+            except Exception as e:
+                logging.error(f"AI Error: {e}")
+                await event.reply("⏳ Processing... please wait for manual approval.")
+                # Still send notification on error
+                await self.send_notification(event, self.data["users"][uid], event.message.text or "[No text]")
+        else:
+            # --- STANDARD NON-AI FLOW ---
+            if self.data["user_states"].get(uid) == "introduced" and text in ("ok", "okay"):
+                self.data["user_states"][uid] = "acknowledged"
+                await self.send_message(event, "acknowledgment")
+                # Send notification when user provides reason
+                await self.send_notification(event, self.data["users"][uid], event.message.text or "[No text]")
+                self._save()
+                return
+
+            await self.send_message(
+                event,
+                "warning",
+                warn_count=self.data["warnings"][uid],
+                max_warnings=self.data["config"]["max_warnings"],
+            )
+            # Send notification for every message
+            await self.send_notification(event, self.data["users"][uid], event.message.text or "[No text]")
+            self._save()
 
 
 def init(client):
-    assistant = PersonalAssistant()
+    try:
+        from plugins.ai_setup import ai_config  # Import centralized config
+    except ImportError:
+        print("❌ ERROR: ai_setup.py not found! Please create it first.")
+        return False
+
+    assistant = PersonalAssistant(ai_config)  # Pass config to assistant
     commands = [
         ".a / .approve        — Approve a user",
         ".da / .disapprove    — Revoke approval",
         ".block               — Block a user",
         ".listapproved        — List approved users",
         ".setpermitpic        — Set the permit picture",
-        ".togglepermitpic     — Enable/disable the picture"
+        ".togglepermitpic     — Enable/disable the picture",
+        ".pmpermit on|off     — Enable/disable PM permit globally",  # NEW
     ]
     add_handler("pmpermit", commands, "Personal Assistant PM Manager")
 
@@ -220,9 +327,7 @@ def init(client):
                 return await event.reply("↪️ Reply to the user to disapprove.")
             uid = str(reply.sender_id)
 
-        assistant.data["approved_users"] = [
-            u for u in assistant.data["approved_users"] if u != uid
-        ]
+        assistant.data["approved_users"] = [u for u in assistant.data["approved_users"] if u != uid]
         assistant.data["warnings"][uid] = 0
         assistant._save()
         await assistant.send_message(event, "disapproved")
@@ -243,7 +348,6 @@ def init(client):
     @CipherElite.on(events.NewMessage(outgoing=True, pattern=r"\.setpermitpic(?:\s+.*)?$"))
     @rishabh()
     async def _setpic(event):
-        # from reply
         if event.reply_to_msg_id:
             msg = await event.get_reply_message()
             if msg.media:
@@ -253,7 +357,6 @@ def init(client):
                 assistant._save()
                 return await event.reply("✅ Permit picture set from reply")
             return await event.reply("❌ Reply to an image.")
-        # from URL
         parts = event.text.split(None, 1)
         if len(parts) > 1:
             assistant.data["config"]["pmpermit_pic"] = parts[1].strip()
@@ -271,6 +374,22 @@ def init(client):
         state = "enabled" if cfg["use_pic"] else "disabled"
         await event.reply(f"✅ Permit picture {state}")
 
+    # NEW: global pmpermit toggle
+    @CipherElite.on(events.NewMessage(outgoing=True, pattern=r"\.pmpermit(?:$|\s)(on|off)?"))
+    @rishabh()
+    async def _toggle_pmpermit(event):
+        arg = (event.pattern_match.group(1) or "").lower()
+        cfg = assistant.data["config"]
+
+        if arg in ("on", "off"):
+            cfg["pmpermit_enabled"] = arg == "on"
+            assistant._save()
+            state = "enabled ✅" if cfg["pmpermit_enabled"] else "disabled 🚫"
+            return await event.reply(f"PM permit is now {state}")
+
+        state = "ON ✅" if cfg.get("pmpermit_enabled", True) else "OFF 🚫"
+        await event.reply(f"PM permit is currently {state}\nUsage: `.pmpermit on` or `.pmpermit off`")
+
     @CipherElite.on(events.NewMessage(outgoing=True, pattern=r"\.block(?:$|\s)"))
     @rishabh()
     async def _block(event):
@@ -282,13 +401,14 @@ def init(client):
                 return await event.reply("↪️ Reply to the user to block.")
             uid = str(reply.sender_id)
 
-        assistant.data["approved_users"] = [
-            u for u in assistant.data["approved_users"] if u != uid
-        ]
+        assistant.data["approved_users"] = [u for u in assistant.data["approved_users"] if u != uid]
         assistant.data["warnings"].pop(uid, None)
         assistant.data["user_states"].pop(uid, None)
         assistant._save()
         await event.client(functions.contacts.BlockRequest(int(uid)))
         await event.reply(f"🚫 User `{uid}` has been blocked.")
 
+    print(
+        f"✅ PM Permit Plugin initialized (pmpermit_enabled={assistant.data['config'].get('pmpermit_enabled', True)})"
+    )
     return assistant

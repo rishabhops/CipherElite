@@ -35,6 +35,7 @@ def init(client_instance):
 async def register_commands():
 
     @CipherElite.on(events.NewMessage(pattern=r"\.id"))
+    @rishabh()
     async def get_id(event):
         if event.is_reply:
             msg = await event.get_reply_message()
@@ -47,6 +48,7 @@ async def register_commands():
 
 
     @CipherElite.on(events.NewMessage(pattern=r"\.dc"))
+    @rishabh()
     async def dc(event):
         if event.is_reply:
             msg = await event.get_reply_message()

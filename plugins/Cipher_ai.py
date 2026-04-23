@@ -1,285 +1,393 @@
 # =============================================================================
-#  CipherElite Userbot Plugin
+#  CipherElite Userbot Plugin - Cipher AI (Google Gemini)
+#  With Repository Data Access & Real Chat Memory
 #
 #  Plugin Name:    cipher_ai
 #  Author:         CipherElite Dev (@rishabhops)
 #  Repository:     https://github.com/rishabhops/CipherElite
 #
 #  LICENSE:        MIT
-#
-#  IMPORTANT:
-#    • If you copy, fork, or include this plugin in your own bot,
-#      you MUST keep this header intact.
-#    • Give proper credit back to the CipherElite Userbot author:
-#        – GitHub: https://github.com/rishabhops/CipherElite
-#        – Telegram: @thanosceo
-#
-#  Thank you for respecting open-source software!
 # =============================================================================
 
 import asyncio
-import re
-from openai import AsyncOpenAI
-from openai import OpenAIError, AuthenticationError, RateLimitError
+import google.generativeai as genai
+import aiohttp
+import json
 from telethon import events
 from utils.utils import CipherElite
 from utils.decorators import rishabh
 from plugins.bot import add_handler
 from vars import ELITE_BOT_USERNAME
-import os
-
-# Configuration
-NVIDIA_API_KEY = os.getenv("NVIDIA_API_KEY", "")
-NVIDIA_BASE_URL = "https://integrate.api.nvidia.com/v1"
-DEFAULT_MODEL = "mistralai/mistral-nemotron"
-
-# Initialize OpenAI client
-client = AsyncOpenAI(
-    base_url=NVIDIA_BASE_URL,
-    api_key=NVIDIA_API_KEY
-)
 
 # Store conversation history per chat
 conversation_history = {}
 
-# System prompt to define AI identity and behavior
-SYSTEM_PROMPT = {
-    "role": "system",
-    "content": "You are Cipher AI, created by @thanosceo for the CipherElite Userbot. Provide short, natural, and accurate answers. Return only the final result without any thinking process, internal deliberations, or <think> blocks. Avoid verbose explanations, technical model details, or markdown unless requested."
-}
+# System prompt - Custom identity and behavior
+SYSTEM_PROMPT = """You are **Cipher AI**, a specialized AI assistant created for the **CipherElite Userbot**.
+
+**ABOUT YOU (ONLY MENTION IF EXPLICITLY ASKED):**
+• **Name:** Cipher AI
+• **Created by:** Rishabh Anand (@rishabhops)
+• **Owner/Creator's Telegram:** @thanosceo
+• **Project:** CipherElite - Advanced Telegram Userbot
+• **Repository:** https://github.com/rishabhops/CipherElite
+• **Primary Repo Branch:** cooking
+
+**YOUR PURPOSE:**
+You are integrated into the CipherElite Telegram Userbot. Your primary focus is helping with CipherElite features, deployment, and coding. 
+HOWEVER, you are also a general-purpose AI. You MUST answer general everyday questions (like career advice, education, general knowledge, etc.) naturally and helpfully without restricting yourself to technical topics.
+
+**PERSONALITY & BEHAVIOR:**
+1. ONLY introduce yourself or mention your creators if the user EXPLICITLY asks questions like "who are you", "who made you", or "what is your name". Do NOT inject your identity into normal answers.
+2. Answer whatever the user asks directly. Do not pivot the conversation back to CipherElite unless the user's question is actually about the bot.
+3. Be helpful, concise, and professional. Act like a natural conversational partner.
+4. Use **bold formatting** for important keywords.
+5. For simple questions: Keep SHORT (1-2 paragraphs).
+6. For complex questions: Provide COMPLETE detailed answers using bullet points and numbered lists.
+7. Never apologize unnecessarily or add disclaimers about being an AI.
+8. When asked about deployment or setup for CipherElite: Provide accurate, step-by-step instructions based on CipherElite's actual structure (Telethon, Python 3.8+, VPS deployment, SQLite databases).
+"""
+
+async def fetch_repository_data(owner="rishabhops", repo="CipherElite", branch="cooking"):
+    """Fetch repository structure and README from GitHub"""
+    try:
+        async with aiohttp.ClientSession() as session:
+            # Fetch README
+            readme_url = f"https://raw.githubusercontent.com/{owner}/{repo}/{branch}/README.md"
+            async with session.get(readme_url, timeout=aiohttp.ClientTimeout(total=10)) as resp:
+                if resp.status == 200:
+                    readme_content = await resp.text()
+                else:
+                    readme_content = ""
+            
+            # Fetch setup/requirements file
+            setup_urls = [
+                f"https://raw.githubusercontent.com/{owner}/{repo}/{branch}/requirements.txt",
+                f"https://raw.githubusercontent.com/{owner}/{repo}/{branch}/setup.md",
+                f"https://raw.githubusercontent.com/{owner}/{repo}/{branch}/SETUP.md",
+            ]
+            
+            setup_content = ""
+            for url in setup_urls:
+                async with session.get(url, timeout=aiohttp.ClientTimeout(total=10)) as resp:
+                    if resp.status == 200:
+                        setup_content = await resp.text()
+                        break
+            
+            return {
+                "readme": readme_content[:2000] if readme_content else "",  # Limit size
+                "setup": setup_content[:2000] if setup_content else "",
+                "has_data": bool(readme_content or setup_content)
+            }
+    except Exception as e:
+        print(f"⚠️ Failed to fetch repo data: {e}")
+        return {
+            "readme": "",
+            "setup": "",
+            "has_data": False
+        }
+
 
 def init(client):
-    """Initialize the NVIDIA AI plugin"""
+    """Initialize the Cipher AI plugin"""
+    try:
+        from plugins.ai_setup import ai_config  # Import centralized config
+    except ImportError:
+        print("❌ ERROR: ai_setup.py not found! Please create it first.")
+        return False
+    
     commands = [
-        f".ai <question> — Ask Cipher AI a question",
-        f".aiset <key> — Set NVIDIA API key",
-        f".aitest — Test AI connection",
-        f".aiclear — Clear conversation history",
-        f".aistatus — Show AI status"
+        f".ai <question>   — Ask Cipher AI a question",
+        f".aiclear         — Clear conversation history",
+        f".aiinfo          — Show AI info"
     ]
-    description = "Interact with Cipher AI powered by NVIDIA API"
-    add_handler("cipher_ai", commands, description)
-    print("🤖 CIPHER AI Plugin initialized successfully")
-    return True
-
-async def make_nvidia_request(messages, temperature=0.6, top_p=0.7, max_tokens=2048):
-    """Make async request to NVIDIA API with streaming"""
-    try:
-        stream = await client.chat.completions.create(
-            model=DEFAULT_MODEL,
-            messages=messages,
-            temperature=temperature,
-            top_p=top_p,
-            max_tokens=max_tokens,
-            stream=True
-        )
-        
-        # Collect streamed response
-        response = ""
-        async for chunk in stream:
-            if chunk.choices[0].delta.content is not None:
-                response += chunk.choices[0].delta.content
-        
-        # Filter out <think> blocks
-        response = re.sub(r'<think>.*?</think>', '', response, flags=re.DOTALL).strip()
-        return response
-        
-    except AuthenticationError:
-        return "❌ **Authentication Error:** Invalid API key. Use `.aiset <key>` to set a valid key."
-    except RateLimitError:
-        return "⏳ **Rate Limited:** Too many requests. Please wait a moment."
-    except OpenAIError as e:
-        return f"❌ **API Error:** {str(e)[:200]}"
-    except asyncio.TimeoutError:
-        return "⏰ **Timeout Error:** Request took too long. Please try again."
-    except Exception as e:
-        return f"❌ **Unexpected Error:** {str(e)}"
-
-@CipherElite.on(events.NewMessage(pattern=r"\.ai(?:\s+(.*))?"))
-@rishabh()
-async def ai_handler(event):
-    """Handle AI queries with proper error handling"""
-    thinking_msg = None
-    try:
-        if not NVIDIA_API_KEY:
-            await event.reply(f"🔑 **API Key Required!**\n\nUse `{ELITE_BOT_USERNAME} .aiset <your_nvidia_api_key>` to set your NVIDIA API key.\n\n📋 Get your key from: https://build.nvidia.com/")
-            return
-        
-        query = event.pattern_match.group(1)
-        if not query:
-            await event.reply(f"❓ **Usage:** `{ELITE_BOT_USERNAME} .ai <your question>`\n\n**Examples:**\n• `.ai What is AI?`\n• `.ai Write a Python function`\n• `.ai Explain quantum physics`")
-            return
-        
-        if len(query) > 2000:
-            await event.reply("📝 **Query too long!** Please keep your question under 2000 characters.")
-            return
-        
-        thinking_msg = await event.reply("🤔 **Cipher AI is thinking...**")
-        print(f"🤖 Processing AI query: {query[:50]}...")
-        
-        chat_id = event.chat_id
-        if chat_id not in conversation_history:
-            conversation_history[chat_id] = [SYSTEM_PROMPT]
-        
-        conversation_history[chat_id].append({"role": "user", "content": query})
-        
-        if len(conversation_history[chat_id]) > 6:
-            conversation_history[chat_id] = [SYSTEM_PROMPT] + conversation_history[chat_id][-5:]
-        
+    add_handler("cipher_ai", commands, "Cipher AI - Powered by Google Gemini with Repo Access")
+    
+    async def make_ai_request(messages, repo_context=""):
+        """Make request to Google Generative AI using native chat history"""
         try:
-            response = await asyncio.wait_for(
-                make_nvidia_request(conversation_history[chat_id]),
-                timeout=45.0
+            api_key = ai_config.get_api_key()
+            if not api_key:
+                return "❌ **API Key not configured!**\n\nUse `.setai <key>` to set up Google Gemini API.\n\n🔗 Get key: https://aistudio.google.com/"
+            
+            genai.configure(api_key=api_key)
+            
+            # Create enhanced system instruction with repo context
+            enhanced_prompt = SYSTEM_PROMPT
+            if repo_context:
+                enhanced_prompt += f"\n\n**CURRENT REPOSITORY CONTEXT:**\n{repo_context}"
+            
+            model = genai.GenerativeModel(
+                'gemini-2.5-flash',
+                system_instruction=enhanced_prompt
             )
-            print(f"✅ AI response received: {len(response)} characters")
-        except asyncio.TimeoutError:
-            response = "⏰ **Request Timeout:** The AI took too long to respond. Try a shorter question."
-            print("❌ AI request timed out")
+            
+            # Convert messages to Gemini's native history format for better context memory
+            gemini_history = []
+            for msg in messages:
+                # Gemini expects roles to be 'user' or 'model'
+                role = "user" if msg["role"] == "user" else "model"
+                gemini_history.append({"role": role, "parts": [msg["content"]]})
+            
+            # Allow complete responses and pass the properly structured history array
+            response = model.generate_content(
+                gemini_history,
+                generation_config=genai.types.GenerationConfig(
+                    max_output_tokens=2000,
+                    temperature=0.7,
+                    top_p=0.9,
+                )
+            )
+            return response.text
+            
+        except Exception as e:
+            return f"❌ **Error:** {str(e)[:100]}"
+    
+    def estimate_response_type(query):
+        """Estimate if question needs short or detailed answer"""
+        short_keywords = ["what is", "who is", "when", "where", "how many", "define", "meaning", "your name", "who made", "who created"]
+        complex_keywords = ["how to", "deploy", "setup", "install", "tutorial", "guide", "step", "process", "configure", "build", "create", "write code", "cipherelite", "userbot"]
         
-        if response.startswith("❌") or response.startswith("⏳"):
-            await thinking_msg.edit(response)
-            print(f"❌ AI error response: {response[:100]}")
-            return
+        query_lower = query.lower()
         
-        conversation_history[chat_id].append({"role": "assistant", "content": response})
+        # Check for complex/tutorial questions
+        if any(keyword in query_lower for keyword in complex_keywords):
+            return "detailed"
         
-        if len(response) > 3500:
-            parts = [response[i:i+3500] for i in range(0, len(response), 3500)]
-            await thinking_msg.edit(f"🤖 **Cipher AI Response (Part 1/{len(parts)}):**\n\n{parts[0]}")
-            for i, part in enumerate(parts[1:], 2):
-                await event.reply(f"🤖 **Part {i}/{len(parts)}:**\n\n{part}")
-        else:
-            formatted_response = f"🤖 **Cipher AI Response:**\n\n{response}\n\n💭 **Query:** `{query[:100]}{'...' if len(query) > 100 else ''}`"
-            await thinking_msg.edit(formatted_response)
+        # Check if it's a simple question
+        if any(keyword in query_lower for keyword in short_keywords):
+            return "short"
         
-        print(f"✅ AI response sent successfully")
+        return "medium"
+    
+    def format_response(response, response_type):
+        """Format response based on type"""
+        response = response.strip()
         
-    except Exception as e:
-        error_msg = f"❌ **Error:** {str(e)}"
-        print(f"❌ AI Handler Error: {e}")
-        if thinking_msg:
-            try:
-                await thinking_msg.edit(error_msg)
-            except:
-                await event.reply(error_msg)
-        else:
-            await event.reply(error_msg)
-
-@CipherElite.on(events.NewMessage(pattern=r"\.aiset(?:\s+(.*))?"))
-@rishabh()
-async def aiset_handler(event):
-    """Set NVIDIA API key"""
-    try:
-        api_key = event.pattern_match.group(1)
-        if not api_key:
-            await event.reply(f"🔑 **Usage:** `{ELITE_BOT_USERNAME} .aiset <your_nvidia_api_key>`\n\n📋 **Steps:**\n1. Visit https://build.nvidia.com/\n2. Sign up/Login\n3. Generate API key\n4. Use this command to set it")
-            return
-        
-        if len(api_key) < 10:
-            await event.reply("❌ **Invalid API key format.** Please check your key.")
-            return
-        
-        os.environ["NVIDIA_API_KEY"] = api_key
-        global NVIDIA_API_KEY, client
-        NVIDIA_API_KEY = api_key
-        client = AsyncOpenAI(base_url=NVIDIA_BASE_URL, api_key=NVIDIA_API_KEY)
-        
-        success_msg = await event.reply("✅ **API Key set successfully!**\n\n🔒 Your key is now configured.\n🤖 You can now use `.ai <question>` command.")
-        print(f"✅ NVIDIA API key set: {api_key[:10]}...")
-        
-        await asyncio.sleep(5)
-        try:
-            await event.delete()
-            await success_msg.delete()
-        except:
-            pass
-        
-    except Exception as e:
-        await event.reply(f"❌ **Error setting API key:** {str(e)}")
-        print(f"❌ API Key Set Error: {e}")
-
-@CipherElite.on(events.NewMessage(pattern=r"\.aitest"))
-@rishabh()
-async def aitest_handler(event):
-    """Test AI connection"""
-    try:
-        if not NVIDIA_API_KEY:
-            await event.reply(f"❌ **No API key set.** Use `{ELITE_BOT_USERNAME} .aiset <key>` first.")
-            return
-        
-        test_msg = await event.reply("🧪 **Testing Cipher AI connection...**")
-        print("🧪 Testing NVIDIA AI connection...")
-        
-        test_messages = [
-            SYSTEM_PROMPT,
-            {"role": "user", "content": "Say 'Hello, I am Cipher AI!' in exactly those words."}
+        # Remove only truly unnecessary phrases
+        unnecessary_phrases = [
+            "I'm glad you asked. ",
+            "Great question! ",
+            "Thank you for asking. ",
+            "Let me explain: ",
+            "Sure, here's ",
         ]
         
-        response = await asyncio.wait_for(
-            make_nvidia_request(test_messages),
-            timeout=20.0
-        )
+        for phrase in unnecessary_phrases:
+            if response.startswith(phrase):
+                response = response[len(phrase):]
         
-        if response.startswith("❌") or response.startswith("⏳"):
-            await test_msg.edit(f"❌ **Test Failed:**\n\n{response}")
-            print(f"❌ AI test failed: {response}")
-        else:
-            await test_msg.edit(f"✅ **Test Successful!**\n\n🤖 **Cipher AI Response:** {response}\n\n🎉 Your AI is working correctly!")
-            print(f"✅ AI test successful: {response}")
+        response = response.strip()
         
-    except Exception as e:
-        await event.reply(f"❌ **Test Error:** {str(e)}")
-        print(f"❌ AI Test Error: {e}")
-
-@CipherElite.on(events.NewMessage(pattern=r"\.aiclear"))
-@rishabh()
-async def aiclear_handler(event):
-    """Clear conversation history"""
-    try:
+        # For short answers, be strict about length
+        if response_type == "short" and len(response) > 500:
+            sentences = response.split(". ")
+            response = ". ".join(sentences[:3]) + "."
+        
+        # For detailed answers, keep complete
+        elif response_type == "detailed" and len(response) > 3500:
+            response = response + "\n\n💡 *Response may continue in next message if too long*"
+        
+        return response
+    
+    @CipherElite.on(events.NewMessage(pattern=r"\.ai(?:\s+(.*))?"))
+    @rishabh()
+    async def ai_handler(event):
+        """Handle AI queries with repository context"""
+        try:
+            if not ai_config.is_enabled():
+                await event.reply(
+                    "❌ **API Key Not Set**\n\n"
+                    "Use `.setai <your_gemini_api_key>`\n\n"
+                    "🔗 Get key: https://aistudio.google.com/"
+                )
+                return
+            
+            query = event.pattern_match.group(1)
+            if not query:
+                await event.reply(
+                    "❓ **How to use Cipher AI:**\n\n"
+                    "**About Me:**\n"
+                    "`.ai Who are you?`\n"
+                    "`.ai Who made you?`\n\n"
+                    "**CipherElite Help:**\n"
+                    "`.ai How to deploy CipherElite?`\n"
+                    "`.ai What is CipherElite?`\n"
+                    "`.ai CipherElite setup guide`\n\n"
+                    "**General Questions:**\n"
+                    "`.ai What is Python?`"
+                )
+                return
+            
+            if len(query) > 2000:
+                await event.reply("📝 **Query too long!** Max 2000 characters.")
+                return
+            
+            thinking_msg = await event.reply("🤔 **Cipher AI thinking...**")
+            print(f"🤖 Processing AI query: {query[:50]}...")
+            
+            # Estimate response type
+            response_type = estimate_response_type(query)
+            print(f"📊 Detected response type: {response_type}")
+            
+            # Fetch repository data ONLY if question is specifically about CipherElite
+            repo_context = ""
+            cipher_keywords = ["cipherelite", "cipher elite", "userbot setup", "userbot deploy", "this bot's repo"]
+            
+            if any(keyword in query.lower() for keyword in cipher_keywords):
+                await thinking_msg.edit("🤔 **Cipher AI thinking...** (scanning repository...)")
+                print("📚 Fetching CipherElite repository data...")
+                repo_data = await fetch_repository_data()
+                if repo_data["has_data"]:
+                    repo_context = f"README excerpt:\n{repo_data['readme']}\n\nSetup guide:\n{repo_data['setup']}"
+                    print("✅ Repository data fetched successfully")
+                else:
+                    print("⚠️ Could not fetch repository data")
+            
+            chat_id = event.chat_id
+            if chat_id not in conversation_history:
+                conversation_history[chat_id] = []
+            
+            # Add user query to history
+            conversation_history[chat_id].append({"role": "user", "content": query})
+            
+            # Keep history limited to last 20 messages (10 exchanges) for longer memory
+            if len(conversation_history[chat_id]) > 20:
+                conversation_history[chat_id] = conversation_history[chat_id][-20:]
+                # Google Gemini API requires the first message in the history array to be from a 'user'
+                if conversation_history[chat_id][0]["role"] == "assistant":
+                    conversation_history[chat_id] = conversation_history[chat_id][1:]
+            
+            try:
+                response = await asyncio.wait_for(
+                    make_ai_request(conversation_history[chat_id], repo_context),
+                    timeout=40.0
+                )
+            except asyncio.TimeoutError:
+                response = "⏰ **Timeout:** Request took too long. Try again or use `.aiclear` to reset."
+            
+            if response.startswith("❌"):
+                await thinking_msg.edit(response)
+                # If it failed, pop the last user message off so it doesn't break future context
+                conversation_history[chat_id].pop()
+                print(f"❌ AI error: {response}")
+                return
+            
+            # Format response intelligently
+            response = format_response(response, response_type)
+            
+            # Add AI response to history
+            conversation_history[chat_id].append({"role": "assistant", "content": response})
+            
+            # Prepare final formatted message based on response type
+            if response_type == "short":
+                formatted = f"🤖 **Cipher AI:**\n\n{response}"
+            
+            elif response_type == "detailed":
+                formatted = (
+                    f"🤖 **Detailed Response:**\n\n"
+                    f"{response}\n\n"
+                    f"═════════════════════\n"
+                    f"📌 **Q:** `{query[:60]}{'...' if len(query) > 60 else ''}`"
+                )
+            
+            else:  # medium
+                formatted = (
+                    f"🤖 **Cipher AI Response:**\n\n"
+                    f"{response}\n\n"
+                    f"─────────────────\n"
+                    f"💭 Q: `{query[:60]}{'...' if len(query) > 60 else ''}`"
+                )
+            
+            # Handle message splitting for Telegram's 4096 char limit
+            if len(formatted) > 4096:
+                messages = []
+                current_msg = ""
+                
+                # Split by double newline (paragraphs)
+                parts = formatted.split("\n\n")
+                
+                for part in parts:
+                    if len(current_msg) + len(part) + 4 > 4000:
+                        if current_msg:
+                            messages.append(current_msg.strip())
+                        current_msg = part
+                    else:
+                        current_msg += "\n\n" + part if current_msg else part
+                
+                if current_msg.strip():
+                    messages.append(current_msg.strip())
+                
+                # Send first message by editing thinking message
+                if messages:
+                    await thinking_msg.edit(messages[0])
+                    
+                    # Send remaining messages
+                    for msg in messages[1:]:
+                        await asyncio.sleep(0.5)
+                        await event.reply(msg)
+                    
+                    print(f"✅ Response sent in {len(messages)} messages ({response_type} response)")
+            else:
+                await thinking_msg.edit(formatted)
+                print(f"✅ AI response sent ({response_type} response, {len(response)} chars)")
+            
+        except Exception as e:
+            print(f"❌ AI Handler Error: {e}")
+            try:
+                await event.reply(f"❌ **Error:** {str(e)[:100]}")
+            except:
+                pass
+    
+    @CipherElite.on(events.NewMessage(pattern=r"\.aiclear"))
+    @rishabh()
+    async def aiclear_handler(event):
+        """Clear conversation history"""
         chat_id = event.chat_id
         if chat_id in conversation_history:
-            messages_count = len(conversation_history[chat_id])
+            msg_count = len(conversation_history[chat_id])
             del conversation_history[chat_id]
-            await event.reply(f"🗑️ **History cleared!**\n\n📊 Removed `{messages_count}` messages from this chat.")
-            print(f"🗑️ Cleared {messages_count} messages from chat {chat_id}")
+            await event.reply(f"🗑️ **Cleared!** {msg_count} messages removed. My memory is now fresh.")
         else:
-            await event.reply("📭 **No history found** for this chat.")
-            
-    except Exception as e:
-        await event.reply(f"❌ **Error:** {str(e)}")
-        print(f"❌ Clear History Error: {e}")
-
-@CipherElite.on(events.NewMessage(pattern=r"\.aistatus"))
-@rishabh()
-async def aistatus_handler(event):
-    """Show AI status"""
-    try:
-        api_status = "✅ Set" if NVIDIA_API_KEY else "❌ Not Set"
-        history_count = len(conversation_history)
-        total_messages = sum(len(history) for history in conversation_history.values())
+            await event.reply("📭 **No history** in this chat.")
+    
+    @CipherElite.on(events.NewMessage(pattern=r"\.aiinfo"))
+    @rishabh()
+    async def aiinfo_handler(event):
+        """Show AI info"""
+        is_enabled = ai_config.is_enabled()
+        status_emoji = "✅" if is_enabled else "❌"
         
-        status_msg = f"""📊 **Cipher AI Status:**
+        info = f"""🤖 **Cipher AI - About Me**
 
-🔑 **API Key:** `{api_status}`
-🌐 **Endpoint:** `{NVIDIA_BASE_URL}`
-🤖 **Model:** `{DEFAULT_MODEL}`
+**Name:** Cipher AI
+**Creator:** Rishabh Anand (@rishabhops)
+**Owner:** @thanosceo
+**Project:** CipherElite Userbot
 
-💾 **Conversation Data:**
-• **Active Chats:** `{history_count}`
-• **Total Messages:** `{total_messages}`
+{status_emoji} **Status:** {'Active' if is_enabled else 'Inactive'}
+🔧 **Model:** Gemini 2.5 Flash
+🌐 **Provider:** Google AI
+💬 **Active Chats:** {len(conversation_history)}
 
-⚙️ **Commands:**
-• `{ELITE_BOT_USERNAME} .ai <question>` - Ask Cipher AI
-• `{ELITE_BOT_USERNAME} .aitest` - Test connection
-• `{ELITE_BOT_USERNAME} .aiclear` - Clear history
-• `{ELITE_BOT_USERNAME} .aiset <key>` - Set API key
+📝 **Features:**
+• Real Chat Memory Integration
+• Custom Identity
+• Repository Data Access
+• CipherElite-aware responses
+• Intelligent response length
 
-🔗 **Get API Key:** https://build.nvidia.com/"""
+📚 **Commands:**
+• `.ai <question>` - Ask me anything
+• `.aiclear` - Clear memory in this chat
+• `.aiinfo` - About me
+
+🔗 **Links:**
+• GitHub: https://github.com/rishabhops/CipherElite
+• Creator: @rishabhops
+• Owner: @thanosceo"""
         
-        await event.reply(status_msg)
-        
-    except Exception as e:
-        await event.reply(f"❌ **Error:** {str(e)}")
-        print(f"❌ Status Error: {e}")
-
-print("CIPHER AI Plugin loaded successfully")
+        await event.reply(info)
+    
+    print("✅ Cipher AI Plugin initialized (With Real Chat Memory)")
+    return True

@@ -1,3 +1,4 @@
+import asyncio
 from telethon import events
 from config.config import Config
 from utils.decorators import rishabh
@@ -46,32 +47,29 @@ async def register_commands():
             
             # Check if plugin exists
             if plugin_name in CMD_LIST:
-                # Create direct plugin help message
                 plugin_data = CMD_LIST[plugin_name]
                 
-                help_text = f"🎭 <b>Cipher Elite - {plugin_name.title()} Plugin</b>\n"
-                help_text += f"━━━━━━━━━━━━━━━━━━━━━━\n"
-                help_text += f"{plugin_data['description']}\n\n"
-                help_text += f"<b>📋 Available Commands:</b>\n\n"
+                help_text = f"✦ <b>𝐂𝐈𝐏𝐇𝐄𝐑 𝐄𝐋𝐈𝐓𝐄 ✦ {plugin_name.upper()}</b>\n"
+                help_text += f"⟡ ═════════════════ ⟡\n"
+                help_text += f"<i>{plugin_data['description']}</i>\n\n"
+                help_text += f"❖ <b>Available Commands:</b>\n\n"
                 
                 # Add commands with proper HTML formatting
                 for cmd in plugin_data["commands"]:
                     if isinstance(cmd, str) and cmd.strip():
                         if " - " in cmd:
                             cmd_part, desc_part = cmd.split(" - ", 1)
-                            # Escape HTML characters
                             escaped_command = cmd_part.strip().replace('<', '&lt;').replace('>', '&gt;')
                             description = desc_part.strip()
-                            
-                            help_text += f"• <code>{escaped_command}</code>\n"
-                            help_text += f"  <i>{description}</i>\n\n"
+                            help_text += f" ├ <code>{escaped_command}</code>\n"
+                            help_text += f" └ <i>{description}</i>\n\n"
                         else:
                             escaped_cmd = cmd.strip().replace('<', '&lt;').replace('>', '&gt;')
-                            help_text += f"• <code>{escaped_cmd}</code>\n\n"
+                            help_text += f" ├ <code>{escaped_cmd}</code>\n\n"
                 
+                help_text += f"⟡ ═════════════════ ⟡\n"
                 help_text += f"🔄 <b>Quick Help:</b> <code>.help {plugin_name}</code>\n"
                 help_text += f"📚 <b>All Plugins:</b> <code>.help</code>\n"
-                help_text += f"🤖 <b>Powered by Cipher Elite</b>"
                 
                 await event.reply(help_text, parse_mode='html')
                 return
@@ -80,19 +78,18 @@ async def register_commands():
                 # Plugin not found - show available plugins
                 available_plugins = list(CMD_LIST.keys())
                 
-                error_text = f"🎭 <b>Cipher Elite Help System</b>\n\n"
-                error_text += f"❌ <b>Plugin '{plugin_name}' not found!</b>\n\n"
-                error_text += f"📋 <b>Available Plugins:</b>\n"
+                error_text = f"✦ <b>𝐂𝐈𝐏𝐇𝐄𝐑 𝐄𝐋𝐈𝐓𝐄 𝐇𝐄𝐋𝐏</b> ✦\n"
+                error_text += f"⟡ ═════════════════ ⟡\n"
+                error_text += f"⚠️ <b>Plugin '{plugin_name}' not found!</b>\n\n"
+                error_text += f"❖ <b>Available Plugins:</b>\n"
                 
                 # Show plugins in rows of 3
                 for i in range(0, len(available_plugins), 3):
                     row_plugins = available_plugins[i:i+3]
                     plugin_row = " • ".join([f"<code>{p}</code>" for p in row_plugins])
-                    error_text += f"{plugin_row}\n"
+                    error_text += f" {plugin_row}\n"
                 
                 error_text += f"\n💡 <b>Usage:</b> <code>.help &lt;plugin_name&gt;</code>\n"
-                error_text += f"📚 <b>Example:</b> <code>.help spam</code>\n"
-                error_text += f"🔍 <b>All Help:</b> <code>.help</code>"
                 
                 await event.reply(error_text, parse_mode='html')
                 return
@@ -103,61 +100,63 @@ async def register_commands():
                 f"{Config.TG_BOT_USERNAME}",
                 "help"
             )
-            await results[0].click(
+            help_msg = await results[0].click(
                 event.chat_id,
                 reply_to=event.reply_to_msg_id,
                 hide_via=True
             )
             await event.delete()
+            
+            # --- START INITIAL 60 SECOND TIMEOUT ---
+            async def auto_close_initial():
+                await asyncio.sleep(60)
+                try:
+                    # Fetch the message to see if it was touched
+                    msg = await event.client.get_messages(event.chat_id, ids=help_msg.id)
+                    # If edit_date is None, the user hasn't clicked any buttons yet
+                    if msg and msg.edit_date is None:
+                        await msg.edit("<i>⏳ Cipher Elite help session expired.</i>", parse_mode='html', buttons=None)
+                except Exception:
+                    pass
+            
+            asyncio.create_task(auto_close_initial())
+            # ---------------------------------------
+            
         except Exception as e:
             # Fallback if inline query fails
-            await event.reply(f"❌ <b>Inline help unavailable. Use <code>.plugins</code> to see all plugins.</b>\n\n"
-                            f"<b>Error:</b> {str(e)}", parse_mode='html')
+            await event.reply(f"❌ <b>Inline help unavailable.</b>\n\n<b>Error:</b> {str(e)}", parse_mode='html')
 
     @client.on(events.NewMessage(pattern=r"\.plugins"))
     @rishabh()
     async def list_plugins(event):
         try:
             if not CMD_LIST:
-                await event.reply("🎭 <b>Cipher Elite Plugin Manager</b>\n\n"
-                                "❌ <b>No plugins loaded yet!</b>\n"
-                                "💡 <b>Check your plugin directory and restart bot</b>", parse_mode='html')
+                await event.reply("⚠️ <b>No plugins loaded yet!</b>", parse_mode='html')
                 return
             
             total_plugins = len(CMD_LIST)
             total_commands = sum(len(data['commands']) for data in CMD_LIST.values())
             
-            plugins_text = f"🎭 <b>Cipher Elite Loaded Plugins</b>\n"
-            plugins_text += f"━━━━━━━━━━━━━━━━━━━━━━\n"
-            plugins_text += f"📊 <b>Statistics:</b>\n"
-            plugins_text += f"⚡ <b>Total Plugins:</b> {total_plugins}\n"
-            plugins_text += f"📂 <b>Total Commands:</b> {total_commands}\n\n"
-            plugins_text += f"📋 <b>Plugin List:</b>\n\n"
+            plugins_text = f"✦ <b>𝐂𝐈𝐏𝐇𝐄𝐑 𝐄𝐋𝐈𝐓𝐄 𝐏𝐋𝐔𝐆𝐈𝐍𝐒</b> ✦\n"
+            plugins_text += f"⟡ ═════════════════ ⟡\n"
+            plugins_text += f"⚡ <b>Total Plugins:</b> <code>{total_plugins}</code>\n"
+            plugins_text += f"⚙️ <b>Total Commands:</b> <code>{total_commands}</code>\n\n"
             
-            # Sort plugins alphabetically, but put quickhelp first
             sorted_plugins = sorted(CMD_LIST.items(), key=lambda x: (x[0] != 'quickhelp', x))
             
             for plugin_name, plugin_data in sorted_plugins:
                 command_count = len(plugin_data['commands'])
-                
-                # Special formatting for quickhelp
                 if plugin_name == 'quickhelp':
-                    plugins_text += f"⚡ <b>{plugin_name.title()} (Help System)</b>\n"
+                    plugins_text += f" 💠 <b>{plugin_name.title()}</b> <code>[{command_count} cmds]</code>\n"
                 else:
-                    plugins_text += f"🔸 <b>{plugin_name.title()}</b>\n"
-                    
-                plugins_text += f"   📝 {command_count} command{'s' if command_count != 1 else ''}\n"
-                plugins_text += f"   🔍 <code>.help {plugin_name}</code>\n\n"
+                    plugins_text += f" ├ <b>{plugin_name.title()}</b> <code>[{command_count} cmds]</code>\n"
             
-            plugins_text += f"💡 <b>Quick Help:</b> <code>.help &lt;plugin_name&gt;</code>\n"
-            plugins_text += f"🔍 <b>Search:</b> <code>.findplugin &lt;term&gt;</code>\n"
-            plugins_text += f"🤖 <b>Powered by Cipher Elite</b>"
+            plugins_text += f"\n🔍 <b>Search:</b> <code>.findplugin &lt;term&gt;</code>\n"
             
             await event.reply(plugins_text, parse_mode='html')
             
         except Exception as e:
-            await event.reply(f"🎭 <b>Plugin Manager Error</b>\n\n"
-                            f"❌ <b>Error:</b> {str(e)}", parse_mode='html')
+            await event.reply(f"❌ <b>Error:</b> {str(e)}", parse_mode='html')
 
     @client.on(events.NewMessage(pattern=r"\.findplugin\s+(.+)"))
     @rishabh()
@@ -166,58 +165,44 @@ async def register_commands():
             search_term = event.pattern_match.group(1).strip().lower()
             
             if not search_term:
-                await event.reply("🔍 <b>Cipher Elite Plugin Search</b>\n\n"
-                                "❌ <b>Please provide a search term!</b>\n\n"
-                                "💡 <b>Usage:</b> <code>.findplugin spam</code>", parse_mode='html')
+                await event.reply("⚠️ <b>Please provide a search term!</b>\n<code>.findplugin spam</code>", parse_mode='html')
                 return
             
-            # Find matching plugins
-            matches = []
-            for plugin_name in CMD_LIST.keys():
-                if search_term in plugin_name.lower():
-                    matches.append(plugin_name)
+            matches = [p for p in CMD_LIST.keys() if search_term in p.lower()]
             
             if not matches:
-                await event.reply(f"🔍 <b>Cipher Elite Plugin Search</b>\n\n"
-                                f"❌ <b>No plugins found matching '{search_term}'</b>\n\n"
-                                f"💡 <b>Available plugins:</b> <code>.plugins</code>\n"
-                                f"🔍 <b>Try broader search terms</b>", parse_mode='html')
+                await event.reply(f"⚠️ <b>No plugins found matching '{search_term}'</b>", parse_mode='html')
                 return
             
-            result_text = f"🔍 <b>Search Results for '{search_term}'</b>\n\n"
+            result_text = f"✦ <b>𝐒𝐄𝐀𝐑𝐂𝐇 𝐑𝐄𝐒𝐔𝐋𝐓𝐒: '{search_term}'</b> ✦\n"
+            result_text += f"⟡ ═════════════════ ⟡\n\n"
             
             for plugin_name in sorted(matches):
                 command_count = len(CMD_LIST[plugin_name]['commands'])
-                plugin_desc = CMD_LIST[plugin_name].get('description', 'No description available')
+                plugin_desc = CMD_LIST[plugin_name].get('description', 'No description')
                 
-                result_text += f"🔸 <b>{plugin_name.title()}</b>\n"
-                result_text += f"   📝 {command_count} command{'s' if command_count != 1 else ''}\n"
-                result_text += f"   📄 <i>{plugin_desc[:50]}{'...' if len(plugin_desc) > 50 else ''}</i>\n"
-                result_text += f"   🔍 <code>.help {plugin_name}</code>\n\n"
-            
-            result_text += f"📊 <b>Found {len(matches)} matching plugin{'s' if len(matches) != 1 else ''}</b>\n"
-            result_text += f"🤖 <b>Powered by Cipher Elite</b>"
+                result_text += f"❖ <b>{plugin_name.title()}</b>\n"
+                result_text += f" ├ <b>Commands:</b> {command_count}\n"
+                result_text += f" ├ <b>Info:</b> <i>{plugin_desc[:40]}...</i>\n"
+                result_text += f" └ <b>Help:</b> <code>.help {plugin_name}</code>\n\n"
             
             await event.reply(result_text, parse_mode='html')
             
         except Exception as e:
-            await event.reply(f"🔍 <b>Search Error</b>\n\n"
-                            f"❌ <b>Error:</b> {str(e)}", parse_mode='html')
+            await event.reply(f"❌ <b>Error:</b> {str(e)}", parse_mode='html')
 
     @client.on(events.NewMessage(pattern=r"\.helpstats"))
     @rishabh()
     async def help_stats(event):
         try:
             if not CMD_LIST:
-                await event.reply("📊 <b>No plugin data available</b>", parse_mode='html')
+                await event.reply("⚠️ <b>No plugin data available</b>", parse_mode='html')
                 return
             
-            # Exclude quickhelp from stats calculations since it's a help system plugin
             real_plugins = {k: v for k, v in CMD_LIST.items() if k != 'quickhelp'}
             total_plugins = len(real_plugins)
             total_commands = sum(len(data['commands']) for data in real_plugins.values())
             
-            # Find plugin with most commands
             max_commands = 0
             max_plugin = ""
             for plugin_name, plugin_data in real_plugins.items():
@@ -226,81 +211,56 @@ async def register_commands():
                     max_commands = cmd_count
                     max_plugin = plugin_name
             
-            # Calculate average commands per plugin
             avg_commands = total_commands / total_plugins if total_plugins > 0 else 0
             
-            stats_text = f"📊 <b>Cipher Elite Help Statistics</b>\n"
-            stats_text += f"━━━━━━━━━━━━━━━━━━━━━━\n"
-            stats_text += f"⚡ <b>Total Plugins:</b> {total_plugins}\n"
-            stats_text += f"📂 <b>Total Commands:</b> {total_commands}\n"
-            stats_text += f"📈 <b>Average Commands/Plugin:</b> {avg_commands:.1f}\n"
+            stats_text = f"✦ <b>𝐂𝐈𝐏𝐇𝐄𝐑 𝐄𝐋𝐈𝐓𝐄 𝐒𝐓𝐀𝐓𝐒</b> ✦\n"
+            stats_text += f"⟡ ═════════════════ ⟡\n"
+            stats_text += f"⚡ <b>Total Plugins:</b> <code>{total_plugins}</code>\n"
+            stats_text += f"⚙️ <b>Total Commands:</b> <code>{total_commands}</code>\n"
+            stats_text += f"📈 <b>Avg Commands/Plugin:</b> <code>{avg_commands:.1f}</code>\n"
             
             if max_plugin:
-                stats_text += f"🏆 <b>Most Commands:</b> {max_plugin.title()} ({max_commands})\n\n"
+                stats_text += f"🏆 <b>Heaviest Plugin:</b> {max_plugin.title()} ({max_commands})\n\n"
             
-            stats_text += f"🎯 <b>Plugin Categories:</b>\n"
-            
-            # Categorize plugins by command count
             light_plugins = [p for p, d in real_plugins.items() if len(d['commands']) <= 3]
             medium_plugins = [p for p, d in real_plugins.items() if 4 <= len(d['commands']) <= 7]
             heavy_plugins = [p for p, d in real_plugins.items() if len(d['commands']) >= 8]
             
-            stats_text += f"🟢 <b>Light (≤3 cmds):</b> {len(light_plugins)} plugins\n"
-            stats_text += f"🟡 <b>Medium (4-7 cmds):</b> {len(medium_plugins)} plugins\n"
-            stats_text += f"🔴 <b>Heavy (≥8 cmds):</b> {len(heavy_plugins)} plugins\n\n"
-            
-            stats_text += f"🔧 <b>Help System Commands:</b>\n"
-            stats_text += f"• <code>.help</code> - Interactive help menu\n"
-            stats_text += f"• <code>.help &lt;plugin&gt;</code> - Direct plugin help\n"
-            stats_text += f"• <code>.plugins</code> - List all plugins\n"
-            stats_text += f"• <code>.findplugin &lt;term&gt;</code> - Search plugins\n"
-            stats_text += f"• <code>.helpstats</code> - This statistics view\n"
-            stats_text += f"• <code>.quickhelp</code> - Quick help guide\n\n"
-            stats_text += f"🤖 <b>Powered by Cipher Elite</b>"
+            stats_text += f"❖ <b>Categories:</b>\n"
+            stats_text += f" ├ 🟢 Light (≤3 cmds): {len(light_plugins)}\n"
+            stats_text += f" ├ 🟡 Medium (4-7 cmds): {len(medium_plugins)}\n"
+            stats_text += f" └ 🔴 Heavy (≥8 cmds): {len(heavy_plugins)}\n"
             
             await event.reply(stats_text, parse_mode='html')
             
         except Exception as e:
-            await event.reply(f"📊 <b>Stats Error:</b> {str(e)}", parse_mode='html')
+            await event.reply(f"❌ <b>Error:</b> {str(e)}", parse_mode='html')
 
     @client.on(events.NewMessage(pattern=r"\.quickhelp"))
     @rishabh()
     async def quick_help_guide(event):
         try:
-            guide_text = f"⚡ <b>Cipher Elite Quick Help Guide</b>\n"
-            guide_text += f"━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            guide_text = f"✦ <b>𝐐𝐔𝐈𝐂𝐊 𝐇𝐄𝐋𝐏 𝐆𝐔𝐈𝐃𝐄</b> ✦\n"
+            guide_text += f"⟡ ═════════════════ ⟡\n\n"
             
-            guide_text += f"🎯 <b>Basic Help Commands:</b>\n"
-            guide_text += f"• <code>.help</code> - Full interactive help menu\n"
-            guide_text += f"• <code>.help spam</code> - Direct help for spam plugin\n"
-            guide_text += f"• <code>.help broadcast</code> - Direct help for broadcast plugin\n\n"
+            guide_text += f"🎯 <b>Basic Commands:</b>\n"
+            guide_text += f" ├ <code>.help</code> - Interactive menu\n"
+            guide_text += f" └ <code>.help spam</code> - Direct plugin help\n\n"
             
-            guide_text += f"🔍 <b>Discovery Commands:</b>\n"
-            guide_text += f"• <code>.plugins</code> - List all loaded plugins\n"
-            guide_text += f"• <code>.findplugin tool</code> - Find plugins containing 'tool'\n"
-            guide_text += f"• <code>.helpstats</code> - Detailed help system statistics\n\n"
+            guide_text += f"🔍 <b>Discovery:</b>\n"
+            guide_text += f" ├ <code>.plugins</code> - List all\n"
+            guide_text += f" ├ <code>.findplugin tool</code> - Search\n"
+            guide_text += f" └ <code>.helpstats</code> - System stats\n\n"
             
-            guide_text += f"💡 <b>Pro Tips:</b>\n"
-            guide_text += f"• Use <code>.help &lt;plugin&gt;</code> for instant access to plugin help\n"
-            guide_text += f"• Search partial names: <code>.findplugin spa</code> finds spam\n"
-            guide_text += f"• All help commands work in any chat\n"
-            guide_text += f"• Commands are case-insensitive\n\n"
-            
-            # Show available plugins excluding quickhelp itself
             available_plugins = [p for p in CMD_LIST.keys() if p != 'quickhelp']
             if available_plugins:
                 import random
                 sample_plugins = random.sample(available_plugins, min(3, len(available_plugins)))
                 guide_text += f"🎲 <b>Try These:</b>\n"
                 for plugin in sample_plugins:
-                    guide_text += f"• <code>.help {plugin}</code>\n"
-                guide_text += "\n"
-            
-            guide_text += f"📋 <b>Available in Help Menu:</b>\n"
-            guide_text += f"Click the <b>Quickhelp</b> button in <code>.help</code> menu\n\n"
-            guide_text += f"🤖 <b>Powered by Cipher Elite</b>"
+                    guide_text += f" ├ <code>.help {plugin}</code>\n"
             
             await event.reply(guide_text, parse_mode='html')
             
         except Exception as e:
-            await event.reply(f"⚡ <b>Quick Help Error:</b> {str(e)}", parse_mode='html')
+            await event.reply(f"❌ <b>Error:</b> {str(e)}", parse_mode='html')
