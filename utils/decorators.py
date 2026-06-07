@@ -1,4 +1,5 @@
 from functools import wraps
+from telethon import events  # Required to check the event type
 from telethon.tl.functions.channels import GetParticipantRequest
 from telethon.tl.types import ChannelParticipantAdmin, ChannelParticipantCreator
 from telethon.errors import UserNotParticipantError, ChatAdminRequiredError
@@ -108,13 +109,22 @@ def rishabh_help(func=None):
         async def wrapper(event):
             
             if not await is_owner_or_sudo(event):
-                await event.answer(
+                error_msg = (
                     "🎭 **Cipher Elite Access Restricted!**\n\n"
                     "🔒 **Deploy your own Cipher Elite Bot:**\n"
-                    "github.com/rishabhops/CipherElite\n\n"
-                    "⚡ **Unauthorized access denied**", 
-                    alert=True
+                    "https://github.com/rishabhops/CipherElite\n\n"
+                    "⚡ **Unauthorized access denied**"
                 )
+                
+                # Safely handle the response based on the incoming event type
+                if isinstance(event, events.CallbackQuery.Event):
+                    await event.answer(error_msg, alert=True)
+                elif isinstance(event, events.InlineQuery.Event):
+                    # Inline queries require a list of results. Passing an empty list prevents the timeout crash.
+                    await event.answer([]) 
+                else:
+                    # Fallback for standard messages
+                    await event.reply(error_msg)
                 return
                 
             return await f(event)
