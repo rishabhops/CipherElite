@@ -17,6 +17,7 @@
     <a href="https://github.com/rishabhops/CipherElite/network/members"><img src="https://img.shields.io/github/forks/rishabhops/CipherElite?label=Forks&style=for-the-badge&logo=github&color=F10070" alt="GitHub Forks"></a>
     <a href="https://github.com/rishabhops/CipherElite/issues"><img src="https://img.shields.io/github/issues/rishabhops/CipherElite?label=Issues&style=for-the-badge&logo=github&color=F10070" alt="GitHub Issues"></a>
     <a href="https://github.com/rishabhops/CipherElite/blob/elite/LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue?style=for-the-badge&logo=github" alt="License" /></a>
+    <a href="https://cipherelite.in"><img src="https://img.shields.io/badge/📖_Docs-cipherelite.in-F10070?style=for-the-badge" alt="Documentation"></a>
 </p>
 
 <p align="center">
@@ -29,7 +30,9 @@
 - [About](#-about)
 - [Why Cipher Elite?](#-features)
 - [Deployment](#-deployment)
-- [Configuration](#-configuration-vars)
+  - [Method 1: Telegram Deployer (Free)](#-method-1-telegram-deployer-recommended)
+  - [Method 2: VPS / Terminal](#-method-2-vps--terminal-manual)
+- [Configuration](#️-configuration-vars)
 - [Support & Community](#-support--updates)
 - [Credits](#-credits)
 
@@ -62,10 +65,17 @@ Built on **Telethon** by **Rishabh Anand**, it solves the biggest problems in Te
 | **🎭 Native Fun Plugins** | Custom-written Games, Animations, and 'Magic' commands with **Zero Lag**. |
 | **🔄 Safe Updates** | Update your bot without losing your `vars` or configuration. |
 | **📊 Analytics** | Built-in performance monitoring and ping checks. |
+| **🔌 60+ Official Plugins** | 60+ official plugins by Rishabh Anand + growing community plugin library. |
 
 ---
 
 ## 🚀 DEPLOYMENT
+
+> 📚 **For detailed step-by-step guides, screenshots & video tutorials, visit the full documentation:**
+>
+> **👉 [cipherelite.in/docs](https://cipherelite.in/docs)**
+
+---
 
 ### 🎥 Watch: How to Deploy in 60 Seconds (Free)
 
@@ -79,31 +89,40 @@ Built on **Telethon** by **Rishabh Anand**, it solves the biggest problems in Te
 
 <br>
 
+---
+
 ### 📲 Method 1: Telegram Deployer (Recommended)
 **No coding required. No Credit Card.**
 
+> 📖 **Full Detailed Guide → [cipherelite.in/docs/telegram-deploy](https://cipherelite.in/docs/telegram-deploy)**
+
+**Quick Steps:**
+
 1.  **Fork this Repository:**
-    * Click the `Fork` button (top right).
-    * *Critical:* You must use your forked link.
+    * Click the `Fork` button (top right on GitHub).
+    * *Critical:* You must use **your own forked repo link**, not the original.
 
 2.  **Get Your Session:**
-    * Start [@elite_session_maker_bot](https://t.me/elite_session_maker_bot).
+    * Start [@elite_session_maker_bot](https://t.me/elite_session_maker_bot) on Telegram.
     * Follow steps to generate your `ELITE_SESSION`.
 
 3.  **Deploy:**
     * Go to **[@elitedeployerbot](https://t.me/elitedeployerbot)**.
     * Send the link to **your forked repository**.
     * Enter variables when prompted.
+    * ✅ Your bot is live!
 
-> **✅ Why use Elite Deployer?**
-> * Free 24/7 Hosting
-> * Live Logs Dashboard
-> * Instant Restart/Variable Editing
+> **Why use Elite Deployer?**
+> * 🖥️ Real Server Hosting — Free 24/7
+> * 📡 Live Logs Dashboard in Telegram
+> * ⚡ Instant Restart / Variable Editing without re-deploying
 
 ---
 
 ### 💻 Method 2: VPS / Terminal (Manual)
 If you prefer full control (Termux/Ubuntu/Debian), use `tmux` to keep the bot running 24/7.
+
+> 📖 **Full Detailed Guide → [cipherelite.in/docs/vps-deploy](https://cipherelite.in/docs/vps-deploy)**
 
 ```bash
 # 1. Update System & Install Dependencies (including tmux)
@@ -137,6 +156,8 @@ python3 main.py
 
 ## ⚙️ CONFIGURATION VARS
 
+> 📖 **Full Configuration Reference → [cipherelite.in/docs/configuration](https://cipherelite.in/docs/configuration)**
+
 | Variable | Description |
 |---|---|
 | `API_ID` | Get from my.telegram.org |
@@ -154,18 +175,18 @@ python3 main.py
 ## 💫 SUPPORT & UPDATES
 
 Join our growing community for plugins, help, and updates.
+
 <p align="center">
 <a href="https://t.me/THANOS_PRO"><img src="https://img.shields.io/badge/📢_Updates_Channel-Join-red?style=for-the-badge&logo=telegram"></a>
 <a href="https://t.me/thanosprosss"><img src="https://img.shields.io/badge/👥_Support_Group-Join-blue?style=for-the-badge&logo=telegram"></a>
+<a href="https://t.me/CipherElite_Userbot"><img src="https://img.shields.io/badge/🔌_Plugin_Channel-Browse-orange?style=for-the-badge&logo=telegram"></a>
+<a href="https://cipherelite.in/docs"><img src="https://img.shields.io/badge/📖_Full_Docs-Read-F10070?style=for-the-badge"></a>
 </p>
 
 ---
 
 ## 🌟 CREDITS & OWNER
 
-<p align="center">
-<img src="https://github.com/rishabhops.png" width="100" height="100" style="border-radius: 50%;">
-</p>
 <h3 align="center">Rishabh Anand</h3>
 <p align="center">
 <b>Lead Developer & Founder of Thanos Pro Organization</b>
@@ -173,6 +194,7 @@ Join our growing community for plugins, help, and updates.
 <p align="center">
 <a href="https://t.me/thanosceo"><img src="https://img.shields.io/badge/Contact-Telegram-blue?style=flat-square&logo=telegram"></a>
 <a href="https://github.com/rishabhops"><img src="https://img.shields.io/badge/Follow-GitHub-black?style=flat-square&logo=github"></a>
+<a href="https://instagram.com/xrishabhanand"><img src="https://img.shields.io/badge/Follow-Instagram-E4405F?style=flat-square&logo=instagram"></a>
 </p>
 
 ### **Acknowledgments:**
