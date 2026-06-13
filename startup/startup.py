@@ -51,6 +51,11 @@ async def load_bot_plugins(bot_client, user_client):
     owner = await user_client.get_me()
     owner_id = owner.id
     owner_name = owner.first_name or "Owner"
+    
+    # 👇 INJECT OWNER ID TO CONFIG HERE 👇
+    from config.config import Config
+    Config.OWNER_ID = owner_id
+    # 👆 ============================== 👆
 
     plugins = [
         f"bot_plugins.{f.stem}"
