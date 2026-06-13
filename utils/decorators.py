@@ -14,10 +14,23 @@ async def is_owner_or_sudo(event):
     or a registered Sudo User.
     """
     sender_id = event.sender_id
-    me = await event.client.get_me()
     
-    if sender_id == me.id or sender_id in Config.SUDO_USERS:
+    # 1. Check if the sender is the automatically extracted OWNER_ID
+    if hasattr(Config, 'OWNER_ID') and sender_id == Config.OWNER_ID:
         return True
+        
+    # 2. Check if the sender is in the SUDO_USERS list
+    if hasattr(Config, 'SUDO_USERS') and sender_id in Config.SUDO_USERS:
+        return True
+
+    # 3. Fallback: If the event is on the userbot client, me.id will match sender_id
+    try:
+        me = await event.client.get_me()
+        if sender_id == me.id:
+            return True
+    except Exception:
+        pass
+        
     return False
 
 # ==========================================
