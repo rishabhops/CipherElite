@@ -23,6 +23,9 @@ PMPERMIT_PIC = os.getenv("PMPERMIT_PIC", "https://files.catbox.moe/tocisn.png")
 ALIVE_PIC = os.getenv("ALIVE_PIC", "https://files.catbox.moe/tocisn.png") 
 PING_PIC = os.getenv("PING_PIC", "https://files.catbox.moe/tocisn.png")
 
+# alive name
+ALIVE_NAME = os.getenv("ALIVE_NAME", "rishabh")  
+
 # Update Configuration
 UPSTREAM_REPO = os.getenv("UPSTREAM_REPO", "https://github.com/rishabhops/CipherElite")
 BRANCH = os.getenv("BRANCH", "elite")
