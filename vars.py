@@ -7,6 +7,7 @@ load_dotenv()
 # api Configuration
 API_ID = int(os.getenv("API_ID", "10248430"))  
 API_HASH = os.getenv("API_HASH", "42396a6ff14a569b9d59931643897d0d")  
+# @var
 #Please generate a session using @elite_session_maker_bot else your session not working 
 ELITE_SESSION = os.getenv("ELITE_SESSION", "INVALID_SESSION")  
 # Bot Settings
