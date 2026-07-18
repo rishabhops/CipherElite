@@ -15,6 +15,7 @@ import math
 import importlib
 from pathlib import Path
 import asyncio
+import random
 
 # Initialize Bot Client
 bot = TelegramClient('bot', Config.API_ID, Config.API_HASH)
@@ -26,8 +27,22 @@ CMD_LIST = {}
 PLUGINS_PER_PAGE = 9  # 3x3 grid
 PLUGINS_PER_ROW = 3
 
+# Random Emoji Pool (50+)
+RANDOM_EMOJIS = [
+    "🫶", "☠️", "❤️‍🔥", "🚬", "💀", "🔥", "✨", "⚡", "🌟", "💫",
+    "🎯", "🎪", "🎨", "🎭", "🎬", "🎸", "🎹", "🎺", "🎻", "🥁",
+    "🚀", "🛸", "🌌", "⭐", "🌠", "💥", "⚔️", "🗡️", "🏆", "👑",
+    "💎", "🔱", "⚜️", "🎖️", "🏅", "🎁", "🎀", "🎊", "🎉", "🎈",
+    "🌈", "☄️", "🌪️", "⛈️", "🌩️", "🔆", "🌞", "🌙", "⭐", "🌟",
+    "💥", "🔥", "⚡", "✨", "💫", "🎆", "🎇", "🌠", "💢", "💬"
+]
+
 # --- Global Tracker for Auto-Close Timers ---
 HELP_TIMERS = {}
+
+def get_random_emojis():
+    """Get two random emojis from the pool for button decoration."""
+    return random.choice(RANDOM_EMOJIS), random.choice(RANDOM_EMOJIS)
 
 def get_help_media():
     """
@@ -52,7 +67,21 @@ async def reset_help_timer(event, message_id):
     async def close_menu():
         await asyncio.sleep(60)
         try:
-            await event.edit("<i>⏳ Cipher Elite help session expired.</i>", buttons=None, parse_mode='html')
+            emoji1, emoji2 = get_random_emojis()
+            text = (
+                f"<i>⏳ Cipher Elite help session expired.</i>\n\n"
+                f"<b>Tap below to reopen or visit us:</b>"
+            )
+            buttons = [
+                [
+                    Button.inline(f"{emoji1} Reopen {emoji2}", "help_reopen"),
+                ],
+                [
+                    Button.url(f"{emoji1} Update", "https://t.me/CipherElite_Userbot"),
+                    Button.url(f"Support {emoji2}", "https://t.me/cipherelite_support"),
+                ]
+            ]
+            await event.edit(text, buttons=buttons, parse_mode='html')
         except Exception:
             pass
             
@@ -170,6 +199,13 @@ async def init_bot(user_client=None):
                     row = []
             if row: buttons.append(row)
             
+            # Add permanent Update & Support buttons with random emojis
+            emoji1, emoji2 = get_random_emojis()
+            buttons.append([
+                Button.url(f"{emoji1} Update", "https://t.me/CipherElite_Userbot"),
+                Button.url(f"Support {emoji2}", "https://t.me/cipherelite_support"),
+            ])
+            
             if total_pages > 1:
                 buttons.append([Button.inline("Next Page ❯", f"help_page_1")])
             
@@ -200,6 +236,54 @@ async def init_bot(user_client=None):
         
         # ⏱️ Reset the 60-second timer on user interaction
         await reset_help_timer(event, event.message_id)
+        
+        # --- REOPEN (from expired state) ---
+        if data == "reopen":
+            total_plugins = len(CMD_LIST)
+            total_commands = sum(len(cmd_data['commands']) for cmd_data in CMD_LIST.values())
+            plugin_names = list(CMD_LIST.keys())
+            plugin_names.sort(key=lambda x: (x != 'quickhelp', x))
+            total_pages = math.ceil(len(plugin_names) / PLUGINS_PER_PAGE)
+
+            text = (
+                "<code>root@cipher-elite:~$ help</code>\n"
+                "━━━━━━━━━━━━━━━━━━━━━━\n"
+                f"[OK] System online\n"
+                f"[OK] {total_plugins} plugins loaded\n"
+                f"[OK] {total_commands} commands indexed\n\n"
+                f"📦 <b>{total_plugins}</b>      ⚙️ <b>{total_commands}</b>      🟢 <b>Online</b>\n"
+                f"Plugins    Commands    Status\n"
+                "━━━━━━━━━━━━━━━━━━━━━━\n"
+                f"<i>Select a module below to view commands.</i>\n"
+                f"[INFO] page 1 of {total_pages} — tap a module 👇"
+            )
+            
+            buttons = []
+            row = []
+            for i, plugin in enumerate(plugin_names[:PLUGINS_PER_PAGE]):
+                if plugin == 'quickhelp':
+                    display_name = "⚡ Quick Guide"
+                else:
+                    display_name = plugin.title()[:10] + ".." if len(plugin) > 12 else plugin.title()
+                
+                row.append(Button.inline(display_name, f"help_plugin_{plugin}"))
+                if (i + 1) % PLUGINS_PER_ROW == 0:
+                    buttons.append(row)
+                    row = []
+            if row: buttons.append(row)
+            
+            # Random emojis for Update & Support
+            emoji1, emoji2 = get_random_emojis()
+            buttons.append([
+                Button.url(f"{emoji1} Update", "https://t.me/CipherElite_Userbot"),
+                Button.url(f"Support {emoji2}", "https://t.me/cipherelite_support"),
+            ])
+            
+            if total_pages > 1:
+                buttons.append([Button.inline("Next Page ❯", f"help_page_1")])
+            
+            await event.edit(text, buttons=buttons, parse_mode='html')
+            return
         
         # --- VIEW PLUGIN DETAILS ---
         if data.startswith("plugin_"):
@@ -245,7 +329,15 @@ async def init_bot(user_client=None):
                                 c = cmd.strip().replace('<', '&lt;').replace('>', '&gt;')
                                 text += f" ├ <code>{c}</code>\n\n"
                 
-                buttons = [[Button.inline("❮ Back to Menu", f"help_page_{page_number}")]]
+                # Random emojis for buttons
+                emoji1, emoji2 = get_random_emojis()
+                buttons = [
+                    [Button.inline("❮ Back to Menu", f"help_page_{page_number}")],
+                    [
+                        Button.url(f"{emoji1} Update", "https://t.me/CipherElite_Userbot"),
+                        Button.url(f"Support {emoji2}", "https://t.me/cipherelite_support"),
+                    ]
+                ]
                 await event.edit(text, buttons=buttons, parse_mode='html')
             return
         
@@ -257,7 +349,7 @@ async def init_bot(user_client=None):
             
             total_pages = math.ceil(len(plugin_names) / PLUGINS_PER_PAGE)
             
-            total_commands = sum(len(data['commands']) for data in CMD_LIST.values())
+            total_commands = sum(len(cmd_data['commands']) for cmd_data in CMD_LIST.values())
 
             text = (
                 f"<code>root@cipher-elite:~$ help --page {page+1}</code>\n"
@@ -288,6 +380,13 @@ async def init_bot(user_client=None):
                     buttons.append(row)
                     row = []
             if row: buttons.append(row)
+            
+            # Random emojis for permanent buttons
+            emoji1, emoji2 = get_random_emojis()
+            buttons.append([
+                Button.url(f"{emoji1} Update", "https://t.me/CipherElite_Userbot"),
+                Button.url(f"Support {emoji2}", "https://t.me/cipherelite_support"),
+            ])
             
             nav = []
             if page > 0:
