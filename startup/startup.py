@@ -2,8 +2,6 @@ import importlib
 import platform
 import asyncio
 import re
-import subprocess
-import sys
 from datetime import datetime
 from pathlib import Path
 from telethon.tl.functions.channels import JoinChannelRequest, InviteToChannelRequest
@@ -18,84 +16,6 @@ from telethon.tl.functions.users import GetFullUserRequest
 
 from plugins.bot import init_bot
 from utils.utils import init_client
-
-# Maps an import name to its actual PyPI package name, for the common cases
-# where they differ (e.g. `import PIL` but `pip install pillow`).
-PIP_NAME_OVERRIDES = {
-    "PIL": "pillow",
-    "yaml": "pyyaml",
-    "cv2": "opencv-python",
-    "bs4": "beautifulsoup4",
-    "telegram": "python-telegram-bot",
-    "Crypto": "pycryptodome",
-    "dotenv": "python-dotenv",
-    "dateutil": "python-dateutil",
-}
-
-
-def _extract_missing_module(exc: Exception) -> str | None:
-    """Pulls the missing module's top-level name out of an ImportError."""
-    name = getattr(exc, "name", None)
-    if name:
-        return name.split(".")[0]
-    match = re.search(r"No module named '([^']+)'", str(exc))
-    if match:
-        return match.group(1).split(".")[0]
-    return None
-
-
-def _pip_install(package: str) -> bool:
-    """Runs pip install for a single package. Returns True on success."""
-    try:
-        result = subprocess.run(
-            [sys.executable, "-m", "pip", "install", package, "--break-system-packages"],
-            capture_output=True,
-            text=True,
-            timeout=180,
-        )
-        if result.returncode != 0:
-            print(f"\033[1;31mpip install {package} failed:\n{result.stderr[-800:]}\033[0m")
-        return result.returncode == 0
-    except Exception as e:
-        print(f"\033[1;31mpip install {package} raised: {e}\033[0m")
-        return False
-
-
-async def _auto_install_and_retry(plugin_name: str, exc: ModuleNotFoundError):
-    """
-    Given a plugin that failed to import due to a missing package, tries to
-    pip-install the missing package (installing at most a few dependencies
-    deep, in case one missing package leads to another) and re-import.
-    Returns the loaded module on success, or None if it still can't load.
-    """
-    seen_packages = set()
-    current_exc = exc
-
-    for _ in range(5):  # cap retries so a broken plugin can't loop forever
-        missing = _extract_missing_module(current_exc)
-        if not missing or missing in seen_packages:
-            return None
-        seen_packages.add(missing)
-
-        pip_name = PIP_NAME_OVERRIDES.get(missing, missing)
-        print(f"\033[1;33m📦 '{plugin_name}' needs '{missing}' — installing '{pip_name}'...\033[0m")
-
-        installed = await asyncio.to_thread(_pip_install, pip_name)
-        if not installed:
-            print(f"\033[1;31m❌ Could not auto-install '{pip_name}' for {plugin_name}\033[0m")
-            return None
-
-        try:
-            module = importlib.import_module(plugin_name)
-            print(f"\033[1;32m✅ Installed '{pip_name}' — {plugin_name} imported successfully\033[0m")
-            return module
-        except ModuleNotFoundError as e2:
-            current_exc = e2  # another missing dependency surfaced, loop again
-        except Exception:
-            raise  # a non-import error means the dependency issue is resolved
-
-    return None
-
 
 async def load_plugins(client):
     """Loads standard Userbot plugins"""
@@ -115,20 +35,6 @@ async def load_plugins(client):
                 await module.register_commands()
             loaded_plugins.append(plugin_name.split(".")[-1])
             print(f"Loaded plugin: {plugin_name.split('.')[-1]}")
-        except ModuleNotFoundError as e:
-            # Missing dependency — try to auto pip-install it, then retry once.
-            module = await _auto_install_and_retry(plugin_name, e)
-            if module is None:
-                print(f"\033[1;31mFailed to load plugin {plugin_name}: {e}\033[0m")
-                continue
-            try:
-                module.init(client)
-                if hasattr(module, "register_commands"):
-                    await module.register_commands()
-                loaded_plugins.append(plugin_name.split(".")[-1])
-                print(f"Loaded plugin: {plugin_name.split('.')[-1]} (after auto-install)")
-            except Exception as e2:
-                print(f"\033[1;31mFailed to load plugin {plugin_name} after auto-install: {e2}\033[0m")
         except Exception as e:
             print(f"\033[1;31mFailed to load plugin {plugin_name}: {e}\033[0m")
     return loaded_plugins
