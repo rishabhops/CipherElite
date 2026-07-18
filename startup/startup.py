@@ -501,4 +501,8 @@ async def start_bot(client):
     if bot:
         await send_startup_message(bot, client, plugins, bot_plugins, system_info, Config)
 
-    print("\033[1;32mCipher Elite is ready and serving!\033
+    print("\033[1;32mCipher Elite is ready and serving!\033[0m")
+    await asyncio.gather(
+        client.run_until_disconnected(),
+        bot.run_until_disconnected() if bot else asyncio.sleep(float('inf'))
+    )
