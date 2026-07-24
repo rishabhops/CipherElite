@@ -41,7 +41,7 @@ ALIVE_BUTTONS = [
 INLINE_DATA = {
     "alive_text": "CipherElite is Online",
     "alive_media": None,
-    "ping_text": "Pong! ❤️‍🔥🫶",
+    "ping_text": "Pong!❤️‍🔥🫶🚬",
     "ping_media": None
 }
 
@@ -653,4 +653,4 @@ async def show_ping_styles(event):
         for chunk in [msg[i:i+4000] for i in range(0, len(msg), 4000)]:
             await event.reply(chunk, parse_mode='html')
     else:
-        await event.reply(msg, parse_
+        await event.reply(msg, parse_mode='html')
