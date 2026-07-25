@@ -32,7 +32,7 @@ def init(client_instance):
         ".add <username/id> - Add a single user to current chat",
     ]
     description = "👥 CipherElite Invite – Bulk user inviter"
-    add_handler("invite", commands, description)
+    add_handler("inviteall", commands, description)
 
 
 # ─── Helper: get chat info ──────────────────────────────────────────────────
