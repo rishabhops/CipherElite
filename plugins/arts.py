@@ -49,6 +49,7 @@ def init(client_instance):
 async def register_commands():
 
     # ─── CARRY ──────────────────────────────────────────────────────────────
+    # ─── CARRY ──────────────────────────────────────────────────────────────
     @CipherElite.on(events.NewMessage(pattern=r"\.carry\s+(.+)"))
     @rishabh()
     async def carry_cmd(event):
@@ -70,7 +71,13 @@ async def register_commands():
 ⢀⣴⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣄ 
 ⠚⠛⠛⠛⠛⠛⠛⠛⠛⠛⠛⠛⠛⠛⠛⠛⠛⠛
 """
-        await event.edit(art)
+        
+        # owner 
+        if event.out:
+            await event.edit(art)
+        else:
+            # for sudo 
+            await event.respond(art) 
 
     # ─── DED ────────────────────────────────────────────────────────────────
     @CipherElite.on(events.NewMessage(pattern=r"\.ded\s+(.+)"))
@@ -95,8 +102,13 @@ async def register_commands():
 　＼＿＿／∪ _ ∪) 
 　　　　　 Ｕ Ｕ
 """
-        await event.edit(art)
-
+        
+        # owner 
+        if event.out:
+            await event.edit(art)
+        else:
+            # for sudo 
+            await event.respond(art) 
     # ─── STHINK ─────────────────────────────────────────────────────────────
     @CipherElite.on(events.NewMessage(pattern=r"\.sthink\s+(.+)"))
     @rishabh()
