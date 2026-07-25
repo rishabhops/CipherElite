@@ -133,7 +133,13 @@ async def register_commands():
 ⠈⢿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⠁
 ⠀⠀⠛⢿⣿⣿⣿⣿⣿⣿⡿⠟
 """
-        await event.edit(art)
+        
+        # owner 
+        if event.out:
+            await event.edit(art)
+        else:
+            # for sudo 
+            await event.respond(art) 
 
     # ─── SFROG ──────────────────────────────────────────────────────────────
     @CipherElite.on(events.NewMessage(pattern=r"\.sfrog\s+(.+)"))
@@ -159,7 +165,13 @@ async def register_commands():
 ⠄⣿⠁⠄⠐⠛⠛⠛⠉⠉⠉⠉⠄⠄⣠⣾⣿⣿⣿⣿⣿⣿⣿⣿
 ⠄⠻⣦⣀⣀⣀⣀⣀⣤⣤⣤⣤⣶⣾⣿⣿⣿⣿⣿⣿⣿⣿⡿⠋
 """
-        await event.edit(art)
+        
+        # owner 
+        if event.out:
+            await event.edit(art)
+        else:
+            # for sudo 
+            await event.respond(art) 
 
     # ─── SDEAD ──────────────────────────────────────────────────────────────
     @CipherElite.on(events.NewMessage(pattern=r"\.sdead\s+(.+)"))
@@ -185,7 +197,13 @@ async def register_commands():
 ⠄⠄⠄⠄⠄⠄⠄⠁⠙⠒⠙⠯⠍⠙⢉⣡⣶⣿⣿⣿⣿⣿⣿⣿
 ⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠙⣿⣿⣿⣿⣿⣿⣿⣿⣿
 """
-        await event.edit(art)
+        
+        # owner 
+        if event.out:
+            await event.edit(art)
+        else:
+            # for sudo 
+            await event.respond(art) 
 
     # ─── STRUMP ─────────────────────────────────────────────────────────────
     @CipherElite.on(events.NewMessage(pattern=r"\.strump\s+(.+)"))
@@ -210,8 +228,13 @@ async def register_commands():
 ⠄⠄⠄⠄⠄⠄⠄⠘⣷⣿⣿⣷⠄⠄⢺⣇⠄⠄⠄⠄⠄⠄⠸⣿
 ⠄⠄⠄⠄⠄⠄⠄⠄⠹⣿⣿⡇⠄⠄⠸⣿⡄⠄⠈⠁⠄⠄⠄⣿
 ⠄⠄⠄⠄⠄⠄⠄⠄⠄⢻⣿⡇⠄⠄⠄⢹⣧⠄⠄⠄⠄⠄⠄⠘
-"""
-        await event.edit(art)
+"""        
+        # owner 
+        if event.out:
+            await event.edit(art)
+        else:
+            # for sudo 
+            await event.respond(art) 
 
     # ─── SCHINA ──────────────────────────────────────────────────────────────
     @CipherElite.on(events.NewMessage(pattern=r"\.schina\s+(.+)"))
@@ -238,7 +261,13 @@ async def register_commands():
 ⠄⠄⠄⠄⠄⣿⣿⠃⣦⣄⣿⣿⣿⠇⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄
 ⠄⠄⠄⠄⢸⣿⠗⢈⡶⣷⣿⣿⡏⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄
 """
-        await event.edit(art)
+        
+        # owner 
+        if event.out:
+            await event.edit(art)
+        else:
+            # for sudo 
+            await event.respond(art) 
 
     # ─── SSHIT ──────────────────────────────────────────────────────────────
     @CipherElite.on(events.NewMessage(pattern=r"\.sshit$"))
@@ -259,7 +288,13 @@ async def register_commands():
 ⠀⢸⣿⠇⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀ Ah
  shit, here we go again.
 """
-        await event.edit(art)
+        
+        # owner 
+        if event.out:
+            await event.edit(art)
+        else:
+            # for sudo 
+            await event.respond(art) 
 
     # ─── ELOVE ──────────────────────────────────────────────────────────────
     @CipherElite.on(events.NewMessage(pattern=r"\.elove$"))
@@ -289,8 +324,13 @@ async def register_commands():
 █─████─▄▄─██─█─██─▄▄─█
 █─██▀█─██─██─█─██─▄█▀█
 █▄▄▄▄▀▄▄▄▄▀▀▄▄▄▀▀▄▄▄▄▀
-"""
-        await event.edit(art)
+"""        
+        # owner 
+        if event.out:
+            await event.edit(art)
+        else:
+            # for sudo 
+            await event.respond(art) 
 
     # ─── MONSTER ─────────────────────────────────────────────────────────────
     @CipherElite.on(events.NewMessage(pattern=r"\.monster$"))
@@ -304,8 +344,13 @@ async def register_commands():
 █▲▲▲▲▲█
 █████████
 _████
-"""
-        await event.edit(art)
+"""        
+        # owner 
+        if event.out:
+            await event.edit(art)
+        else:
+            # for sudo 
+            await event.respond(art) 
 
     # ─── PIG ──────────────────────────────────────────────────────────────────
     @CipherElite.on(events.NewMessage(pattern=r"\.pig$"))
@@ -321,7 +366,13 @@ _████
 ┈┈┈╰━┳┓┏┳┓┏╯┈┈┈
 ┈┈┈┈┈┗┻┛┗┻┛┈┈┈┈
 """
-        await event.edit(art)
+        
+        # owner 
+        if event.out:
+            await event.edit(art)
+        else:
+            # for sudo 
+            await event.respond(art) 
 
     # ─── GUN ──────────────────────────────────────────────────────────────────
     @CipherElite.on(events.NewMessage(pattern=r"\.gun$"))
@@ -336,8 +387,13 @@ _████
 ░░█▓▓▓▓▓▌░░░░░░░░░░
 ░▐█▓▓▓▓▓░░░░░░░░░░░
 ░▐██████▌░░░░░░░░░░
-"""
-        await event.edit(art)
+"""        
+        # owner 
+        if event.out:
+            await event.edit(art)
+        else:
+            # for sudo 
+            await event.respond(art) 
 
     # ─── DOG ──────────────────────────────────────────────────────────────────
     @CipherElite.on(events.NewMessage(pattern=r"\.dog$"))
@@ -350,8 +406,13 @@ _████
 ╢╰━┫┈┈┈┈┈╰╯╰┳━╯┣
 ╢┊┊┃┏┳┳━━┓┏┳┫┊┊┣
 ╨━━┗┛┗┛━━┗┛┗┛━━┻
-"""
-        await event.edit(art)
+"""        
+        # owner 
+        if event.out:
+            await event.edit(art)
+        else:
+            # for sudo 
+            await event.respond(art) 
 
     # ─── HEY ──────────────────────────────────────────────────────────────────
     @CipherElite.on(events.NewMessage(pattern=r"\.hey$"))
@@ -363,7 +424,13 @@ _████
 ║┏┓║┏╣┗╣┗╣╰╯║
 ╚┛┗╩━╩━╩━╩━━╝
 """
-        await event.edit(art)
+        
+        # owner 
+        if event.out:
+            await event.edit(art)
+        else:
+            # for sudo 
+            await event.respond(art) 
 
     # ─── HMF ──────────────────────────────────────────────────────────────────
     @CipherElite.on(events.NewMessage(pattern=r"\.hmf$"))
@@ -386,8 +453,13 @@ _████
 ╬═╬☻/ 
 ╬═╬/▌ 
 ╬═╬/ \
-"""
-        await event.edit(art)
+"""        
+        # owner 
+        if event.out:
+            await event.edit(art)
+        else:
+            # for sudo 
+            await event.respond(art) 
 
     # ─── COUPLE ──────────────────────────────────────────────────────────────
     @CipherElite.on(events.NewMessage(pattern=r"\.couple$"))
@@ -411,8 +483,13 @@ _████
 ┳┻┳┻┳┻┣╋┫'''┊┣━╋┫
 ┻┳┻┳┻╭╯╰╰-╭╯━╯.''╰╮
 Love You Forever,,,,,
-"""
-        await event.edit(art)
+"""        
+        # owner 
+        if event.out:
+            await event.edit(art)
+        else:
+            # for sudo 
+            await event.respond(art) 
 
     # ─── SUP ──────────────────────────────────────────────────────────────────
     @CipherElite.on(events.NewMessage(pattern=r"\.sup$"))
@@ -459,7 +536,13 @@ Love You Forever,,,,,
 ⣿⣿⣿⣿⣿⣿⣿⣦⣸⡇⠀⠀⣠⣾⣿⣿⣿⣿⣿⣿
 ⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿
 """
-        await event.edit(art)
+        
+        # owner 
+        if event.out:
+            await event.edit(art)
+        else:
+            # for sudo 
+            await event.respond(art) 
 
     # ─── INDIA ──────────────────────────────────────────────────────────────
     @CipherElite.on(events.NewMessage(pattern=r"\.india$"))
@@ -481,8 +564,13 @@ Love You Forever,,,,,
 ⣿⣿⣿⣿⣿⣇⠀⠀⠀⢠⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿
 ⣿⣿⣿⣿⣿⣿⡆⠀⢀⣼⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿
 ⣿⣿⣿⣿⣿⣿⣿⣦⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿
-"""
-        await event.edit(art)
+"""        
+        # owner 
+        if event.out:
+            await event.edit(art)
+        else:
+            # for sudo 
+            await event.respond(art) 
 
     # ─── WC ──────────────────────────────────────────────────────────────────
     @CipherElite.on(events.NewMessage(pattern=r"\.wc$"))
@@ -500,7 +588,13 @@ Love You Forever,,,,,
 █░░╚╩╝╚╝╚╝╚╝╚╝╩─╩╚╝░░█
 █▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄█
 """
-        await event.edit(art)
+        
+        # owner 
+        if event.out:
+            await event.edit(art)
+        else:
+            # for sudo 
+            await event.respond(art) 
 
     # ─── SNK ──────────────────────────────────────────────────────────────────
     @CipherElite.on(events.NewMessage(pattern=r"\.snk$"))
@@ -594,7 +688,13 @@ Love You Forever,,,,,
 ░░░░░░░░░░░░░░░░███
 ░░░░░░░░░░░░░░░░░░░
 """
-        await event.edit(art)
+        
+        # owner 
+        if event.out:
+            await event.edit(art)
+        else:
+            # for sudo 
+            await event.respond(art) 
 
     # ─── BYE ──────────────────────────────────────────────────────────────────
     @CipherElite.on(events.NewMessage(pattern=r"\.bye$"))
@@ -622,7 +722,13 @@ Love You Forever,,,,,
 ┃╰━╯┃┃┃┃┃╰╮┃╰━╯┃╰━╯┃
 ╰━━━┻╯╰┻┻━╯╰━━━┻━━━╯
 """
-        await event.edit(art)
+        
+        # owner 
+        if event.out:
+            await event.edit(art)
+        else:
+            # for sudo 
+            await event.respond(art) 
 
     # ─── DISLIKE ─────────────────────────────────────────────────────────────
     @CipherElite.on(events.NewMessage(pattern=r"\.dislike$"))
@@ -643,4 +749,10 @@ Love You Forever,,,,,
 ░░░░░░░░░░░█░░█
 ░░░░░░░░░░░░▀▀
 """
-        await event.edit(art)
+        
+        # owner 
+        if event.out:
+            await event.edit(art)
+        else:
+            # for sudo 
+            await event.respond(art) 
