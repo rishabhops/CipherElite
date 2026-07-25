@@ -31,6 +31,7 @@ from telethon.tl.functions.messages import GetFullChatRequest, AddChatUserReques
 from utils.utils import CipherElite
 from utils.decorators import rishabh
 from plugins.bot import add_handler
+from config.config import Config
 
 
 def init(client_instance):
@@ -89,6 +90,17 @@ def create_progress_bar(current, total, length=20):
     return f"[{bar}] {int(progress * 100)}%"
 
 
+async def send_log(event, message):
+    """Send a log message to the configured LOG_CHAT_ID, if set."""
+    log_chat_id = getattr(Config, "LOG_CHAT_ID", None)
+    if not log_chat_id:
+        return
+    try:
+        await event.client.send_message(log_chat_id, message)
+    except Exception:
+        pass
+
+
 async def register_commands():
 
     # ─── INVITEALL ───────────────────────────────────────────────────────────
@@ -139,6 +151,8 @@ async def register_commands():
             invited = 0
             failed = 0
             errors = []
+            flood_cancelled = False
+            flood_seconds = 0
 
             for i, user_id in enumerate(members, 1):
                 try:
@@ -163,9 +177,12 @@ async def register_commands():
                         )
                     invited += 1
                 except FloodWaitError as e:
-                    await status.edit(f"⏳ Flood wait: {e.seconds}s. Waiting...")
-                    await asyncio.sleep(e.seconds)
-                    continue
+                    # Cancel the whole operation on flood wait instead of
+                    # waiting it out — repeated bulk-adds are what triggers
+                    # Telegram's flood limits in the first place.
+                    flood_cancelled = True
+                    flood_seconds = e.seconds
+                    break
                 except UserPrivacyRestrictedError:
                     failed += 1
                     errors.append("Privacy restricted")
@@ -189,20 +206,43 @@ async def register_commands():
                         f"⚠️ Last Error: `{error_sample}`"
                     )
 
+            remaining = total - (invited + failed)
+
             # Final result
             result_msg = (
-                f"✅ **Invitation Complete!**\n\n"
+                f"{'🛑 **Invitation Cancelled (Flood Wait)**' if flood_cancelled else '✅ **Invitation Complete!**'}\n\n"
                 f"📊 Total Members: **{total}**\n"
                 f"✅ Invited: **{invited}**\n"
                 f"❌ Failed: **{failed}**\n"
-                f"📍 Target: `{chat_input}`\n"
+                + (f"⏸️ Not Processed: **{remaining}**\n" if flood_cancelled else "")
+                + f"📍 Target: `{chat_input}`\n"
                 f"🏠 Current Chat: **{current_chat.title or 'Group'}**"
             )
+            if flood_cancelled:
+                result_msg += (
+                    f"\n\n🛑 **Stopped due to Telegram flood wait "
+                    f"({flood_seconds}s).** Operation cancelled instead of "
+                    f"waiting, to avoid further flagging this account."
+                )
             if errors:
                 unique_errors = list(set(errors))[:3]
                 result_msg += f"\n\n⚠️ **Common Errors:**\n" + "\n".join(f"• {e}" for e in unique_errors)
 
             await status.edit(result_msg)
+
+            # --- Send the same report to the configured log group ---
+            log_msg = (
+                f"📋 **Inviteall Report**\n\n"
+                f"👤 By: {getattr(event.sender, 'first_name', 'Unknown')} (`{event.sender_id}`)\n"
+                f"📍 Source Group: `{chat_input}`\n"
+                f"🏠 Target Chat: **{current_chat.title or 'Group'}** (`{current_chat.id}`)\n\n"
+                f"📊 Total Members: **{total}**\n"
+                f"✅ Invited: **{invited}**\n"
+                f"❌ Failed: **{failed}**\n"
+                + (f"⏸️ Not Processed (flood cancel): **{remaining}**\n" if flood_cancelled else "")
+                + (f"🛑 Flood wait triggered: {flood_seconds}s — operation cancelled\n" if flood_cancelled else "✅ Completed without flood errors\n")
+            )
+            await send_log(event, log_msg)
 
         except Exception as e:
             await event.reply(f"❌ Error: {str(e)}")
@@ -230,8 +270,11 @@ async def register_commands():
             added = 0
             failed = 0
             user_ids = users_input.split()
+            total_users = len(user_ids)
+            flood_cancelled = False
+            flood_seconds = 0
 
-            for user_input in user_ids:
+            for idx, user_input in enumerate(user_ids, 1):
                 try:
                     user_input = user_input.strip()
                     # Try to get entity
@@ -263,16 +306,43 @@ async def register_commands():
                     added += 1
                     await status.edit(f"➕ Added: **{added}** | ❌ Failed: **{failed}**")
                 except FloodWaitError as e:
-                    await status.edit(f"⏳ Flood wait: {e.seconds}s. Waiting...")
-                    await asyncio.sleep(e.seconds)
+                    # Cancel instead of waiting out the flood.
+                    flood_cancelled = True
+                    flood_seconds = e.seconds
+                    break
                 except Exception:
                     failed += 1
 
-            await status.edit(
-                f"✅ **Add Complete!**\n\n"
+            remaining = total_users - (added + failed)
+
+            result_msg = (
+                f"{'🛑 **Add Cancelled (Flood Wait)**' if flood_cancelled else '✅ **Add Complete!**'}\n\n"
                 f"➕ Added: **{added}**\n"
                 f"❌ Failed: **{failed}**\n"
-                f"🏠 Chat: **{current_chat.title or 'Group'}**"
+                + (f"⏸️ Not Processed: **{remaining}**\n" if flood_cancelled else "")
+                + f"🏠 Chat: **{current_chat.title or 'Group'}**"
             )
+            if flood_cancelled:
+                result_msg += (
+                    f"\n\n🛑 **Stopped due to Telegram flood wait "
+                    f"({flood_seconds}s).** Operation cancelled instead of "
+                    f"waiting, to avoid further flagging this account."
+                )
+
+            await status.edit(result_msg)
+
+            # --- Send the same report to the configured log group ---
+            log_msg = (
+                f"📋 **Add Command Report**\n\n"
+                f"👤 By: {getattr(event.sender, 'first_name', 'Unknown')} (`{event.sender_id}`)\n"
+                f"🏠 Target Chat: **{current_chat.title or 'Group'}** (`{current_chat.id}`)\n\n"
+                f"📊 Total Requested: **{total_users}**\n"
+                f"✅ Added: **{added}**\n"
+                f"❌ Failed: **{failed}**\n"
+                + (f"⏸️ Not Processed (flood cancel): **{remaining}**\n" if flood_cancelled else "")
+                + (f"🛑 Flood wait triggered: {flood_seconds}s — operation cancelled\n" if flood_cancelled else "✅ Completed without flood errors\n")
+            )
+            await send_log(event, log_msg)
+
         except Exception as e:
             await event.reply(f"❌ Error: {str(e)}")
