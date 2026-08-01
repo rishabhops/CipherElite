@@ -8,6 +8,9 @@
 #  License:        MIT
 # =============================================================================
 
+VERSION = "1.0.0"
+CATEGORY = "media"
+
 import os
 import glob
 import asyncio

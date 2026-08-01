@@ -60,6 +60,9 @@ def init(client_instance):
 # ==========================================
 # COMMAND HANDLER
 # ==========================================
+
+VERSION = "1.0.0"
+CATEGORY = "animations"
 @CipherElite.on(events.NewMessage(pattern=r"^\.shayari(?: |$)(.*)", outgoing=True))
 @rishabh
 async def random_shayari_handler(event):

@@ -55,7 +55,7 @@ def init(client_instance):
         ".utaggn - Tag all users individually with Good Night",
         ".btagvc - Bulk tag all users to join Voice Chat",
         ".utagvc - Tag all users individually to join Voice Chat",
-        ".cancel - Stop any ongoing tagging process in the current chat"
+        ".canceltag - Stop any ongoing tagging process in the current chat"
     ]
 
     description = (
@@ -191,6 +191,9 @@ async def handle_user_tag(event, msg_list=None, static_text=None):
 # COMMAND HANDLERS
 # ==========================================
 
+VERSION = "1.0.0"
+CATEGORY = "admin"
+
 @CipherElite.on(events.NewMessage(pattern=r"^\.btag(?: |$)(.*)", outgoing=True))
 @rishabh()
 async def bulk_tag(event):
@@ -257,7 +260,7 @@ async def utag_vc(event):
     processed_msgs.append(event.id)
     await handle_user_tag(event, msg_list=VC_MESSAGES)
 
-@CipherElite.on(events.NewMessage(pattern=r"^\.cancel$", outgoing=True))
+@CipherElite.on(events.NewMessage(pattern=r"^\.canceltag$", outgoing=True))
 @rishabh()
 async def cancel_tagging(event):
     if event.id in processed_msgs: return

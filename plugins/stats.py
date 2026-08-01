@@ -7,6 +7,9 @@ import time
 import asyncio
 from datetime import timedelta
 
+VERSION = "1.0.0"
+CATEGORY = "utilities"
+
 def init(client_instance):
     """
     Initialize the statistics plugin with command descriptions.

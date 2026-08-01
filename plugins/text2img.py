@@ -14,6 +14,9 @@ from urllib.parse import quote
 # ============================================
 # CONFIGURATION
 # ============================================
+
+VERSION = "1.0.0"
+CATEGORY = "media"
 API_BASE = "https://text-to-image-bice.vercel.app"
 
 def init(client_instance):

@@ -2,6 +2,7 @@
 #  CipherElite Userbot Plugin
 #
 #  Plugin Name:    warn
+#  Version:        1.0.0
 #  Author:         CipherElite Dev (@rishabhops)
 #  Repository:     https://github.com/rishabhops/CipherElite
 #
@@ -17,7 +18,10 @@ from utils.utils import CipherElite
 from utils.decorators import rishabh
 from plugins.bot import add_handler
 
-DATA_FILE = Path(__file__).parent.parent / "data" / "warnings.json"
+VERSION = "1.0.0"
+CATEGORY = "admin"
+
+DATA_FILE = Path(__file__).parent.parent / "DB" / "warn_db.json"
 
 def load_data():
     """Load warnings data from JSON file"""

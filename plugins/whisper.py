@@ -11,6 +11,9 @@ from utils.decorators import rishabh
 # ==========================================
 # SHARED MEMORY DATABASE
 # ==========================================
+
+VERSION = "1.0.0"
+CATEGORY = "utilities"
 WHISPERS = {}
 
 def init(client_instance):
