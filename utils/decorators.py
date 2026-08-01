@@ -45,12 +45,26 @@ def authorized_users_only(func=None):
             # 🎭 PRIORITY 1: Always allow Owner & Sudo users (no exceptions)
             if await is_owner_or_sudo(event):
                 print(f"✅ Owner/Sudo user {sender_id} authorized - bypassing checks")
-                return await f(event)
+                try:
+                    return await f(event)
+                except Exception as e:
+                    import traceback
+                    print(f"❌ Exception in command {f.__name__}: {e}")
+                    traceback.print_exc()
+                    await event.reply(f"❌ **Command Error in `{f.__name__}`:**\n`{e}`")
+                    raise
             
             # 🎭 PRIORITY 2: Allow in private chats for non-sudo users
             if event.is_private:
                 print(f"✅ Private chat authorized for user {sender_id}")
-                return await f(event)
+                try:
+                    return await f(event)
+                except Exception as e:
+                    import traceback
+                    print(f"❌ Exception in command {f.__name__}: {e}")
+                    traceback.print_exc()
+                    await event.reply(f"❌ **Command Error in `{f.__name__}`:**\n`{e}`")
+                    raise
             
             # 🎭 PRIORITY 3: Check admin rights for normal users in groups
             try:
@@ -58,10 +72,24 @@ def authorized_users_only(func=None):
                 
                 if hasattr(chat, 'admin_rights') and chat.admin_rights:
                     if chat.admin_rights.delete_messages or chat.admin_rights.ban_users:
-                        return await f(event)
+                        try:
+                            return await f(event)
+                        except Exception as e:
+                            import traceback
+                            print(f"❌ Exception in command {f.__name__}: {e}")
+                            traceback.print_exc()
+                            await event.reply(f"❌ **Command Error in `{f.__name__}`:**\n`{e}`")
+                            raise
                 
                 if hasattr(chat, 'creator') and chat.creator:
-                    return await f(event)
+                    try:
+                        return await f(event)
+                    except Exception as e:
+                        import traceback
+                        print(f"❌ Exception in command {f.__name__}: {e}")
+                        traceback.print_exc()
+                        await event.reply(f"❌ **Command Error in `{f.__name__}`:**\n`{e}`")
+                        raise
                 
                 try:
                     participant = await event.client(GetParticipantRequest(
@@ -69,7 +97,14 @@ def authorized_users_only(func=None):
                         participant=sender_id
                     ))
                     if isinstance(participant.participant, (ChannelParticipantAdmin, ChannelParticipantCreator)):
-                        return await f(event)
+                        try:
+                            return await f(event)
+                        except Exception as e:
+                            import traceback
+                            print(f"❌ Exception in command {f.__name__}: {e}")
+                            traceback.print_exc()
+                            await event.reply(f"❌ **Command Error in `{f.__name__}`:**\n`{e}`")
+                            raise
                 except (UserNotParticipantError, ChatAdminRequiredError, AttributeError):
                     pass
                 
@@ -104,7 +139,14 @@ def rishabh(func=None):
                 return
             
             print(f"✅ Owner/Sudo user {sender_id} executing command: {f.__name__}")
-            return await f(event)
+            try:
+                return await f(event)
+            except Exception as e:
+                import traceback
+                print(f"❌ Exception in command {f.__name__}: {e}")
+                traceback.print_exc()
+                await event.reply(f"❌ **Command Error in `{f.__name__}`:**\n`{e}`")
+                raise
         return wrapper
 
     # Magic logic to allow both @rishabh and @rishabh()
@@ -139,8 +181,20 @@ def rishabh_help(func=None):
                     # Fallback for standard messages
                     await event.reply(error_msg)
                 return
-                
-            return await f(event)
+            
+            try:
+                return await f(event)
+            except Exception as e:
+                import traceback
+                print(f"❌ Exception in command {f.__name__}: {e}")
+                traceback.print_exc()
+                if isinstance(event, events.CallbackQuery.Event):
+                    await event.answer(f"❌ Error in {f.__name__}: {e}", alert=True)
+                elif isinstance(event, events.InlineQuery.Event):
+                    await event.answer([])
+                else:
+                    await event.reply(f"❌ **Command Error in `{f.__name__}`:**\n`{e}`")
+                raise
         return wrapper
 
     # Magic logic to allow both @rishabh_help and @rishabh_help()
@@ -148,3 +202,4 @@ def rishabh_help(func=None):
         return decorator
     else:
         return decorator(func)
+
