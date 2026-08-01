@@ -1,5 +1,6 @@
 import asyncio
 import random
+import time
 
 from telethon import events
 from telethon.errors.rpcerrorlist import MessageNotModifiedError
@@ -7,6 +8,9 @@ from telethon.errors.rpcerrorlist import MessageNotModifiedError
 from utils.utils import CipherElite
 from utils.decorators import rishabh
 from plugins.bot import add_handler
+
+VERSION = "1.0.0"
+CATEGORY = "animations"
 
 def init(client):
     commands = [

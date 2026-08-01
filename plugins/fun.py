@@ -4,11 +4,13 @@ from plugins.bot import add_handler
 from utils.utils import CipherElite
 from utils.decorators import rishabh
 
+VERSION = "1.0.0"
+CATEGORY = "animations"
+
 
 # ─────────────── INIT ───────────────
 def init(client_instance):
     commands = [
-        ".dice - Roll a dice",
         ".coin - Flip a coin",
         ".decide - Yes or No decision",
         ".xogame - Play XO game via inline bot"
@@ -19,14 +21,6 @@ def init(client_instance):
 
 # ───────── REGISTER COMMANDS ─────────
 async def register_commands():
-
-    # ── DICE ──
-    @CipherElite.on(events.NewMessage(pattern=r"\.dice"))
-    @rishabh()
-    async def dice(event):
-        number = random.randint(1, 6)
-        dice_emojis = ["🎲1", "🎲2", "🎲3", "🎲4", "🎲5", "🎲6"]
-        await event.reply(f"🎲 {dice_emojis[number-1]} ({number})")
 
     # ── COIN ──
     @CipherElite.on(events.NewMessage(pattern=r"\.coin"))

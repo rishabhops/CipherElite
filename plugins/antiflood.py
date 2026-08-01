@@ -2,6 +2,7 @@
 #  CipherElite Userbot Plugin
 #
 #  Plugin Name:    antiflood
+#  Version:        1.0.0
 #  Author:         CipherElite Dev (@rishabhops)
 #  Repository:     https://github.com/rishabhops/CipherElite
 #
@@ -18,7 +19,10 @@ from utils.utils import CipherElite
 from utils.decorators import rishabh
 from plugins.bot import add_handler
 
-DATA_FILE = Path(__file__).parent.parent / "data" / "antiflood.json"
+VERSION = "1.0.0"
+CATEGORY = "admin"
+
+DATA_FILE = Path(__file__).parent.parent / "DB" / "antiflood_db.json"
 user_floods = {}  # {chat_id: {user_id: [timestamps]}}
 
 def load_data():

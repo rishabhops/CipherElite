@@ -17,6 +17,9 @@
 #  Thank you for respecting open-source software!
 # =============================================================================
 
+VERSION = "1.0.0"
+CATEGORY = "animations"
+
 import asyncio
 from collections import deque
 from telethon import events

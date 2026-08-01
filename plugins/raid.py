@@ -2,6 +2,7 @@
 #  CipherElite Userbot Plugin
 #
 #  Plugin Name:    raid
+#  Version:        1.0.0
 #  Author:         CipherElite Dev (@rishabhops)
 #  Repository:     https://github.com/rishabhops/CipherElite
 #
@@ -16,6 +17,7 @@
 #
 #  Thank you for respecting open-source software!
 # =============================================================================
+
 from telethon import events, utils
 from utils.utils import CipherElite
 from utils.decorators import rishabh
@@ -24,6 +26,9 @@ import asyncio
 import random
 import time
 import re
+
+VERSION = "1.0.0"
+CATEGORY = "utilities"
 
 CIPHER_ELITE_OWNER = 5470956337
 

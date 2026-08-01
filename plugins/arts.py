@@ -9,6 +9,9 @@
 #  Created:        09/07/2026
 # =============================================================================
 
+VERSION = "1.0.0"
+CATEGORY = "animations"
+
 import re
 from telethon import events
 from utils.utils import CipherElite

@@ -8,12 +8,16 @@
 #  License:        MIT
 # =============================================================================
 
+VERSION = "1.0.0"
+CATEGORY = "utilities"
+
 from telethon import events
 from telethon.tl.functions.channels import CreateChannelRequest, DeleteChannelRequest, EditPhotoRequest, EditTitleRequest
 from telethon.tl.functions.messages import ExportChatInviteRequest, CreateChatRequest
 from utils.utils import CipherElite
 from utils.decorators import rishabh
 from plugins.bot import add_handler
+import os
 
 def init(client_instance):
     commands = [

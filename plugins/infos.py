@@ -5,6 +5,9 @@
 #  Created:        18/07/2026
 # =============================================================================
 
+VERSION = "1.0.0"
+CATEGORY = "utilities"
+
 import html
 import os
 from datetime import datetime

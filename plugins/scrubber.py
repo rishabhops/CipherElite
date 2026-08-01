@@ -32,6 +32,9 @@ def init(client_instance):
 # ==========================================
 # COMMAND HANDLER
 # ==========================================
+
+VERSION = "1.0.0"
+CATEGORY = "utilities"
 @CipherElite.on(events.NewMessage(pattern=r"^\.scrub(?: |$)(.*)", outgoing=True))
 @rishabh
 async def scrub_messages(event):

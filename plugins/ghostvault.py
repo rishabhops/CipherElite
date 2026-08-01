@@ -1,5 +1,6 @@
 # =============================================================================
 #  CipherElite Ghost Vault (Anti-Delete & Edit Tracker)
+#  Version:        1.0.0
 #  Author:         CipherElite Dev (@rishabhops)
 # =============================================================================
 
@@ -13,6 +14,9 @@ from config.config import Config
 from utils.utils import CipherElite
 from plugins.bot import add_handler
 from utils.decorators import rishabh  
+
+VERSION = "1.0.0"
+CATEGORY = "utilities"
 
 # ==========================================
 # DATABASE & CACHE SETUP

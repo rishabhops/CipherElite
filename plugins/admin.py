@@ -9,6 +9,9 @@ from plugins.bot import add_handler
 from utils.utils import CipherElite
 from utils.decorators import rishabh
 
+VERSION = "1.0.0"
+CATEGORY = "admin"
+
 def init(client_instance):
     commands = [
         ".ban - Ban a user from the group",

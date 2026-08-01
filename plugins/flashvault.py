@@ -2,6 +2,7 @@
 #  CipherElite Userbot Plugin
 #
 #  Plugin Name:    flashvault.py (Anti-View-Once Media Saver)
+#  Version:        1.0.0
 #  Author:         CipherElite Dev (@rishabhops)
 #  Repository:     https://github.com/rishabhops/CipherElite
 #
@@ -11,8 +12,8 @@
 #    • If you copy, fork, or include this plugin in your own bot,
 #      you MUST keep this header intact.
 #    • You MUST give proper credit to the CipherElite Userbot author:
-#        – GitHub:    https://github.com/rishabhops/CipherElite
-#        – Telegram:  @thanosceo
+#      – GitHub:    https://github.com/rishabhops/CipherElite
+#      – Telegram:  @thanosceo
 #
 #  Thank you for respecting open-source software!
 # =============================================================================
@@ -27,6 +28,9 @@ from config.config import Config
 from utils.utils import CipherElite
 from plugins.bot import add_handler
 from utils.decorators import rishabh
+
+VERSION = "1.0.0"
+CATEGORY = "utilities"
 
 # ==========================================
 # DATABASE SETUP

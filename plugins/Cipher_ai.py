@@ -9,6 +9,9 @@
 #  LICENSE:        MIT
 # =============================================================================
 
+VERSION = "1.0.0"
+CATEGORY = "utilities"
+
 import asyncio
 import google.generativeai as genai
 import aiohttp

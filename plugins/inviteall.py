@@ -13,6 +13,9 @@
 #    who have actually agreed to join your chat.
 # =============================================================================
 
+VERSION = "1.0.0"
+CATEGORY = "utilities"
+
 import re
 import asyncio
 from telethon import events

@@ -4,6 +4,9 @@
 #  Copyright (C) 2020-2023 by TgCatUB@Github.
 # ==============================================================================
 
+VERSION = "1.0.0"
+CATEGORY = "utilities"
+
 import os
 import requests
 import bs4

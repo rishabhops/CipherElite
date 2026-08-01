@@ -2,6 +2,7 @@
 #  CipherElite Userbot Plugin
 #
 #  Plugin Name:    autokick
+#  Version:        1.0.0
 #  Author:         CipherElite Dev (@rishabhops)
 #  Repository:     https://github.com/rishabhops/CipherElite
 #
@@ -15,7 +16,10 @@ from utils.utils import CipherElite
 from utils.decorators import rishabh
 from plugins.bot import add_handler
 
-DATA_FILE = Path(__file__).parent.parent / "data" / "autokick.json"
+VERSION = "1.0.0"
+CATEGORY = "admin"
+
+DATA_FILE = Path(__file__).parent.parent / "DB" / "autokick_db.json"
 
 def load_data():
     """Load autokick data from JSON file"""

@@ -4,6 +4,9 @@
 #  All rights reserved.
 # ==============================================================================
 
+VERSION = "1.0.0"
+CATEGORY = "utilities"
+
 import asyncio
 import os
 import ssl

@@ -41,6 +41,9 @@ def init(client_instance):
 # ==========================================================
 # Command Handler Registerion
 # ==========================================================
+
+VERSION = "1.0.0"
+CATEGORY = "utilities"
 async def register_commands():
 
     FONTS = {

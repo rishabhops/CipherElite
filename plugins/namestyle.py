@@ -174,6 +174,9 @@ def init(client_instance):
 # Command Registration
 # =========================
 
+VERSION = "1.0.0"
+CATEGORY = "utilities"
+
 @CipherElite.on(events.NewMessage(pattern=r"^\.namestyle(?:\s+(.+))?$"))
 @rishabh()
 async def namestyle(event):

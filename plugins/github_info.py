@@ -7,6 +7,9 @@
 #  Usage:          .gh <username>
 # =============================================================================
 
+VERSION = "1.0.0"
+CATEGORY = "utilities"
+
 import aiohttp
 from telethon import events
 from utils.utils import CipherElite

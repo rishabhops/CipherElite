@@ -2,6 +2,7 @@
 #  CipherElite Userbot Plugin
 #
 #  Plugin Name:    clone
+#  Version:        1.0.0
 #  Author:         CipherElite Dev (@rishabhops)
 #  Repository:     https://github.com/rishabhops/CipherElite
 #
@@ -11,8 +12,8 @@
 #    • If you copy, fork, or include this plugin in your own bot,
 #      you MUST keep this header intact.
 #    • You MUST give proper credit to the CipherElite Userbot author:
-#        – GitHub:    https://github.com/rishabhops/CipherElite
-#        – Telegram:  @thanosceo
+#      – GitHub:    https://github.com/rishabhops/CipherElite
+#      – Telegram:  @thanosceo
 #
 #  Thank you for respecting open-source software!
 # =============================================================================
@@ -31,9 +32,12 @@ import json
 import logging
 import asyncio
 
+VERSION = "1.0.0"
+CATEGORY = "utilities"
+
 # Configure logging
 logger = logging.getLogger(__name__)
-BACKUP_DIR = "profile_backups"
+BACKUP_DIR = "DB/profile_backups"
 
 def init(client_instance):
     commands = [

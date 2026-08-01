@@ -8,6 +8,9 @@ import os
 import requests
 from io import BytesIO
 
+VERSION = "1.0.0"
+CATEGORY = "developer"
+
 # ─────────────── CONFIG ───────────────
 LOGO_URL = "https://raw.githubusercontent.com/rishabhops/CipherElite/elite/images/cipher.jpg"
 CHANNEL_LINK = "https://t.me/cipherelite_support"

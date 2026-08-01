@@ -2,6 +2,7 @@
 #  CipherElite Userbot Plugin
 #
 #  Plugin Name:    alive
+#  Version:        3.0.0
 #  Author:         CipherElite Dev (@rishabhops)
 #  Repository:     https://github.com/rishabhops/CipherElite
 #
@@ -9,7 +10,9 @@
 # =============================================================================
 
 import asyncio
+import html
 import json
+import random
 from datetime import datetime
 from pathlib import Path
 
@@ -17,10 +20,13 @@ from telethon import events, version, Button
 from telethon.errors import BotInlineDisabledError
 from plugins.bot import add_handler, CMD_LIST
 
-from plugins.bot import bot 
+from plugins.bot import bot
 from utils.utils import CipherElite
 from utils.decorators import rishabh
 from config.config import Config
+
+VERSION = "3.0.0"
+CATEGORY = "utilities"
 
 PROJECT_ROOT = Path(__file__).parent.parent
 DB_DIR = PROJECT_ROOT / "DB"
@@ -45,6 +51,9 @@ INLINE_DATA = {
     "ping_media": None
 }
 
+DEFAULT_ALIVE_PIC = Config.DEFAULT_ALIVE_PIC
+DEFAULT_PING_PIC = Config.DEFAULT_PING_PIC
+
 class UserConfig:
     def __init__(self):
         self.alive_style_index = 0
@@ -55,6 +64,7 @@ class UserConfig:
         self.ping_pic = DEFAULT_PING_PIC
         self.use_pic_for_alive = True
         self.use_pic_for_ping = True
+        self.show_quotes = True
 
     def to_dict(self):
         return {
@@ -66,6 +76,7 @@ class UserConfig:
             "ping_pic": self.ping_pic,
             "use_pic_for_alive": self.use_pic_for_alive,
             "use_pic_for_ping": self.use_pic_for_ping,
+            "show_quotes": self.show_quotes,
         }
 
     def from_dict(self, data):
@@ -93,8 +104,6 @@ def save_config():
 # -- END CONFIG --
 
 START_TIME = datetime.now()
-DEFAULT_ALIVE_PIC = Config.DEFAULT_ALIVE_PIC
-DEFAULT_PING_PIC = Config.DEFAULT_PING_PIC
 
 def get_readable_time(seconds: float) -> str:
     count = 0
@@ -112,255 +121,111 @@ def get_readable_time(seconds: float) -> str:
     return ":".join(reversed(time_list))
 
 # ============================================================================
-# ALIVE STYLES (OLD + NEW HACKER/TERMINAL STYLES)
+# QUOTES — rotated into the alive card so it never feels stale
+# ============================================================================
+
+QUOTES = [
+    "Code is read far more often than it is written.",
+    "Simplicity is the soul of efficiency.",
+    "Every expert was once a beginner who refused to quit.",
+    "Automation isn't about replacing effort — it's about redirecting it.",
+    "Small consistent commits build big systems.",
+    "The best error message is the one that never has to appear.",
+    "Discipline beats motivation when the deadline is real.",
+    "Great tools disappear into the workflow.",
+    "Uptime is a promise, not an accident.",
+    "Ship it, measure it, improve it.",
+    "A clean log file is a peaceful mind.",
+    "Speed matters, but stability wins the long game.",
+]
+
+def get_random_quote() -> str:
+    return random.choice(QUOTES)
+
+# ============================================================================
+# ALIVE STYLES — Unique, Aesthetic & Blockquote-Heavy
 # ============================================================================
 
 ALIVE_STYLES = [
-    # --- OLD STYLES (1-2) ---
-    r"""⚡ 𝘾𝙄𝙋𝙃𝙀𝙍 𝙀𝙇𝙄𝙏𝙀 𝙎𝙔𝙎𝙏𝙀𝙈 ⚡
+    # --- Style 1: The Hacker / Terminal Vibe ---
+    """<blockquote><b>⚡ S Y S T E M   O N L I N E ⚡</b></blockquote>
+<code>User     :</code> <b>{name}</b>
+<code>Core     :</code> v{version}
+<code>Telethon :</code> {telethon}
+<code>Modules  :</code> {plugins}
+<code>Uptime   :</code> {uptime}
 
-▰▱▰▱▰▱▰▱▰▱▰▱▰▱
-➺ 𝙈𝘼𝙎𝙏𝙀𝙍: {name}
-➺ 𝙑𝙀𝙍𝙎𝙄𝙊𝙉: 1.0
-➺ 𝙏𝙀𝙇𝙀𝙏𝙃𝙊𝙉: {telethon}
-▰▱▰▱▰▱▰▱▰▱▰▱▰▱
+<blockquote><i>" {quote} "</i></blockquote>""",
 
-⚔️ 𝙋𝙇𝙐𝙂𝙄𝙉𝙎: {plugins}
-⚔️ 𝙐𝙋𝙏𝙄𝙈𝙀: {uptime}
-⚔️ 𝘽𝙍𝘼𝙉𝘾𝙃: MASTER
+    # --- Style 2: The Elegant Minimalist (Stats inside Blockquote) ---
+    """✨ <b>{name}</b> is currently <b>Active</b>.
 
-▰▱▰▱ ELITE NETWORK ▰▱▰▱""",
-    
-    r"""╔══『 CIPHER ELITE 』══╗
+<blockquote><b>⚙️ C I P H E R   S T A T S</b>
+├ <b>Version:</b> {version} [{branch}]
+├ <b>Engine :</b> Telethon {telethon}
+├ <b>Arsenal:</b> {plugins} plugins
+└ <b>Uptime :</b> {uptime}</blockquote>
 
-◈ CODENAME: {name}
-◈ VERSION: [1.0]
-◈ TELETHON: [{telethon}]
+💡 <i>{quote}</i>""",
 
-▣ PLUGINS: {plugins}
-▣ UPTIME: {uptime}
-▣ STATUS: OPERATIONAL
+    # --- Style 3: The Royal Card ---
+    """👑 <b>C I P H E R   E L I T E   V {version}</b> 👑
+━━━━━━━━━━━━━━━━━━━━
+<blockquote>👤 <b>Master  :</b> <i>{name}</i>
+⏳ <b>Uptime  :</b> <i>{uptime}</i>
+🔋 <b>Plugins :</b> <i>{plugins} Loaded</i>
+🌿 <b>Branch  :</b> <i>{branch}</i></blockquote>
+━━━━━━━━━━━━━━━━━━━━
+✦ <i>{quote}</i> ✦""",
 
-╚══『 ELITE FORCE 』══╝""",
+    # --- Style 4: The Cyberpunk Box ---
+    """<blockquote>🌐 <b>N E T W O R K   A L I V E</b>
+▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰
+► <b>Pilot :</b> {name}
+► <b>Build :</b> {version}
+► <b>Mods  :</b> {plugins} active
+► <b>Time  :</b> {uptime}
+▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰</blockquote>
+<code>> {quote}</code>""",
 
-    # --- NEW HACKER TERMINAL STYLES (3-7) ---
-    r"""root@cipher-elite:~$ alive
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-[✓] System Online
-[✓] Cipher Elite Activated
+    # --- Style 5: The Aesthetic Quote-Centric ---
+    """<blockquote>❝ <b>{quote}</b> ❞</blockquote>
 
-┌─ USER INFO ─────────────────────┐
-│ Username    : {name}            
-│ Version     : 1.0.0             
-│ Telethon    : v{telethon}        
-│ Status      : OPERATIONAL       
-└─────────────────────────────────┘
-
-┌─ SYSTEM STATUS ─────────────────┐
-│ Plugins     : {plugins}         
-│ Uptime      : {uptime}          
-│ Connection  : ✓ STABLE          
-│ CPU Usage   : ▓▓▓▓▓░░░░ 50%    
-│ Memory      : ▓▓▓▓▓▓░░░░ 60%   
-└─────────────────────────────────┘
-
-[✓] Elite Mode: ENABLED
-[✓] All Systems Go
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━""",
-
-    r"""[CIPHER-ELITE] >> SYSTEM.ONLINE()
-══════════════════════════════════════
-
-> Initializing User Interface...
-> User: {name}
-> Version: 1.0
-> Telethon Library: {telethon}
-
-> Loading Module Configuration...
-> Total Modules Loaded: {plugins}
-> Session Uptime: {uptime}
-
-> Running Diagnostics...
-> [████████████████████] 100%
-> System Status: ✓ OPERATIONAL
-
-> Cipher Elite Status: ACTIVE
-> Authorization Level: MASTER
-
-══════════════════════════════════════
-[✓] SYSTEM READY FOR OPERATIONS""",
-
-    r"""╔════════════════════════════════════╗
-║  ⚡ CIPHER ELITE TERMINAL ⚡       ║
-║                                    ║
-║  $ whoami                          ║
-║  > {name}                          ║
-║                                    ║
-║  $ system_info                     ║
-║  > Version: 1.0                   ║
-║  > Telethon: {telethon}           ║
-║  > Status: ONLINE ✓               ║
-║                                    ║
-║  $ load_modules                    ║
-║  > Plugins: {plugins}             ║
-║  > Uptime: {uptime}               ║
-║  > Mode: ELITE                     ║
-║                                    ║
-║  [✓] Authorization Granted         ║
-║  [✓] All Systems Operational       ║
-╚════════════════════════════════════╝""",
-
-    r"""[cipher-elite@system ~]$ status
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-╭─── ELITE SYSTEM STATUS ────────╮
-│ USER       : {name}            │
-│ VERSION    : 1.0               │
-│ TELETHON   : {telethon}        │
-│ PLUGINS    : {plugins}         │
-│ UPTIME     : {uptime}          │
-│ STATUS     : 🟢 ONLINE         │
-╰────────────────────────────────╯
-
-[✓] Elite System Active
-[✓] All Modules Loaded
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━""",
-
-    r"""█████ CIPHER ELITE ONLINE █████
-
-┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
-┃ 🎯 MASTER: {name}
-┃ 🔧 VERSION: 1.0.0
-┃ 📡 TELETHON: {telethon}
-┃ 📦 MODULES: {plugins}
-┃ ⏰ UPTIME: {uptime}
-┃ 🟢 STATUS: OPERATIONAL
-┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
-
-    ⚡ ELITE NETWORK ACTIVE ⚡
-    ✓ AUTH: GRANTED
-    ✓ SYSTEMS: GO
-
-█████████████████████████████████""",
-
-    r"""╭─────────────────────────────────╮
-│    ✦ CIPHER ELITE SYSTEM ✦     │
-├─────────────────────────────────┤
-│                                 │
-│  USER NAME ......... {name}     │
-│  SOFTWARE VER ...... 1.0        │
-│  TELETHON .......... {telethon} │
-│  LOADED MODULES .... {plugins}  │
-│  SESSION TIME ...... {uptime}   │
-│  CONNECTION ........ ✓ ACTIVE  │
-│                                 │
-│  ⚡ READY FOR ELITE OPS ⚡     │
-│                                 │
-╰─────────────────────────────────╯""",
+🤖 <b>CipherElite is Running Smoothly!</b>
+• <b>Owner:</b> {name}
+• <b>Status:</b> Online for {uptime}
+• <b>Specs:</b> v{version} | {plugins} Plugins"""
 ]
 
 # ============================================================================
-# PING STYLES (OLD + NEW HACKER/TERMINAL STYLES)
+# PING STYLES — Clean, Distinct & Modern
 # ============================================================================
 
 PING_STYLES = [
-    # --- OLD STYLES (1-2) ---
-    r"""⚡ 𝙋𝙄𝙉𝙂 𝙎𝙏𝘼𝙏𝙐𝙎 ⚡
+    # --- Style 1: Terminal Report ---
+    """<blockquote><b>📡 P I N G   R E P O R T</b></blockquote>
+<code>Latency:</code> <b>{speed}ms</b>
+<code>Uptime :</code> <b>{uptime}</b>""",
 
-▰▱▰▱▰▱▰▱▰▱▰▱▰▱
-➺ 𝙎𝙋𝙀𝙀𝘿: {speed}ms
-➺ 𝙐𝙋𝙏𝙄𝙈𝙀: {uptime}
-▰▱▰▱▰▱▰▱▰▱▰▱▰▱""",
-    
-    r"""╔══『 PING STATUS 』══╗
+    # --- Style 2: Minimal Box (Stats in Blockquote) ---
+    """🏓 <b>P O N G !</b>
+<blockquote>├ ⚡ <b>{speed} ms</b>
+└ ⏱ <b>{uptime}</b></blockquote>""",
 
-◈ SPEED: [{speed}ms]
-◈ UPTIME: [{uptime}]
+    # --- Style 3: Fancy Banner ---
+    """✨ <b>P O N G</b> ✨
+━━━━━━━━━━━━━
+<blockquote>🚀 <b>Speed:</b> {speed}ms
+⏳ <b>Uptime:</b> {uptime}</blockquote>""",
 
-╚══『 CIPHER ELITE 』══╝""",
+    # --- Style 4: Cyberpunk UI ---
+    """<blockquote>🌐 <b>L A T E N C Y</b>
+▰▰▰▰▰▰▰▰▰▰
+► <b>{speed}ms</b></blockquote>""",
 
-    # --- NEW HACKER TERMINAL STYLES (3-6) ---
-    r"""root@cipher-elite:~$ ping_test
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-[✓] Sending PING request...
-
-┌─ RESPONSE METRICS ──────────────┐
-│ Latency        : {speed}ms      
-│ Status         : ✓ CONNECTED    
-│ Response Time  : {uptime}       
-│ Signal Strength: ███████████ 100%
-└─────────────────────────────────┘
-
-[✓] Response Received
-[✓] Connection Stable
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━""",
-
-    r"""[CIPHER-ELITE] >> PING_PROTOCOL()
-══════════════════════════════════
-
-> Executing Ping Sequence...
-> Target: Cipher Elite Server
-> 
-> [████████████████████] 100%
->
-> Response Latency: {speed}ms
-> Session Status: {uptime}
-> Connection Quality: EXCELLENT ✓
->
-> Ping Status: SUCCESS
-> Server Response: ACTIVE
-
-══════════════════════════════════
-[✓] PING SUCCESSFUL - ONLINE""",
-
-    r"""╔════════════════════════════════════╗
-║   ⚡ CIPHER ELITE SPEED TEST    ║
-║                                    ║
-║  Pinging Server...                ║
-║  [████████████████████] 100%      ║
-║                                    ║
-║  SPEED:  {speed}ms                ║
-║  UPTIME: {uptime}                 ║
-║                                    ║
-║  Status: 🟢 ULTRA FAST            ║
-║  Quality: ✓✓✓✓✓ EXCELLENT        ║
-║                                    ║
-╚════════════════════════════════════╝""",
-
-    r"""[cipher-elite@ping ~]$ latency
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-╭─── PING ANALYSIS ──────────┮
-│ RESPONSE   : {speed}ms     │
-│ UPTIME     : {uptime}      │
-│ CONNECTION : 🟢 ONLINE     │
-│ SPEED      : ⚡ FAST       │
-│ QUALITY    : ◉◉◉◉◉ 100%   │
-╰────────────────────────────╯
-
-[✓] Ping Successful
-[✓] Server Responding
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━""",
-
-    r"""█████ PING RESPONSE ACTIVE █████
-
-┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
-┃ ⚡ LATENCY: {speed}ms
-┃ 📊 SESSION: {uptime}
-┃ 🌐 NETWORK: STABLE
-┃ 📶 SIGNAL: █████████░ 95%
-┃ 🟢 STATUS: CONNECTED
-┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
-
-   ✓ RESPONSE RECEIVED
-   ✓ SERVER ONLINE
-   ✓ ELITE CONNECTED
-
-███████████████████████████""",
+    # --- Style 5: Soft Inline ---
+    """<blockquote>💨 <i>Catching up in <b>{speed}ms</b>...</i></blockquote>
+⏱ System up for: <b>{uptime}</b>"""
 ]
 
 user_config = UserConfig()
@@ -373,6 +238,7 @@ def init(client):
         ".setalivetext <text>", ".setpingtext <text>",
         ".setalivepic <url/reply>", ".setpingpic <url/reply>",
         ".togglealivepic", ".togglepingpic",
+        ".togglequotes",
         ".alivestyles", ".pingstyles",
         ".resetalive", ".resetping"
     ]
@@ -393,13 +259,17 @@ async def alive(event):
         if user_config.custom_alive_text
         else ALIVE_STYLES[user_config.alive_style_index]
     )
+    quote = get_random_quote() if user_config.show_quotes else ""
     text = template.format(
         name=event.sender.first_name,
         telethon=version.__version__,
         plugins=len(CMD_LIST),
-        uptime=uptime
+        uptime=uptime,
+        version=Config.VERSION,
+        branch=Config.BRANCH,
+        quote=quote,
     )
-    
+
     # 2. Update Global Data for Bot
     global INLINE_DATA
     INLINE_DATA["alive_text"] = text
@@ -416,7 +286,7 @@ async def alive(event):
         await event.delete()
     except Exception as e:
         # Fallback to plain text if bot is down or not configured
-        await event.reply(text, file=INLINE_DATA["alive_media"])
+        await event.reply(text, file=INLINE_DATA["alive_media"], parse_mode='html')
         if "username" in str(e).lower():
             print("❌ Cipher Error: Config.TG_BOT_USERNAME is missing or invalid.")
 
@@ -447,7 +317,7 @@ async def ping(event):
         )
         await event.delete()
     except Exception:
-        await event.reply(text, file=INLINE_DATA["ping_media"])
+        await event.reply(text, file=INLINE_DATA["ping_media"], parse_mode='html')
 
 # ============================================================================
 #  BOT HANDLERS (The Response)
@@ -464,12 +334,14 @@ if bot:
             result = builder.photo(
                 media,
                 text=text,
+                parse_mode='html',
                 buttons=ALIVE_BUTTONS
             )
         else:
             result = builder.article(
                 "Alive",
                 text=text,
+                parse_mode='html',
                 buttons=ALIVE_BUTTONS
             )
         await event.answer([result], cache_time=1)
@@ -484,12 +356,14 @@ if bot:
             result = builder.photo(
                 media,
                 text=text,
+                parse_mode='html',
                 buttons=ALIVE_BUTTONS
             )
         else:
             result = builder.article(
                 "Ping",
                 text=text,
+                parse_mode='html',
                 buttons=ALIVE_BUTTONS
             )
         await event.answer([result], cache_time=1)
@@ -592,6 +466,14 @@ async def toggle_ping_pic(event):
     state = "enabled" if user_config.use_pic_for_ping else "disabled"
     await event.reply(f"✅ Ping picture {state}")
 
+@CipherElite.on(events.NewMessage(pattern=r"\.togglequotes"))
+@rishabh()
+async def toggle_quotes(event):
+    user_config.show_quotes = not user_config.show_quotes
+    save_config()
+    state = "enabled" if user_config.show_quotes else "disabled"
+    await event.reply(f"✅ Quotes on alive card {state}")
+
 @CipherElite.on(events.NewMessage(pattern=r"\.resetalive"))
 @rishabh()
 async def reset_alive(event):
@@ -607,7 +489,7 @@ async def reset_ping(event):
     await event.reply("✅ Ping settings reset to default")
 
 # ============================================================================
-#  STYLE VIEWER COMMANDS (NEW!)
+#  STYLE VIEWER COMMANDS
 # ============================================================================
 
 @CipherElite.on(events.NewMessage(pattern=r"\.alivestyles"))
@@ -615,20 +497,21 @@ async def reset_ping(event):
 async def show_alive_styles(event):
     uptime = get_readable_time((datetime.now() - START_TIME).total_seconds())
     msg = "🎭 <b>AVAILABLE ALIVE STYLES:</b>\n\n"
-    
+
     for i, style in enumerate(ALIVE_STYLES):
-        preview = style.format(
+        rendered = style.format(
             name="YourName",
             telethon=version.__version__,
             plugins=len(CMD_LIST),
-            uptime=uptime
-        )[:80] + "..."
-        preview = preview.replace("\n", " ")
-        msg += f"<b>Style #{i+1}:</b>\n<code>{preview}</code>\n\n"
-    
+            uptime=uptime,
+            version=Config.VERSION,
+            branch=Config.BRANCH,
+            quote=get_random_quote(),
+        )
+        msg += f"🔻 <b>STYLE #{i+1}</b> 🔻\n{rendered}\n\n➖➖➖➖➖➖➖➖➖➖\n\n"
+
     msg += f"<i>Use <code>.setalive &lt;number&gt;</code> to select a style</i>"
-    
-    # Split if too long
+
     if len(msg) > 4000:
         for chunk in [msg[i:i+4000] for i in range(0, len(msg), 4000)]:
             await event.reply(chunk, parse_mode='html')
@@ -640,15 +523,13 @@ async def show_alive_styles(event):
 async def show_ping_styles(event):
     uptime = get_readable_time((datetime.now() - START_TIME).total_seconds())
     msg = "🎭 <b>AVAILABLE PING STYLES:</b>\n\n"
-    
+
     for i, style in enumerate(PING_STYLES):
-        preview = style.format(speed=45, uptime=uptime)[:80] + "..."
-        preview = preview.replace("\n", " ")
-        msg += f"<b>Style #{i+1}:</b>\n<code>{preview}</code>\n\n"
-    
+        rendered = style.format(speed=45, uptime=uptime)
+        msg += f"🔻 <b>STYLE #{i+1}</b> 🔻\n{rendered}\n\n➖➖➖➖➖➖➖➖➖➖\n\n"
+
     msg += f"<i>Use <code>.setping &lt;number&gt;</code> to select a style</i>"
-    
-    # Split if too long
+
     if len(msg) > 4000:
         for chunk in [msg[i:i+4000] for i in range(0, len(msg), 4000)]:
             await event.reply(chunk, parse_mode='html')

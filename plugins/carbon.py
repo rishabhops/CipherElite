@@ -2,6 +2,7 @@
 #  CipherElite Userbot Plugin
 #
 #  Plugin Name:    carbon (ultra edition)
+#  Version:        1.0.0
 #  Author:         CipherElite Dev (@rishabhops)
 #  Repository:     https://github.com/rishabhops/CipherElite
 #
@@ -23,6 +24,9 @@ from utils.utils import CipherElite
 from utils.decorators import rishabh
 from plugins.bot import add_handler
 
+VERSION = "1.0.0"
+CATEGORY = "media"
+
 # -----------------------------------------------------------------------------
 #  Config / Endpoints
 # -----------------------------------------------------------------------------
@@ -43,7 +47,7 @@ SNAP_API = "https://sourcecodeshots.com/api/image"
 
 REQUEST_TIMEOUT = aiohttp.ClientTimeout(total=45)
 MAX_CODE_CHARS = 12000
-CONFIG_PATH = os.path.join(os.path.dirname(__file__), "carbon_config.json")
+CONFIG_PATH = os.path.join(os.path.dirname(__file__), "..", "DB", "carbon_config.json")
 
 CARBON_THEMES = [
     "3024-night", "a11y-dark", "blackboard", "base16-dark",

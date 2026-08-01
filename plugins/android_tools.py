@@ -6,6 +6,9 @@ from utils.utils import CipherElite
 from utils.decorators import rishabh
 from plugins.bot import add_handler
 
+VERSION = "1.0.0"
+CATEGORY = "utilities"
+
 def init(client_instance):
     commands = [
         ".magisk - Get latest Magisk releases",

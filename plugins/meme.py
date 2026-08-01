@@ -5,6 +5,9 @@
 #  Created: 17/07/2026
 # =============================================================================
 
+VERSION = "1.0.0"
+CATEGORY = "animations"
+
 import aiohttp
 import os
 from telethon import events

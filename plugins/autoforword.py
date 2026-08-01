@@ -1,5 +1,6 @@
 # =============================================================================
 #  CipherElite Advanced Auto-Forwarder & Cloner
+#  Version:        1.0.0
 #  Author:         CipherElite Dev (@rishabhops)
 # =============================================================================
 
@@ -14,6 +15,9 @@ from telethon.utils import get_peer_id
 from utils.utils import CipherElite
 from plugins.bot import add_handler
 from utils.decorators import rishabh  
+
+VERSION = "1.0.0"
+CATEGORY = "utilities"
 
 # ==========================================
 # DATABASE SETUP

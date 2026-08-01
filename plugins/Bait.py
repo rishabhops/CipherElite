@@ -182,6 +182,9 @@ async def stop_all_bait(event):
 # ==========================================
 # GLOBAL PANIC BUTTON
 # ==========================================
+
+VERSION = "1.0.0"
+CATEGORY = "utilities"
 @CipherElite.on(events.NewMessage(pattern=r"^\.baitstopall$", outgoing=True))
 @rishabh
 async def stop_everything(event):

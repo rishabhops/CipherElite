@@ -2,6 +2,7 @@
 #  CipherElite Userbot Plugin - AI Setup Manager
 #
 #  Plugin Name:    ai_setup
+#  Version:        1.0.0
 #  Author:         CipherElite Dev (@rishabhops)
 #  Repository:     https://github.com/rishabhops/CipherElite
 #
@@ -17,6 +18,9 @@ from telethon import events
 from utils.utils import CipherElite
 from utils.decorators import rishabh
 from plugins.bot import add_handler
+
+VERSION = "1.0.0"
+CATEGORY = "utilities"
 
 # Centralized AI config file
 PROJECT_ROOT = Path(__file__).parent.parent
