@@ -6,6 +6,9 @@ class Config:
     API_HASH = API_HASH
     STRING_SESSION = ELITE_SESSION
     
+    # Database
+    MONGO_URI = MONGO_URI
+    
     # Bot Configuration
     BOT_PREFIX = ELITE_BOT_PREFIX
     BOT_NAME = "Cipher Elite"
@@ -21,7 +24,7 @@ class Config:
     DEFAULT_ALIVE_PIC = ALIVE_PIC
     DEFAULT_PMPERMIT_PIC = PMPERMIT_PIC
     # Version Info
-    VERSION = "2"
+    VERSION = "2.0.0"
     BRANCH = BRANCH
     UPSTREAM_REPO = "https://github.com/rishabhops/CipherElite"
 
