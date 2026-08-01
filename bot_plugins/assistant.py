@@ -2,6 +2,7 @@
 #  CipherElite Assistant Bot Plugin
 #
 #  Plugin Name:    assistant
+#  Version:        1.0.0
 #  Author:         CipherElite Dev (@rishabhops)
 #  Repository:     https://github.com/rishabhops/CipherElite
 #
@@ -12,6 +13,8 @@ import json
 from pathlib import Path
 from telethon import events, Button
 import html
+
+VERSION = "1.0.0"
 
 # Database file path
 DB_PATH = Path(__file__).parent.parent / "DB" / "assistant_db.json"
@@ -125,11 +128,19 @@ def init_bot_plugin(bot, owner_id, owner_name):
                 f"<i>Use the buttons below to manage your assistant bot</i>"
             )
             
+            from bot_plugins.adult_mode import is_enabled as adult_mode_enabled
+            adult_btn = (
+                Button.inline("🔞 Disable 18+ Mode", "disable_adult_mode")
+                if adult_mode_enabled()
+                else Button.inline("🔞 Enable 18+ Mode", "enable_adult_mode")
+            )
+
             buttons = [
                 [Button.inline("📚 Help", b"menu_help")],
                 [Button.inline("🤖 Assistant", b"menu_assistant")],
                 [Button.inline("📊 Stats", b"menu_stats")],
                 [Button.inline("⚙️ Settings", b"menu_settings")],
+                [adult_btn],
                 [Button.url("💬 Support", "https://t.me/thanosprosss")]
             ]
             
@@ -172,16 +183,14 @@ def init_bot_plugin(bot, owner_id, owner_name):
         if menu == "help":
             text = (
                 "📚 <b>Bot Commands Help</b>\n\n"
-                "<b>Assistant Commands:</b>\n"
-                "• <code>/assistant on</code> - Enable assistant mode\n"
-                "• <code>/assistant off</code> - Disable assistant mode\n"
-                "• <code>/assistant status</code> - Check current status\n\n"
-                "<b>General Commands:</b>\n"
-                "• <code>/start</code> - Show main menu\n"
-                "• <code>/help</code> - Show this help message\n\n"
-                "<i>More commands coming soon...</i>"
+                "👇 <i>Select a category below to view commands</i>"
             )
-            buttons = [[Button.inline("◀️ Back", b"menu_main")]]
+            buttons = [
+                [Button.inline("🤖 Assistant", b"cat_assistant")],
+                [Button.inline("⚡ Alive / Ping", b"cat_alive")],
+                [Button.inline("🤫 Whisper", b"cat_whisper")],
+                [Button.inline("◀️ Back", b"menu_main")]
+            ]
             await event.edit(text, buttons=buttons, parse_mode='html')
         
         elif menu == "assistant":
@@ -255,18 +264,87 @@ def init_bot_plugin(bot, owner_id, owner_name):
                 f"<i>Use the buttons below to manage your assistant bot</i>"
             )
             
+            from bot_plugins.adult_mode import is_enabled as adult_mode_enabled
+            adult_btn = (
+                Button.inline("🔞 Disable 18+ Mode", "disable_adult_mode")
+                if adult_mode_enabled()
+                else Button.inline("🔞 Enable 18+ Mode", "enable_adult_mode")
+            )
+
             buttons = [
                 [Button.inline("📚 Help", b"menu_help")],
                 [Button.inline("🤖 Assistant", b"menu_assistant")],
                 [Button.inline("📊 Stats", b"menu_stats")],
                 [Button.inline("⚙️ Settings", b"menu_settings")],
+                [adult_btn],
                 [Button.url("💬 Support", "https://t.me/thanosprosss")]
             ]
             
             await event.edit(text, buttons=buttons, parse_mode='html')
     
     # -------------------------------------------------------------------------
-    # 3. ASSISTANT TOGGLE HANDLER
+    # 3. CATEGORY HELP HANDLER
+    # -------------------------------------------------------------------------
+    @bot.on(events.CallbackQuery(pattern=r"cat_(.*)"))
+    async def category_help_handler(event):
+        # Only owner can use these menus
+        if event.sender_id != owner_user_id:
+            await event.answer("⛔ This is only for the bot owner!", alert=True)
+            return
+        
+        category = event.data_match.group(1).decode()
+        
+        categories = {
+            "assistant": {
+                "icon": "🤖",
+                "title": "Assistant Commands",
+                "commands": [
+                    ("/start", "Show main menu"),
+                    ("/help", "Show help menu"),
+                    ("/assistant", "Assistant status"),
+                    ("/assistant on", "Enable assistant mode"),
+                    ("/assistant off", "Disable assistant mode"),
+                    ("/assistant status", "Check assistant status"),
+                ]
+            },
+            "alive": {
+                "icon": "⚡",
+                "title": "Alive / Ping Commands",
+                "commands": [
+                    ("/alive", "Customize alive message"),
+                    ("/ping", "Customize ping message"),
+                    ("Buttons", "Change style, pic, quotes"),
+                ]
+            },
+            "whisper": {
+                "icon": "🤫",
+                "title": "Whisper Commands",
+                "commands": [
+                    (".w @username <text>", "Send secret whisper to user"),
+                    (".w <text> (reply)", "Send whisper by replying"),
+                    ("Button", "Target user clicks to view"),
+                ]
+            },
+        }
+        
+        if category not in categories:
+            await event.answer("❌ Category not found!", alert=True)
+            return
+        
+        info = categories[category]
+        text = f"{info['icon']} <b>{info['title']}</b>\n\n"
+        for cmd, desc in info["commands"]:
+            text += f"❯ <code>{cmd}</code>\n   <i>{desc}</i>\n\n"
+        
+        buttons = [
+            [Button.inline("◀️ Back to Categories", b"menu_help")],
+            [Button.inline("🏠 Main Menu", b"menu_main")]
+        ]
+        
+        await event.edit(text, buttons=buttons, parse_mode='html')
+    
+    # -------------------------------------------------------------------------
+    # 4. ASSISTANT TOGGLE HANDLER
     # -------------------------------------------------------------------------
     @bot.on(events.CallbackQuery(pattern=r"assistant_toggle"))
     async def assistant_toggle_handler(event):
@@ -491,15 +569,15 @@ def init_bot_plugin(bot, owner_id, owner_name):
         if event.sender_id == owner_user_id:
             text = (
                 "📚 <b>Bot Commands Help</b>\n\n"
-                "<b>Assistant Commands:</b>\n"
-                "• <code>/assistant on</code> - Enable assistant mode\n"
-                "• <code>/assistant off</code> - Disable assistant mode\n"
-                "• <code>/assistant status</code> - Check current status\n\n"
-                "<b>General Commands:</b>\n"
-                "• <code>/start</code> - Show main menu\n"
-                "• <code>/help</code> - Show this help message\n\n"
-                "<i>More commands coming soon...</i>"
+                "👇 <i>Select a category below to view commands</i>"
             )
+            buttons = [
+                [Button.inline("🤖 Assistant", b"cat_assistant")],
+                [Button.inline("⚡ Alive / Ping", b"cat_alive")],
+                [Button.inline("🤫 Whisper", b"cat_whisper")],
+                [Button.inline("🏠 Main Menu", b"menu_main")]
+            ]
+            await event.reply(text, buttons=buttons, parse_mode='html')
         else:
             text = (
                 "📚 <b>Help</b>\n\n"
@@ -507,7 +585,6 @@ def init_bot_plugin(bot, owner_id, owner_name):
                 "Simply send your message and it will be forwarded to the owner.\n\n"
                 "Use /start to begin."
             )
-        
-        await event.reply(text, parse_mode='html')
+            await event.reply(text, parse_mode='html')
     
     print("✅ Assistant Plugin: All handlers registered successfully")
