@@ -5,11 +5,13 @@ from telethon.sessions import StringSession
 from config.config import Config
 from utils.thanos import thanos_protect
 from startup.startup import start_bot
+from core.console import ColourFormatter
 
 logging.basicConfig(
-    format='[%(levelname) 5s/%(asctime)s] %(name)s: %(message)s',
-    level=logging.WARNING
+    level=logging.WARNING,
+    handlers=[logging.StreamHandler()]
 )
+logging.getLogger().handlers[0].setFormatter(ColourFormatter("cipherelite")())
 
 # Initialize Telegram client
 eliteses = thanos_protect(Config.STRING_SESSION)

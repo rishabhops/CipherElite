@@ -21,11 +21,14 @@ LOG_CHAT_ID = int(os.getenv("LOG_CHAT_ID", "0"))
 
 # Image URLs
 PMPERMIT_PIC = os.getenv("PMPERMIT_PIC", "https://files.catbox.moe/tocisn.png")  
-ALIVE_PIC = os.getenv("ALIVE_PIC", "https://files.catbox.moe/tocisn.png") 
-PING_PIC = os.getenv("PING_PIC", "https://files.catbox.moe/tocisn.png")
+ALIVE_PIC = os.getenv("ALIVE_PIC", "https://files.catbox.moe/01jl0k.png") 
+PING_PIC = os.getenv("PING_PIC", "https://files.catbox.moe/t1surp.png")
 
 # alive name
 ALIVE_NAME = os.getenv("ALIVE_NAME", "rishabh")  
+
+# Database Configuration
+MONGO_URI = os.getenv("MONGO_URI", "")
 
 # Update Configuration
 UPSTREAM_REPO = os.getenv("UPSTREAM_REPO", "https://github.com/rishabhops/CipherElite")
@@ -46,3 +49,5 @@ if SUDO_USERS == [0]:
     print("Warning: SUDO_USERS is not set. Please update .env with valid Telegram user ID(s).")
 if LOG_CHAT_ID == 0:
     print("Warning: LOG_CHAT_ID is not set. Please update .env with a valid logger group ID.")
+if not MONGO_URI:
+    print("Info: MONGO_URI not set. Using local JSON storage. Set MONGO_URI for cloud database.")
