@@ -1,13 +1,4 @@
-"""core/console.py — terminal presentation layer.
-
-Kyun alag file: main.py mein banner ke andar fixed-width strings the, jinke
-beech runtime values interpolate hote the. Bot ka naam ya version ek character
-bhi badla, aur daayin border shift ho gayi. Yahan width runtime par naapi
-jaati hai, isliye box hamesha seedha rehta hai.
-
-EMOJI jaan-bujh ke box ke ANDAR nahi rakhe: zyadatar terminal emoji ko
-double-width render karta hai lekin Python ka len() unhe 1 ginta hai —
-padding turant toot jaati hai. Box ke bahar emoji theek hai.
+"""core/console.py
 """
 
 import os
@@ -17,8 +8,7 @@ import time
 
 
 # ── colour support detection ──────────────────────────────────────────
-# Pipe ya file mein redirect karne par escape codes kachra bante hain,
-# isliye sirf asli TTY par colour. NO_COLOR standard bhi respect karte hain.
+
 _USE_COLOUR = (
     sys.stdout.isatty()
     and os.getenv("NO_COLOR") is None
@@ -46,7 +36,6 @@ _ANSI_RE = re.compile(r"\033\[[0-9;]*m")
 
 
 def _width(_s: str) -> int:
-    """Colour codes screen par jagah nahi lete — naapte waqt hata do."""
     return len(_ANSI_RE.sub("", _s))
 
 
@@ -80,10 +69,7 @@ def banner(_name: str, _version: str, _author: str, _handle: str) -> None:
 
 
 def box(_title: str, _rows, _colour: str = CYAN) -> None:
-    """
-    _rows: (label, value) tuples ki list.
-    Width sabse lambi line se decide hoti hai — hardcoded nahi.
-    """
+  
     _pairs = [(str(_k), str(_v)) for _k, _v in _rows]
     _label_w = max((_width(_k) for _k, _ in _pairs), default=0)
     _body = [f"{GREY}{_k.ljust(_label_w)}{RESET}  {_v}" for _k, _v in _pairs]
@@ -100,10 +86,7 @@ def box(_title: str, _rows, _colour: str = CYAN) -> None:
 
 
 def blockquote(_lines, _title: str = None, _colour: str = CYAN, _bar: str = "▌") -> None:
-    """
-    Terminal blockquote: left bar with optional title.
-    _lines: string list ya (label, value) tuples.
-    """
+
     _body = []
     for _line in _lines:
         if isinstance(_line, (tuple, list)) and len(_line) == 2:
@@ -160,7 +143,7 @@ _STEPS = {}
 
 
 def step(_key: str, _text: str) -> None:
-    """Kaam shuru — baad mein ok()/fail() isi key par timing chhaap dega."""
+
     _STEPS[_key] = time.monotonic()
     print(f"  {YELLOW}◌{RESET} {_text}{DIM}…{RESET}", flush=True)
 
@@ -192,10 +175,7 @@ def info(_text: str) -> None:
 
 
 class ColourFormatter:
-    """
-    logging.Formatter ka replacement nahi — usko wrap karta hai, taaki
-    file handler plain text likhta rahe aur sirf console rangeen ho.
-    """
+
 
     _LEVEL = {
         "DEBUG": (GREY, "debug"),
