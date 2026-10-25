@@ -98,3 +98,4 @@ lxml
 webencodings==0.5.1
 yarl==1.18.3
 yt-dlp
+google-generativeai telethon
