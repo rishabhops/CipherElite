@@ -29,7 +29,7 @@ from utils.utils import CipherElite
 from plugins.bot import add_handler
 from utils.decorators import rishabh
 
-VERSION = "1.0.0"
+VERSION = "1.0.1"
 CATEGORY = "utilities"
 
 # ==========================================
@@ -78,7 +78,7 @@ def init(client_instance):
 @rishabh()
 async def toggle_global_flash(event):
     if not getattr(Config, "LOG_CHAT_ID", None):
-        return await event.reply("❌ **Error:** Please set `LOG_CHAT_ID` in your config.py first!")
+        return await event.reply("❌ **Error:** Please set `LOG_CHAT_ID` in your config.py first! or using elite Deployer")
         
     args = event.pattern_match.group(1).strip().lower()
     db = load_db()
@@ -211,7 +211,7 @@ async def auto_media_downloader(event):
                     caption=caption
                 )
                 
-                # Delete the physical file from the bot's server to save space
+                
                 os.remove(downloaded_file)
                 
         except Exception as e:
